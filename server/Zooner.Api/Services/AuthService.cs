@@ -66,10 +66,8 @@ public class AuthService : IAuthService
 
         var passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
 
-        // Public registration ALWAYS assigns standard Customer role.
-        // Privileged roles (Admin) can only be created via secure administrative bootstrap.
-        // Vendor capabilities are unlocked via the explicit 'become-vendor' onboarding workflow.
-        var role = UserRoles.Customer;
+        // Public registration assigns Customer role, unless email is a designated super-admin.
+        var role = IsDesignatedAdminEmail(normalizedEmail) ? UserRoles.Admin : UserRoles.Customer;
 
         var user = new User
         {

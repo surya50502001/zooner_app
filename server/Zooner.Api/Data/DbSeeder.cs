@@ -24,24 +24,21 @@ public static class DbSeeder
             }
 
             // 2. Seed Default Admin User if not existing
-            var adminEmail = Environment.GetEnvironmentVariable("ADMIN_EMAIL") ?? "admin@locallive.com";
-            var adminPassword = Environment.GetEnvironmentVariable("ADMIN_PASSWORD");
-            
-            if (!string.IsNullOrEmpty(adminPassword) && !await context.Users.AnyAsync(u => u.Email == adminEmail))
+            if (!await context.Users.AnyAsync(u => u.Email == "admin@zooner.app"))
             {
                 var admin = new User
                 {
                     Id = Guid.NewGuid(),
-                    FullName = "LocalLive Administrator",
-                    Email = adminEmail,
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(adminPassword),
+                    FullName = "Zooner Super Administrator",
+                    Email = "admin@zooner.app",
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123"),
                     Role = UserRoles.Admin,
                     IsActive = true,
                     CreatedAtUtc = DateTime.UtcNow
                 };
                 context.Users.Add(admin);
                 await context.SaveChangesAsync();
-                logger.LogInformation("Seeded default administrator account: {Email}", adminEmail);
+                logger.LogInformation("Seeded default administrator account: admin@zooner.app");
             }
 
             // 2b. Ensure designated super-admin accounts have Admin role
