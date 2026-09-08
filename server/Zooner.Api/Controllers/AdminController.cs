@@ -9,7 +9,7 @@ namespace Zooner.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Admin")]
+[Authorize(Policy = "AdminPolicy")]
 public class AdminController : ControllerBase
 {
     private readonly ICategoryService _categoryService;

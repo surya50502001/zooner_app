@@ -478,6 +478,7 @@ export interface ShopProfileDto {
   isOpen: boolean;
   isCurrentlyOpen?: boolean;
   isVerified?: boolean;
+  verificationStatus?: string;
   distanceKm?: number;
   categoryName?: string;
   categories?: { id: string; name: string }[];
@@ -558,6 +559,18 @@ export async function setShopLiveStatus(shopId: string, isLiveEnabled: boolean):
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ isLiveEnabled })
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+export async function verifyOwnerShop(shopId: string): Promise<boolean> {
+  try {
+    const response = await authenticatedFetch(`${API_BASE_URL}/Shops/${shopId}/verify-owner`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
     });
     return response.ok;
   } catch {

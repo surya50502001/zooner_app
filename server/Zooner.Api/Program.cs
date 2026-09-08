@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -148,8 +149,33 @@ builder.Services.AddAuthentication(options =>
 // Centralized Authorization Policies
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("AdminOnly", policy => policy.RequireRole(UserRoles.Admin));
-    options.AddPolicy("VendorPolicy", policy => policy.RequireRole(UserRoles.Vendor, UserRoles.Admin));
+    var superAdminList = builder.Configuration.GetSection("AdminConfig:SuperAdminEmails").Get<List<string>>() 
+        ?? new List<string> { "lpycho3@gmail.com", "admin@zooner.app" };
+
+    options.AddPolicy("AdminPolicy", policy => policy.RequireAssertion(ctx =>
+    {
+        if (ctx.User.IsInRole(UserRoles.Admin)) return true;
+        var email = ctx.User.FindFirst(ClaimTypes.Email)?.Value ?? ctx.User.FindFirst("email")?.Value;
+        if (!string.IsNullOrEmpty(email) && superAdminList.Any(a => a.Equals(email.Trim(), StringComparison.OrdinalIgnoreCase))) return true;
+        return false;
+    }));
+
+    options.AddPolicy("AdminOnly", policy => policy.RequireAssertion(ctx =>
+    {
+        if (ctx.User.IsInRole(UserRoles.Admin)) return true;
+        var email = ctx.User.FindFirst(ClaimTypes.Email)?.Value ?? ctx.User.FindFirst("email")?.Value;
+        if (!string.IsNullOrEmpty(email) && superAdminList.Any(a => a.Equals(email.Trim(), StringComparison.OrdinalIgnoreCase))) return true;
+        return false;
+    }));
+
+    options.AddPolicy("VendorPolicy", policy => policy.RequireAssertion(ctx =>
+    {
+        if (ctx.User.IsInRole(UserRoles.Vendor) || ctx.User.IsInRole(UserRoles.Admin) || ctx.User.IsInRole("ShopOwner")) return true;
+        var email = ctx.User.FindFirst(ClaimTypes.Email)?.Value ?? ctx.User.FindFirst("email")?.Value;
+        if (!string.IsNullOrEmpty(email) && superAdminList.Any(a => a.Equals(email.Trim(), StringComparison.OrdinalIgnoreCase))) return true;
+        return false;
+    }));
+
     options.AddPolicy("CustomerPolicy", policy => policy.RequireRole(UserRoles.Customer, UserRoles.Vendor, UserRoles.Admin));
     options.AddPolicy("ShopOwnerOnly", policy => policy.RequireRole(UserRoles.Vendor, UserRoles.Admin));
 });

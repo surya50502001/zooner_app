@@ -8,10 +8,20 @@ namespace Zooner.Api.Services;
 public class AdminService : IAdminService
 {
     private readonly AppDbContext _context;
+    private readonly IConfiguration? _configuration;
 
-    public AdminService(AppDbContext context)
+    public AdminService(AppDbContext context, IConfiguration? configuration = null)
     {
         _context = context;
+        _configuration = configuration;
+    }
+
+    public bool IsSuperAdminEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email)) return false;
+        var superAdmins = _configuration?.GetSection("AdminConfig:SuperAdminEmails").Get<List<string>>()
+            ?? new List<string> { "lpycho3@gmail.com", "admin@zooner.app" };
+        return superAdmins.Any(a => a.Equals(email.Trim(), StringComparison.OrdinalIgnoreCase));
     }
 
     public async Task<ApiResponse<ReportDto>> CreateReportAsync(Guid reporterId, CreateReportRequest request)

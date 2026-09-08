@@ -44,6 +44,11 @@ public class ShopService : IShopService
             }
         }
 
+        var superAdmins = _configuration?.GetSection("AdminConfig:SuperAdminEmails").Get<List<string>>() 
+            ?? new List<string> { "lpycho3@gmail.com", "admin@zooner.app" };
+        var isSuperAdmin = owner.IsAdmin || superAdmins.Any(a => a.Equals(owner.Email.Trim(), StringComparison.OrdinalIgnoreCase));
+        var autoApprove = (_configuration?.GetValue<bool>("AutoApproveShops", false) ?? false) || isSuperAdmin;
+
         var shop = new Shop
         {
             Id = Guid.NewGuid(),
@@ -55,7 +60,7 @@ public class ShopService : IShopService
             Latitude = request.Latitude,
             Longitude = request.Longitude,
             ImageUrl = request.ImageUrl,
-            VerificationStatus = (_configuration?.GetValue<bool>("AutoApproveShops", false) ?? false)
+            VerificationStatus = autoApprove
                 ? ShopVerificationStatus.Approved 
                 : ShopVerificationStatus.Pending,
             IsActive = true,

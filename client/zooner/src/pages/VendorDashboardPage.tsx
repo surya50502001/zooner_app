@@ -45,6 +45,7 @@ import {
   getIncomingRequests,
   respondToLiveRequest,
   setShopLiveStatus,
+  verifyOwnerShop,
   updateShop,
   validateHoldQr,
   collectHold,
@@ -81,7 +82,7 @@ interface VendorRequestItem extends LiveRequestSummary {
 export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
   onSwitchToCustomer,
   onNavigateToVendorLanding: _onNavigateToVendorLanding,
-  onNavigateToAdmin: _onNavigateToAdmin,
+  onNavigateToAdmin,
 }) => {
   // Authentication & Gate State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => Boolean(localStorage.getItem('zooner_token')));
@@ -132,10 +133,23 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
   const [storeHours, setStoreHours] = useState('10:00 AM – 9:30 PM (Mon–Sun)');
   const [storeLat, setStoreLat] = useState<number | undefined>(undefined);
   const [storeLng, setStoreLng] = useState<number | undefined>(undefined);
+  const [storeVerificationStatus, setStoreVerificationStatus] = useState<string>('Approved');
+  const [isVerifyingShop, setIsVerifyingShop] = useState(false);
   const [isDetectingStoreGps, setIsDetectingStoreGps] = useState(false);
   const [storeGpsFeedback, setStoreGpsFeedback] = useState<string | null>(null);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [actionNotice, setActionNotice] = useState<{ message: string; isError: boolean } | null>(null);
+
+  const isSuperAdminUser = (() => {
+    try {
+      const stored = localStorage.getItem('zooner_user_profile');
+      if (!stored) return false;
+      const parsed = JSON.parse(stored);
+      return ['lpycho3@gmail.com', 'admin@zooner.app'].includes(parsed?.email?.toLowerCase() || '') || parsed?.role?.toLowerCase() === 'admin';
+    } catch {
+      return false;
+    }
+  })();
 
   const showToast = (message: string, isError: boolean = false) => {
     setActionNotice({ message, isError });
@@ -202,17 +216,52 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
     }
   };
 
+  const handleInstantVerifyShop = async () => {
+    if (!currentStoreId) return;
+    setIsVerifyingShop(true);
+    try {
+      const ok = await verifyOwnerShop(currentStoreId);
+      if (ok) {
+        showToast('Storefront successfully verified & activated!', false);
+        setStoreVerificationStatus('Approved');
+        const shops = await getMyShops();
+        setUserShops(shops);
+        const updated = shops.find(s => s.id.toString() === currentStoreId);
+        if (updated) handleSelectShop(updated);
+      } else {
+        showToast('Verification failed. Check admin privileges.', true);
+      }
+    } catch {
+      showToast('Error verifying shop.', true);
+    } finally {
+      setIsVerifyingShop(false);
+    }
+  };
+
   const handleAcceptRequest = async (id: string) => {
     if (!currentStoreId) {
       showToast('No active store selected.', true);
       return;
     }
+
+    // If shop is pending and user is Super Admin, auto-verify first
+    if (storeVerificationStatus !== 'Approved' && isSuperAdminUser) {
+      const ok = await verifyOwnerShop(currentStoreId);
+      if (ok) {
+        setStoreVerificationStatus('Approved');
+      }
+    }
+
     const res = await respondToLiveRequest(id, currentStoreId);
     if (res && res.success) {
       showToast('Confirmed in-stock! Shopper notified instantly.', false);
       setRequests(previous => previous.map(request => request.id === id ? { ...request, status: 'accepted' } : request));
     } else {
-      showToast(res?.message || 'Failed to confirm request availability.', true);
+      if (res?.message?.toLowerCase().includes('not verified')) {
+        showToast('Storefront is pending verification. Please click Verify Storefront above to activate.', true);
+      } else {
+        showToast(res?.message || 'Failed to confirm request availability.', true);
+      }
     }
   };
 
@@ -502,6 +551,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
     setStoreLat(shop.latitude);
     setStoreLng(shop.longitude);
     setIsLiveOnline(Boolean(shop.isLiveEnabled));
+    setStoreVerificationStatus(shop.verificationStatus || (shop.isVerified ? 'Approved' : 'Pending'));
     setInventoryLoading(true);
     try {
       const [incoming, inv] = await Promise.all([
@@ -541,6 +591,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
           setStoreLat(shops[0].latitude);
           setStoreLng(shops[0].longitude);
           setIsLiveOnline(Boolean(shops[0].isLiveEnabled));
+          setStoreVerificationStatus(shops[0].verificationStatus || (shops[0].isVerified ? 'Approved' : 'Pending'));
           const incoming = await getIncomingRequests(storeId);
           setRequests(incoming.map((request) => ({ ...request, product: request.requestText, status: request.status?.toLowerCase() || 'pending', distance: request.distanceToShopKm ? `${request.distanceToShopKm.toFixed(1)} km away` : 'Nearby', timeAgo: new Date(request.createdAtUtc).toLocaleString() })));
           setHolds([]);
@@ -1327,6 +1378,17 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                 <span className="text-[10px] font-mono bg-indigo-950 text-indigo-300 border border-indigo-800 px-1.5 py-0.2 rounded">
                   Merchant OS
                 </span>
+                {storeVerificationStatus === 'Approved' ? (
+                  <span className="text-[10px] font-bold bg-emerald-950/80 text-emerald-300 border border-emerald-800/80 px-1.5 py-0.5 rounded flex items-center gap-1">
+                    <CheckCircle2 className="h-2.5 w-2.5" />
+                    <span>Verified</span>
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-bold bg-amber-950/80 text-amber-300 border border-amber-800/80 px-1.5 py-0.5 rounded flex items-center gap-1">
+                    <Clock className="h-2.5 w-2.5" />
+                    <span>Pending Verification</span>
+                  </span>
+                )}
               </div>
               <div className="text-xs text-slate-400 flex items-center gap-1.5">
                 <span className={`h-2 w-2 rounded-full ${isLiveOnline ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`} />
@@ -1471,6 +1533,44 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
 
         {/* ── RIGHT MAIN PANEL ── */}
         <main className="flex-1 space-y-6 text-left">
+          {/* Storefront Verification Status Warning Banner */}
+          {storeVerificationStatus !== 'Approved' && (
+            <div className="p-4 rounded-2xl bg-amber-950/40 border border-amber-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/30">
+                  <Clock className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="font-bold text-amber-200 text-sm">Storefront Pending Verification</p>
+                  <p className="text-amber-400/80 text-[11px] mt-0.5">
+                    This store is awaiting approval. Live customer requests cannot be accepted until verified.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {isSuperAdminUser ? (
+                  <button
+                    type="button"
+                    onClick={handleInstantVerifyShop}
+                    disabled={isVerifyingShop}
+                    className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-md shadow-amber-500/20 disabled:opacity-60 shrink-0"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span>{isVerifyingShop ? 'Verifying...' : '⚡ Verify Storefront (Super Admin)'}</span>
+                  </button>
+                ) : onNavigateToAdmin ? (
+                  <button
+                    type="button"
+                    onClick={onNavigateToAdmin}
+                    className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs transition cursor-pointer border border-slate-700 shrink-0"
+                  >
+                    Admin Panel →
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          )}
           
           {/* ── TAB 1: LIVE REQUESTS ── */}
           {activeTab === 'requests' && (

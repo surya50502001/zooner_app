@@ -13,11 +13,13 @@ public class ShopsController : ControllerBase
 {
     private readonly IShopService _shopService;
     private readonly ILiveRequestService _liveRequestService;
+    private readonly IAdminService _adminService;
 
-    public ShopsController(IShopService shopService, ILiveRequestService liveRequestService)
+    public ShopsController(IShopService shopService, ILiveRequestService liveRequestService, IAdminService adminService)
     {
         _shopService = shopService;
         _liveRequestService = liveRequestService;
+        _adminService = adminService;
     }
 
     /// <summary>
@@ -179,6 +181,31 @@ public class ShopsController : ControllerBase
     {
         var userId = GetCurrentUserId();
         var response = await _liveRequestService.GetIncomingRequestsForShopAsync(userId, id);
+        return response.Success ? Ok(response) : BadRequest(response);
+    }
+
+    /// <summary>
+    /// Instant verification for Super-Admin shop owners
+    /// </summary>
+    [Authorize]
+    [HttpPost("{id:guid}/verify-owner")]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> VerifyOwnerShop(Guid id)
+    {
+        var userId = GetCurrentUserId();
+        var userEmail = User.FindFirstValue(ClaimTypes.Email) ?? User.FindFirstValue("email") ?? string.Empty;
+        var isAdmin = User.IsInRole("Admin") || _adminService.IsSuperAdminEmail(userEmail);
+
+        if (!isAdmin)
+        {
+            return Forbid();
+        }
+
+        var response = await _adminService.VerifyShopAsync(userId, id, new VerifyShopRequest 
+        { 
+            Status = ShopVerificationStatus.Approved
+        });
         return response.Success ? Ok(response) : BadRequest(response);
     }
 
