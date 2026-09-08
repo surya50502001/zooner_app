@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Shield,
   Store,
@@ -29,6 +29,7 @@ import {
   getAdminAuditLogs,
   logoutUser,
   loginUser,
+  googleLogin,
   syncUserProfile,
   type PendingShopDto,
   type AdminUserDto,
@@ -53,8 +54,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
       const stored = localStorage.getItem('zooner_user_profile');
       if (!stored) return false;
       const parsed = JSON.parse(stored);
-      const isSuperAdminEmail = ['lpycho3@gmail.com', 'admin@zooner.app'].includes(parsed?.email?.toLowerCase());
-      return parsed?.role?.toLowerCase() === 'admin' || isSuperAdminEmail;
+      return parsed?.role?.toLowerCase() === 'admin';
     } catch {
       return false;
     }
@@ -64,6 +64,9 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
   const [adminLoginPassword, setAdminLoginPassword] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [loginError, setLoginError] = useState('');
+
+  const googleAdminBtnRef = useRef<HTMLDivElement>(null);
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
   const [activeTab, setActiveTab] = useState<AdminTab>('verifications');
   const [isLoading, setIsLoading] = useState(false);
@@ -127,8 +130,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
         const token = localStorage.getItem('zooner_token');
         if (!token) return;
         const profile = await syncUserProfile();
-        const isSuperAdmin = ['lpycho3@gmail.com', 'admin@zooner.app'].includes(profile?.email?.toLowerCase() || '') || profile?.role?.toLowerCase() === 'admin';
-        if (isMounted && isSuperAdmin) {
+        if (isMounted && profile?.role?.toLowerCase() === 'admin') {
           setIsAdminAuthenticated(true);
         }
       } catch {}
@@ -142,6 +144,61 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
       loadData();
     }
   }, [activeTab, isAdminAuthenticated]);
+
+  const handleGoogleAdminAuth = async (response: google.accounts.id.CredentialResponse) => {
+    if (!response.credential) {
+      setLoginError('No credential received from Google.');
+      return;
+    }
+    setIsLoggingIn(true);
+    setLoginError('');
+    try {
+      const authRes = await googleLogin(response.credential);
+      if (authRes.success && authRes.data) {
+        const profile = await syncUserProfile();
+        const role = profile?.role || authRes.data.user.role;
+        if (role?.toLowerCase() === 'admin') {
+          setIsAdminAuthenticated(true);
+          showToast('Administrator authenticated successfully.');
+        } else {
+          setLoginError('Access denied: this Google account does not have Administrator privileges in the database.');
+        }
+      } else {
+        setLoginError(authRes.error || 'Google sign-in failed.');
+      }
+    } catch (err: any) {
+      setLoginError(err?.message || 'Google sign-in failed.');
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAdminAuthenticated || !googleClientId || !googleAdminBtnRef.current) return;
+    let isMounted = true;
+    const initGsi = () => {
+      if (!isMounted || !googleAdminBtnRef.current || !window.google?.accounts?.id) return;
+      try {
+        googleAdminBtnRef.current.innerHTML = '';
+        window.google.accounts.id.initialize({
+          client_id: googleClientId,
+          callback: handleGoogleAdminAuth,
+          auto_select: false,
+          cancel_on_tap_outside: true,
+        });
+        window.google.accounts.id.renderButton(googleAdminBtnRef.current, {
+          theme: 'filled_black',
+          size: 'large',
+          type: 'standard',
+          shape: 'pill',
+          text: 'signin_with',
+          width: 320
+        });
+      } catch {}
+    };
+    initGsi();
+    return () => { isMounted = false; };
+  }, [isAdminAuthenticated, googleClientId]);
 
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -271,6 +328,17 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
             <div className="p-3 bg-red-950/50 border border-red-800/50 rounded-xl text-xs text-red-300 flex items-center gap-2">
               <XCircle className="w-4 h-4 shrink-0 text-red-400" />
               <span>{loginError}</span>
+            </div>
+          )}
+
+          {googleClientId && (
+            <div className="space-y-3">
+              <div ref={googleAdminBtnRef} className="flex justify-center w-full overflow-hidden rounded-xl" />
+              <div className="flex items-center gap-3">
+                <div className="h-px bg-slate-800 flex-1" />
+                <span className="text-[10px] uppercase font-mono tracking-widest text-slate-500 font-semibold">or email login</span>
+                <div className="h-px bg-slate-800 flex-1" />
+              </div>
             </div>
           )}
 

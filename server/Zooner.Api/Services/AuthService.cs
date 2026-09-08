@@ -46,12 +46,16 @@ public class AuthService : IAuthService
             if (adminList.Contains(normalized)) return true;
         }
 
-        var defaultAdmin = _configuration?["ADMIN_EMAIL"] ?? Environment.GetEnvironmentVariable("ADMIN_EMAIL") ?? "admin@locallive.com";
-        if (normalized == defaultAdmin.Trim().ToLowerInvariant()) return true;
+        var configAdmins = _configuration?.GetSection("AdminConfig:SuperAdminEmails").Get<string[]>();
+        if (configAdmins != null && configAdmins.Select(e => e.Trim().ToLowerInvariant()).Contains(normalized))
+        {
+            return true;
+        }
 
-        // Built-in designated super-admin accounts
-        var hardcodedSuperAdmins = new[] { "lpycho3@gmail.com", "admin@zooner.app" };
-        return hardcodedSuperAdmins.Contains(normalized);
+        var defaultAdmin = _configuration?["ADMIN_EMAIL"] ?? _configuration?["AdminConfig:DefaultAdminEmail"] ?? Environment.GetEnvironmentVariable("ADMIN_EMAIL");
+        if (!string.IsNullOrWhiteSpace(defaultAdmin) && normalized == defaultAdmin.Trim().ToLowerInvariant()) return true;
+
+        return false;
     }
 
     public async Task<ApiResponse<AuthResponse>> RegisterAsync(RegisterRequest request, string? ipAddress = null)

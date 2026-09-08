@@ -5,7 +5,7 @@ namespace Zooner.Api.Data;
 
 public static class DbSeeder
 {
-    public static async Task SeedAsync(AppDbContext context, ILogger logger)
+    public static async Task SeedAsync(AppDbContext context, ILogger logger, IConfiguration? configuration = null)
     {
         try
         {
@@ -24,27 +24,46 @@ public static class DbSeeder
             }
 
             // 2. Seed Default Admin User if not existing
-            if (!await context.Users.AnyAsync(u => u.Email == "admin@zooner.app"))
+            var defaultAdminEmail = configuration?["ADMIN_EMAIL"] ?? configuration?["AdminConfig:DefaultAdminEmail"] ?? "admin@zooner.app";
+            var defaultAdminPassword = configuration?["ADMIN_PASSWORD"] ?? configuration?["AdminConfig:DefaultAdminPassword"] ?? "Admin@123";
+
+            if (!await context.Users.AnyAsync(u => u.Email == defaultAdminEmail))
             {
                 var admin = new User
                 {
                     Id = Guid.NewGuid(),
                     FullName = "Zooner Super Administrator",
-                    Email = "admin@zooner.app",
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123"),
+                    Email = defaultAdminEmail,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(defaultAdminPassword),
                     Role = UserRoles.Admin,
                     IsActive = true,
                     CreatedAtUtc = DateTime.UtcNow
                 };
                 context.Users.Add(admin);
                 await context.SaveChangesAsync();
-                logger.LogInformation("Seeded default administrator account: admin@zooner.app");
+                logger.LogInformation("Seeded default administrator account: {Email}", defaultAdminEmail);
             }
 
-            // 2b. Ensure designated super-admin accounts have Admin role
-            var superAdminEmails = new[] { "lpycho3@gmail.com", "admin@zooner.app" };
+            // 2b. Ensure designated super-admin accounts have Admin role from configuration
+            var envAdmins = configuration?["ADMIN_EMAILS"] ?? configuration?["AdminEmails"] ?? Environment.GetEnvironmentVariable("ADMIN_EMAILS");
+            var configAdmins = configuration?.GetSection("AdminConfig:SuperAdminEmails").Get<string[]>() ?? Array.Empty<string>();
+            var adminList = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            if (!string.IsNullOrWhiteSpace(envAdmins))
+            {
+                foreach (var item in envAdmins.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                {
+                    adminList.Add(item);
+                }
+            }
+            foreach (var item in configAdmins)
+            {
+                if (!string.IsNullOrWhiteSpace(item)) adminList.Add(item.Trim());
+            }
+            adminList.Add(defaultAdminEmail);
+
             var usersToPromote = await context.Users
-                .Where(u => superAdminEmails.Contains(u.Email.ToLower()) && u.Role != UserRoles.Admin)
+                .Where(u => adminList.Contains(u.Email) && u.Role != UserRoles.Admin)
                 .ToListAsync();
 
             if (usersToPromote.Any())

@@ -324,7 +324,7 @@ using (var scope = app.Services.CreateScope())
         }
 
         // Seed essential initial business settings and master categories if tables are empty
-        await DbSeeder.SeedAsync(dbContext, logger);
+        await DbSeeder.SeedAsync(dbContext, logger, app.Configuration);
     }
     catch (Exception ex)
     {
