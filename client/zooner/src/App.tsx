@@ -21,17 +21,6 @@ const DEFAULT_LOCATION: LocationArea = {
   lng: 76.9558
 };
 
-const isAdminUser = () => {
-  try {
-    const saved = localStorage.getItem('zooner_user_profile');
-    if (!saved) return false;
-    const parsed = JSON.parse(saved);
-    return parsed?.role === 'Admin';
-  } catch {
-    return false;
-  }
-};
-
 export type AppRoute = 'marketing' | 'customer' | 'vendor' | 'admin';
 
 export function AppContent() {
@@ -39,10 +28,7 @@ export function AppContent() {
     if (Capacitor.isNativePlatform()) return 'customer';
     const hash = window.location.hash.toLowerCase();
     const path = window.location.pathname.toLowerCase();
-    if (hash.includes('admin') || path.includes('/admin')) {
-      if (isAdminUser()) return 'admin';
-      return 'customer';
-    }
+    if (hash.includes('admin') || path.includes('/admin')) return 'admin';
     if (hash.includes('vendor') || path.includes('/vendor')) return 'vendor';
     if (hash.includes('marketing') || path.includes('/marketing')) return 'marketing';
     return 'customer';
@@ -81,12 +67,7 @@ export function AppContent() {
       const hash = window.location.hash.toLowerCase();
       const path = window.location.pathname.toLowerCase();
       if (hash.includes('admin') || path.includes('/admin')) {
-        if (isAdminUser()) {
-          setCurrentRoute('admin');
-        } else {
-          window.location.hash = '#app';
-          setCurrentRoute('customer');
-        }
+        setCurrentRoute('admin');
       } else if (hash.includes('register-store') || hash.includes('registerstore')) {
         setIsRetailerModalOpen(true);
       } else if (hash.includes('login') || hash.includes('signin') || hash.includes('register')) {
