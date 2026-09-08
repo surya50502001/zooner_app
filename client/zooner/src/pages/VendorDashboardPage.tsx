@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Store, 
@@ -20,7 +20,17 @@ import {
   Loader2,
   QrCode,
   Scan,
-  Navigation
+  Navigation,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  Sparkles,
+  Building2,
+  LogOut,
+  LogIn,
+  ArrowRight,
+  ShieldCheck
 } from 'lucide-react';
 import { 
   searchProducts, 
@@ -38,6 +48,13 @@ import {
   updateShop,
   validateHoldQr,
   collectHold,
+  loginUser,
+  registerUser,
+  googleLogin,
+  becomeVendor,
+  createShop,
+  syncUserProfile,
+  logoutUser,
   type DuplicateCheckResult,
   type ShopProfileDto,
   type ValidateHoldQrResponseDto
@@ -66,6 +83,43 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
   onNavigateToVendorLanding: _onNavigateToVendorLanding,
   onNavigateToAdmin: _onNavigateToAdmin,
 }) => {
+  // Authentication & Gate State
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => Boolean(localStorage.getItem('zooner_token')));
+  const [authTab, setAuthTab] = useState<'signin' | 'register'>('signin');
+  
+  // Merchant Sign In form
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [loginError, setLoginError] = useState('');
+
+  // Merchant Registration form
+  const [regName, setRegName] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [showRegPassword, setShowRegPassword] = useState(false);
+  const [regPhone, setRegPhone] = useState('');
+  const [regStoreName, setRegStoreName] = useState('');
+  const [regCategory, setRegCategory] = useState('Footwear & Sports');
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [regError, setRegError] = useState('');
+
+  // Store Setup Onboarding state (when logged in but has no store yet)
+  const [setupStoreName, setSetupStoreName] = useState('');
+  const [setupCategory, setSetupCategory] = useState('Footwear & Sports');
+  const [setupPhone, setSetupPhone] = useState('');
+  const [setupAddress, setSetupAddress] = useState('');
+  const [setupLat, setSetupLat] = useState<number | undefined>(undefined);
+  const [setupLng, setSetupLng] = useState<number | undefined>(undefined);
+  const [isDetectingSetupGps, setIsDetectingSetupGps] = useState(false);
+  const [setupGpsFeedback, setSetupGpsFeedback] = useState<string | null>(null);
+  const [isCreatingStore, setIsCreatingStore] = useState(false);
+  const [setupError, setSetupError] = useState('');
+
+  const googleBtnRef = useRef<HTMLDivElement>(null);
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+
   const [activeTab, setActiveTab] = useState<DashboardTab>('requests');
   const [isLiveOnline, setIsLiveOnline] = useState(false);
 
@@ -195,8 +249,247 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
   const [duplicateCheckWarning, setDuplicateCheckWarning] = useState<DuplicateCheckResult | null>(null);
   const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false);
 
-  // Categories list for product creation
+  // Categories list for product creation and setup
   const [dbCategories, setDbCategories] = useState<CategoryDto[]>([]);
+
+  // Google Sign In integration for Merchant Portal
+  const handleGoogleAuth = async (response: google.accounts.id.CredentialResponse) => {
+    if (!response.credential) {
+      setLoginError('No credential received from Google.');
+      return;
+    }
+    setIsLoggingIn(true);
+    setLoginError('');
+    try {
+      const authRes = await googleLogin(response.credential);
+      if (authRes.success && authRes.data) {
+        await syncUserProfile();
+        setIsAuthenticated(true);
+        const shops = await getMyShops();
+        setUserShops(shops);
+        if (shops && shops.length > 0) {
+          handleSelectShop(shops[0]);
+        }
+        showToast('Signed in to Merchant OS successfully!', false);
+      } else {
+        setLoginError(authRes.error || 'Google sign-in failed. Please try again.');
+      }
+    } catch (err: any) {
+      setLoginError(err?.message || 'Google sign-in failed.');
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated || !googleClientId || !googleBtnRef.current) return;
+    let isMounted = true;
+    const initGsi = () => {
+      if (!isMounted || !googleBtnRef.current || !window.google?.accounts?.id) return;
+      try {
+        googleBtnRef.current.innerHTML = '';
+        window.google.accounts.id.initialize({
+          client_id: googleClientId,
+          callback: handleGoogleAuth,
+          auto_select: false,
+          cancel_on_tap_outside: true,
+        });
+        window.google.accounts.id.renderButton(googleBtnRef.current, {
+          theme: 'filled_black',
+          size: 'large',
+          type: 'standard',
+          shape: 'pill',
+          text: 'signin_with',
+          width: 280
+        });
+      } catch {}
+    };
+    initGsi();
+    return () => { isMounted = false; };
+  }, [isAuthenticated, googleClientId, authTab]);
+
+  // Handle Merchant Email Login
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!loginEmail.trim() || !loginPassword) {
+      setLoginError('Please enter both email and password.');
+      return;
+    }
+    setIsLoggingIn(true);
+    setLoginError('');
+    try {
+      const res = await loginUser(loginEmail.trim(), loginPassword);
+      if (res.success && res.data) {
+        await syncUserProfile();
+        setIsAuthenticated(true);
+        const shops = await getMyShops();
+        setUserShops(shops);
+        if (shops && shops.length > 0) {
+          handleSelectShop(shops[0]);
+        }
+        showToast('Signed in to Merchant OS successfully!', false);
+      } else {
+        setLoginError(res.error || 'Invalid credentials. Please verify your email and password.');
+      }
+    } catch (err: any) {
+      setLoginError(err?.message || 'Network error during login.');
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  // Handle Register New Merchant & Storefront
+  const handleRegisterVendor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!regEmail.trim() || !regPassword || !regName.trim() || !regPhone.trim() || !regStoreName.trim()) {
+      setRegError('Please fill in all required fields.');
+      return;
+    }
+    setIsRegistering(true);
+    setRegError('');
+    try {
+      const formattedPhone = regPhone.startsWith('+') ? regPhone.trim() : `+91 ${regPhone.trim()}`;
+      const res = await registerUser({
+        fullName: regName.trim(),
+        email: regEmail.trim(),
+        password: regPassword,
+        phoneNumber: formattedPhone,
+        role: 'Vendor'
+      });
+      if (!res.success) {
+        setRegError(res.error || 'Registration failed. This email may already be in use.');
+        setIsRegistering(false);
+        return;
+      }
+      await becomeVendor();
+      let categoryIds: string[] = [];
+      const isGuid = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+      if (dbCategories.length > 0) {
+        const matched = dbCategories.find(c => c.name.toLowerCase().includes(regCategory.toLowerCase())) || dbCategories[0];
+        if (matched && isGuid(matched.id)) categoryIds = [matched.id];
+      }
+      const shop = await createShop({
+        name: regStoreName.trim(),
+        phone: formattedPhone,
+        address: 'Physical Storefront',
+        latitude: 11.0168,
+        longitude: 76.9558,
+        categoryIds
+      });
+      setIsAuthenticated(true);
+      if (shop) {
+        const shops = await getMyShops();
+        setUserShops(shops);
+        if (shops.length > 0) handleSelectShop(shops[0]);
+      }
+      showToast('Storefront registered and Merchant OS activated!', false);
+    } catch (err: any) {
+      setRegError(err?.message || 'Failed to register vendor account.');
+    } finally {
+      setIsRegistering(false);
+    }
+  };
+
+  // Detect GPS Location for Store Setup Gate
+  const handleDetectSetupLocation = () => {
+    if (!navigator.geolocation) {
+      setSetupError('Geolocation is not supported by your browser.');
+      return;
+    }
+    setIsDetectingSetupGps(true);
+    setSetupGpsFeedback(null);
+    setSetupError('');
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        setSetupLat(lat);
+        setSetupLng(lng);
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 6000);
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+            { headers: { 'Accept-Language': 'en' }, signal: controller.signal }
+          );
+          clearTimeout(timeoutId);
+          if (response.ok) {
+            const data = await response.json();
+            const addr = data.address || {};
+            const neighborhood = addr.suburb || addr.neighbourhood || addr.residential || addr.commercial || addr.city_district || '';
+            const city = addr.city || addr.town || addr.municipality || addr.village || addr.county || '';
+            const postcode = addr.postcode || '';
+            const streetParts = [addr.house_number, addr.building, addr.road || addr.pedestrian || addr.footway, neighborhood, city, postcode ? `PIN: ${postcode}` : ''].filter(Boolean);
+            const detectedAddress = streetParts.length > 0 ? streetParts.join(', ') : (data.display_name ? data.display_name.split(',').slice(0, 3).join(', ') : '');
+            if (detectedAddress) setSetupAddress(detectedAddress);
+            setSetupGpsFeedback(`📍 Location Pinned: ${city || neighborhood || 'GPS'} (${lat.toFixed(4)}°, ${lng.toFixed(4)}°)`);
+          } else {
+            setSetupGpsFeedback(`📍 GPS Coordinates Pinned: (${lat.toFixed(4)}°, ${lng.toFixed(4)}°)`);
+          }
+        } catch {
+          setSetupGpsFeedback(`📍 GPS Coordinates Pinned: (${lat.toFixed(4)}°, ${lng.toFixed(4)}°)`);
+        } finally {
+          setIsDetectingSetupGps(false);
+        }
+      },
+      (err) => {
+        setIsDetectingSetupGps(false);
+        setSetupError(`Location error: ${err.message || 'Unable to retrieve GPS.'}`);
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+    );
+  };
+
+  // Create store for authenticated user who has no store yet
+  const handleCreateStoreOnboarding = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!setupStoreName.trim()) {
+      setSetupError('Please enter your store name.');
+      return;
+    }
+    setIsCreatingStore(true);
+    setSetupError('');
+    try {
+      await becomeVendor();
+      let categoryIds: string[] = [];
+      const isGuid = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+      if (dbCategories.length > 0) {
+        const matched = dbCategories.find(c => c.name.toLowerCase().includes(setupCategory.toLowerCase())) || dbCategories[0];
+        if (matched && isGuid(matched.id)) categoryIds = [matched.id];
+      }
+      const formattedPhone = setupPhone.trim() ? (setupPhone.startsWith('+') ? setupPhone.trim() : `+91 ${setupPhone.trim()}`) : '+91 9876543210';
+      const shop = await createShop({
+        name: setupStoreName.trim(),
+        phone: formattedPhone,
+        address: setupAddress.trim() || 'Physical Storefront',
+        latitude: setupLat ?? 11.0168,
+        longitude: setupLng ?? 76.9558,
+        categoryIds
+      });
+      if (shop) {
+        const shops = await getMyShops();
+        setUserShops(shops);
+        if (shops.length > 0) handleSelectShop(shops[0]);
+        showToast('Store created successfully! Welcome to Merchant OS.', false);
+      } else {
+        setSetupError('Failed to create store. Please check your connection.');
+      }
+    } catch (err: any) {
+      setSetupError(err?.message || 'Error creating store.');
+    } finally {
+      setIsCreatingStore(false);
+    }
+  };
+
+  // Sign out from Merchant OS
+  const handleMerchantLogout = () => {
+    logoutUser();
+    setIsAuthenticated(false);
+    setUserShops([]);
+    setCurrentStoreId('');
+    showToast('Signed out of Merchant OS.', false);
+  };
 
   // Select a specific shop from user's multi-store portfolio
   const handleSelectShop = async (shop: ShopProfileDto) => {
@@ -520,6 +813,485 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
   const pendingRequestsCount = requests.filter(r => r.status === 'pending').length;
   const activeHoldsCount = holds.filter(h => h.status === 'active').length;
 
+  // ── GATE 1: MERCHANT PORTAL SIGN IN / REGISTRATION ──
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-[#07090E] text-slate-100 flex flex-col font-sans selection:bg-indigo-600 selection:text-white">
+        {/* Merchant Header */}
+        <header className="border-b border-slate-800/80 bg-slate-950/60 backdrop-blur-xl sticky top-0 z-40 px-6 py-4">
+          <div className="max-w-6xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl font-black tracking-tight text-white font-['Outfit']">
+                zooner<span className="text-[#7257ff]">.</span>
+              </span>
+              <span className="text-[10px] font-mono uppercase tracking-widest bg-indigo-950 text-indigo-300 border border-indigo-800/80 px-2 py-0.5 rounded-full font-bold">
+                Merchant Portal
+              </span>
+            </div>
+
+            <button
+              onClick={onSwitchToCustomer}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-bold text-slate-300 transition-colors cursor-pointer"
+            >
+              <Compass className="h-3.5 w-3.5 text-emerald-400" />
+              <span>Shopper App</span>
+            </button>
+          </div>
+        </header>
+
+        {/* Hero & Login Container */}
+        <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-12 relative overflow-hidden">
+          {/* Background Glows */}
+          <div className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-[140px]" />
+          <div className="pointer-events-none absolute -bottom-40 right-10 w-[400px] h-[400px] bg-emerald-500/10 rounded-full blur-[120px]" />
+
+          <div className="w-full max-w-4xl relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            
+            {/* Left Column: B2B Proposition */}
+            <div className="lg:col-span-6 space-y-6 text-left">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-950/80 border border-indigo-800 text-indigo-300 text-xs font-semibold">
+                <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
+                <span>Physical Retail Discovery Network</span>
+              </div>
+
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white font-['Outfit'] tracking-tight leading-tight">
+                Turn nearby search into <span className="bg-gradient-to-r from-indigo-400 to-emerald-400 bg-clip-text text-transparent">instant footfall</span>.
+              </h1>
+
+              <p className="text-sm text-slate-400 leading-relaxed max-w-md">
+                Log in to Merchant OS to accept live buyer broadcasts, verify walk-in hold passes, and manage shelf availability in real time.
+              </p>
+
+              {/* Value Highlights */}
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-900/60 border border-slate-800/80">
+                  <div className="h-8 w-8 rounded-xl bg-indigo-950 flex items-center justify-center text-indigo-400 shrink-0">
+                    <Radio className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-white">Live Demand Radar</h4>
+                    <p className="text-[11px] text-slate-400">Receive alerts when shoppers search for products within 5 km.</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-900/60 border border-slate-800/80">
+                  <div className="h-8 w-8 rounded-xl bg-emerald-950 flex items-center justify-center text-emerald-400 shrink-0">
+                    <Clock className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-white">30-Minute Walk-In Holds</h4>
+                    <p className="text-[11px] text-slate-400">Secure buyers with QR hold passes before they leave home.</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-900/60 border border-slate-800/80">
+                  <div className="h-8 w-8 rounded-xl bg-amber-950 flex items-center justify-center text-amber-400 shrink-0">
+                    <ShieldCheck className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-white">0% Walk-In Commission</h4>
+                    <p className="text-[11px] text-slate-400">100% of counter sales stay with your storefront.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column: Portal Auth Card */}
+            <div className="lg:col-span-6">
+              <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-2xl">
+                
+                {/* Tabs */}
+                <div className="flex rounded-2xl bg-slate-950 p-1 border border-slate-800 mb-6">
+                  <button
+                    onClick={() => { setAuthTab('signin'); setLoginError(''); setRegError(''); }}
+                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                      authTab === 'signin'
+                        ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Merchant Login
+                  </button>
+                  <button
+                    onClick={() => { setAuthTab('register'); setLoginError(''); setRegError(''); }}
+                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                      authTab === 'register'
+                        ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Register Storefront
+                  </button>
+                </div>
+
+                {/* Google One-Tap / Sign-In Button */}
+                {googleClientId && (
+                  <div className="mb-5 space-y-3">
+                    <div ref={googleBtnRef} className="flex justify-center w-full overflow-hidden rounded-xl" />
+                    <div className="flex items-center gap-3">
+                      <div className="h-px bg-slate-800 flex-1" />
+                      <span className="text-[10px] uppercase font-mono tracking-widest text-slate-500 font-semibold">or with email</span>
+                      <div className="h-px bg-slate-800 flex-1" />
+                    </div>
+                  </div>
+                )}
+
+                {/* SIGN IN FORM */}
+                {authTab === 'signin' ? (
+                  <form onSubmit={handleEmailLogin} className="space-y-4 text-left">
+                    {loginError && (
+                      <div className="p-3 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-300 text-xs flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 shrink-0" />
+                        <span>{loginError}</span>
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-300 block mb-1.5">Work Email</label>
+                      <div className="relative">
+                        <Mail className="h-4 w-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="email"
+                          value={loginEmail}
+                          onChange={(e) => setLoginEmail(e.target.value)}
+                          placeholder="owner@yourstore.com"
+                          required
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-300 block mb-1.5">Password</label>
+                      <div className="relative">
+                        <Lock className="h-4 w-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          type={showLoginPassword ? 'text' : 'password'}
+                          value={loginPassword}
+                          onChange={(e) => setLoginPassword(e.target.value)}
+                          placeholder="••••••••"
+                          required
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-10 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowLoginPassword(!showLoginPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                        >
+                          {showLoginPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isLoggingIn}
+                      className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                    >
+                      {isLoggingIn ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span>Verifying Credentials...</span>
+                        </>
+                      ) : (
+                        <>
+                          <LogIn className="h-4 w-4" />
+                          <span>Enter Merchant OS</span>
+                        </>
+                      )}
+                    </button>
+                  </form>
+                ) : (
+                  /* REGISTRATION FORM */
+                  <form onSubmit={handleRegisterVendor} className="space-y-3.5 text-left">
+                    {regError && (
+                      <div className="p-3 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-300 text-xs flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 shrink-0" />
+                        <span>{regError}</span>
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-300 block mb-1">Store / Business Name *</label>
+                      <div className="relative">
+                        <Building2 className="h-4 w-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          value={regStoreName}
+                          onChange={(e) => setRegStoreName(e.target.value)}
+                          placeholder="e.g. Apex Sports & Sneakers"
+                          required
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs font-bold text-slate-300 block mb-1">Owner Name *</label>
+                        <input
+                          type="text"
+                          value={regName}
+                          onChange={(e) => setRegName(e.target.value)}
+                          placeholder="e.g. Rajesh Kumar"
+                          required
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-bold text-slate-300 block mb-1">Primary Category</label>
+                        <select
+                          value={regCategory}
+                          onChange={(e) => setRegCategory(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                        >
+                          <option value="Footwear & Sports">Footwear & Sports</option>
+                          <option value="Electronics & Gadgets">Electronics & Gadgets</option>
+                          <option value="Fashion & Apparel">Fashion & Apparel</option>
+                          <option value="Watches & Jewelry">Watches & Jewelry</option>
+                          <option value="Smart Home & Lighting">Smart Home</option>
+                          <option value="Beauty & Wellness">Beauty & Wellness</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs font-bold text-slate-300 block mb-1">Phone Number *</label>
+                        <input
+                          type="tel"
+                          value={regPhone}
+                          onChange={(e) => setRegPhone(e.target.value)}
+                          placeholder="98765 43210"
+                          required
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-bold text-slate-300 block mb-1">Work Email *</label>
+                        <input
+                          type="email"
+                          value={regEmail}
+                          onChange={(e) => setRegEmail(e.target.value)}
+                          placeholder="owner@store.com"
+                          required
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-300 block mb-1">Create Password *</label>
+                      <div className="relative">
+                        <Lock className="h-4 w-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          type={showRegPassword ? 'text' : 'password'}
+                          value={regPassword}
+                          onChange={(e) => setRegPassword(e.target.value)}
+                          placeholder="•••••••• (Min 6 characters)"
+                          required
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-10 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowRegPassword(!showRegPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                        >
+                          {showRegPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isRegistering}
+                      className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-emerald-600 hover:brightness-110 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 mt-2"
+                    >
+                      {isRegistering ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span>Creating Storefront...</span>
+                        </>
+                      ) : (
+                        <>
+                          <ArrowRight className="h-4 w-4" />
+                          <span>Register & Launch Merchant OS</span>
+                        </>
+                      )}
+                    </button>
+                  </form>
+                )}
+
+              </div>
+            </div>
+
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // ── GATE 2: AUTHENTICATED BUT NO STORE CREATED YET ──
+  if (isAuthenticated && userShops.length === 0 && !inventoryLoading) {
+    return (
+      <div className="min-h-screen bg-[#07090E] text-slate-100 flex flex-col font-sans selection:bg-indigo-600 selection:text-white">
+        {/* Top Header */}
+        <header className="border-b border-slate-800 bg-slate-950/60 sticky top-0 z-40 px-6 py-4">
+          <div className="max-w-4xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl font-black tracking-tight text-white font-['Outfit']">
+                zooner<span className="text-[#7257ff]">.</span>
+              </span>
+              <span className="text-[10px] font-mono uppercase tracking-widest bg-emerald-950 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded-full font-bold">
+                Store Onboarding
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={onSwitchToCustomer}
+                className="text-xs font-semibold text-slate-400 hover:text-white transition-colors"
+              >
+                Shopper App
+              </button>
+              <button
+                onClick={handleMerchantLogout}
+                className="text-xs font-semibold text-rose-400 hover:text-rose-300 transition-colors"
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* Store Setup Form */}
+        <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-10">
+          <div className="w-full max-w-xl bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl text-left">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="h-10 w-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-white font-bold">
+                <Store className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white font-['Outfit']">Set Up Your Physical Storefront</h2>
+                <p className="text-xs text-slate-400">Complete your store details to start receiving local customer footfall</p>
+              </div>
+            </div>
+
+            {setupError && (
+              <div className="mb-4 p-3 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-300 text-xs flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <span>{setupError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleCreateStoreOnboarding} className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-slate-300 block mb-1">Store Name *</label>
+                <input
+                  type="text"
+                  value={setupStoreName}
+                  onChange={(e) => setSetupStoreName(e.target.value)}
+                  placeholder="e.g. Reliance Digital, DB Road"
+                  required
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-300 block mb-1">Category</label>
+                  <select
+                    value={setupCategory}
+                    onChange={(e) => setSetupCategory(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  >
+                    {dbCategories.length > 0 ? (
+                      dbCategories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)
+                    ) : (
+                      <>
+                        <option value="Footwear & Sports">Footwear & Sports</option>
+                        <option value="Electronics & Gadgets">Electronics & Gadgets</option>
+                        <option value="Fashion & Apparel">Fashion & Apparel</option>
+                        <option value="Watches & Jewelry">Watches & Jewelry</option>
+                        <option value="Smart Home & Lighting">Smart Home</option>
+                      </>
+                    )}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-300 block mb-1">Store Phone</label>
+                  <input
+                    type="tel"
+                    value={setupPhone}
+                    onChange={(e) => setSetupPhone(e.target.value)}
+                    placeholder="98765 43210"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-slate-300">Physical Storefront Address</label>
+                  <button
+                    type="button"
+                    onClick={handleDetectSetupLocation}
+                    disabled={isDetectingSetupGps}
+                    className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 cursor-pointer"
+                  >
+                    {isDetectingSetupGps ? (
+                      <>
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        <span>Detecting GPS...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Navigation className="h-3 w-3" />
+                        <span>Auto-Detect GPS</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={setupAddress}
+                  onChange={(e) => setSetupAddress(e.target.value)}
+                  placeholder="e.g. 104 DB Road, RS Puram, Coimbatore"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500"
+                />
+                {setupGpsFeedback && (
+                  <p className="text-[11px] text-emerald-400 mt-1 font-mono">{setupGpsFeedback}</p>
+                )}
+              </div>
+
+              <button
+                type="submit"
+                disabled={isCreatingStore}
+                className="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 mt-3"
+              >
+                {isCreatingStore ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Launching Storefront...</span>
+                  </>
+                ) : (
+                  <>
+                    <Store className="h-4 w-4" />
+                    <span>Activate Storefront & Open Merchant OS</span>
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // ── ACTIVE MERCHANT DASHBOARD VIEW ──
   return (
     <div className="zooner-merchant min-h-screen text-slate-100 flex flex-col font-sans selection:bg-indigo-600 selection:text-white">
       
@@ -590,6 +1362,16 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
             >
               <Compass className="h-3.5 w-3.5 text-emerald-400" />
               <span>Switch to Shopping</span>
+            </button>
+
+            {/* Merchant Sign Out */}
+            <button
+              onClick={handleMerchantLogout}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-300 transition-colors cursor-pointer"
+              title="Sign out of Merchant OS"
+            >
+              <LogOut className="h-3.5 w-3.5 text-slate-400" />
+              <span className="hidden sm:inline">Sign Out</span>
             </button>
           </div>
 

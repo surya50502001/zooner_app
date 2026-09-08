@@ -29,16 +29,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const handleScrollToRetailers = (e: React.MouseEvent) => {
-    e.preventDefault();
-    const el = document.getElementById('retailers') || document.getElementById('merchants');
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
-    } else {
-      onNavigateToVendor();
-    }
-  };
-
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
@@ -74,20 +64,26 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="hidden md:flex items-center gap-6">
             <nav className="flex items-center gap-6 text-sm tracking-wide text-slate-700 font-semibold">
               <a href="#how-it-works" className="hover:text-slate-950 transition-colors">How It Works</a>
-              <a 
-                href="#retailers"
-                onClick={handleScrollToRetailers}
-                className="hover:text-slate-950 transition-colors cursor-pointer"
+              <button 
+                onClick={onNavigateToVendor}
+                className="hover:text-slate-950 transition-colors cursor-pointer text-sm font-semibold text-slate-700"
               >
                 For Retailers
-              </a>
+              </button>
             </nav>
 
             <div className="flex items-center gap-3">
+              <button
+                onClick={onNavigateToVendor}
+                className="text-xs font-bold text-indigo-700 hover:text-indigo-950 bg-indigo-50 border border-indigo-200/80 px-3.5 py-2 rounded-full transition-colors cursor-pointer"
+              >
+                Merchant Portal
+              </button>
+
               {onOpenSignIn && (
                 <button
                   onClick={onOpenSignIn}
-                  className="text-xs font-bold text-slate-700 hover:text-slate-950 px-3.5 py-2 transition-colors cursor-pointer"
+                  className="text-xs font-bold text-slate-700 hover:text-slate-950 px-3 py-2 transition-colors cursor-pointer"
                 >
                   Sign In
                 </button>
@@ -115,14 +111,12 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="truncate max-w-[90px]">{currentLocation.name.split(',')[0]}</span>
             </button>
 
-            {onOpenSignIn && (
-              <button
-                onClick={onOpenSignIn}
-                className="text-xs font-bold text-slate-800 px-2 py-1"
-              >
-                Sign In
-              </button>
-            )}
+            <button
+              onClick={onNavigateToVendor}
+              className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-full"
+            >
+              Merchant
+            </button>
 
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -154,19 +148,28 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 How It Works
               </a>
-              <a 
-                href="#retailers"
-                onClick={(e) => {
+              <button 
+                onClick={() => {
                   setMobileMenuOpen(false);
-                  handleScrollToRetailers(e);
+                  onNavigateToVendor();
                 }}
                 className="py-2 border-b border-slate-200 text-left font-medium"
               >
-                For Retailers
-              </a>
+                Merchant Portal & Registration
+              </button>
             </nav>
 
             <div className="pt-2 flex flex-col gap-2">
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onNavigateToVendor();
+                }}
+                className="w-full text-center py-2.5 text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-xl"
+              >
+                Log In as Merchant / Store Owner
+              </button>
+
               {onOpenSignIn && (
                 <button
                   onClick={() => {
@@ -175,7 +178,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   }}
                   className="w-full text-center py-2.5 text-xs font-bold text-slate-900 border border-slate-300 rounded-xl"
                 >
-                  Sign In
+                  Sign In to Shopper Account
                 </button>
               )}
 

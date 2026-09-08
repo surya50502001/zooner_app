@@ -29,7 +29,7 @@ export function AppContent() {
     const hash = window.location.hash.toLowerCase();
     const path = window.location.pathname.toLowerCase();
     if (hash.includes('admin') || path.includes('/admin')) return 'admin';
-    if (hash.includes('vendor') || path.includes('/vendor')) return 'vendor';
+    if (hash.includes('vendor') || hash.includes('merchant') || path.includes('/vendor') || path.includes('/merchant')) return 'vendor';
     if (hash.includes('marketing') || path.includes('/marketing')) return 'marketing';
     return 'customer';
   });
@@ -72,7 +72,7 @@ export function AppContent() {
         setIsRetailerModalOpen(true);
       } else if (hash.includes('login') || hash.includes('signin') || hash.includes('register')) {
         setIsSignInModalOpen(true);
-      } else if (hash.includes('vendor') || path.includes('/vendor')) {
+      } else if (hash.includes('vendor') || hash.includes('merchant') || path.includes('/vendor') || path.includes('/merchant')) {
         setCurrentRoute('vendor');
       } else if (hash.includes('app') || hash.includes('customer') || path.includes('/app')) {
         setCurrentRoute('customer');
@@ -89,7 +89,7 @@ export function AppContent() {
     if (route === 'admin') {
       window.location.hash = '#admin';
     } else if (route === 'vendor') {
-      window.location.hash = '#vendor';
+      window.location.hash = '#merchant';
     } else if (route === 'customer') {
       window.location.hash = '#app';
     } else {
@@ -195,7 +195,7 @@ export function AppContent() {
       <Navbar
         currentLocation={currentLocation}
         onOpenLocationModal={() => setIsLocationModalOpen(true)}
-        onNavigateToVendor={() => setIsRetailerModalOpen(true)}
+        onNavigateToVendor={() => navigateTo('vendor')}
         onLaunchCustomerApp={() => navigateTo('customer')}
         onOpenSignIn={() => setIsSignInModalOpen(true)}
       />
@@ -205,7 +205,7 @@ export function AppContent() {
           currentLocation={currentLocation}
           onOpenLocationModal={() => setIsLocationModalOpen(true)}
           onLaunchCustomerApp={() => navigateTo('customer')}
-          onNavigateToVendor={() => setIsRetailerModalOpen(true)}
+          onNavigateToVendor={() => navigateTo('vendor')}
         />
       </main>
 
