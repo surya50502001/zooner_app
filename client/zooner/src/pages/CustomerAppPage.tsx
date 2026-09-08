@@ -1743,6 +1743,25 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                 </button>
               )}
 
+              {onNavigateToAdmin && (
+                <button
+                  type="button"
+                  onClick={onNavigateToAdmin}
+                  className="w-full px-4 py-3.5 flex items-center justify-between text-xs text-gray-700 hover:bg-gray-50 transition cursor-pointer border-t border-gray-100"
+                >
+                  <div className="flex items-center gap-3">
+                    <Shield className="w-4 h-4 text-indigo-600" />
+                    <span className="font-semibold text-gray-900">Admin Control Panel</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="bg-indigo-100 text-indigo-700 font-bold text-[10px] px-2 py-0.5 rounded-full">
+                      System
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                  </div>
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={() => alert('Help & Support: email support@zooner.app')}
@@ -1799,9 +1818,9 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════
-          BOTTOM NAVIGATION BAR (4 TABS)
+          BOTTOM NAVIGATION BAR (EXPLORE, LIVE ASK, HOLDS, ADMIN, ACCOUNT)
       ══════════════════════════════════════════════════════════════════ */}
-      <div className="fixed bottom-0 left-0 right-0 max-w-[440px] mx-auto bg-white/95 backdrop-blur-md border-t border-gray-100 flex items-center justify-around py-2.5 px-3 z-30">
+      <div className="fixed bottom-0 left-0 right-0 max-w-[440px] mx-auto bg-white/95 backdrop-blur-md border-t border-gray-100 flex items-center justify-around py-2.5 px-2 z-30">
         <button
           type="button"
           onClick={() => {
@@ -1855,6 +1874,17 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
             <span className="absolute -top-0.5 right-2 w-2 h-2 rounded-full bg-[#00A859]" />
           )}
         </button>
+
+        {onNavigateToAdmin && (
+          <button
+            type="button"
+            onClick={onNavigateToAdmin}
+            className="flex flex-col items-center gap-1 transition cursor-pointer text-gray-400 hover:text-indigo-600"
+          >
+            <Shield className="w-5 h-5" />
+            <span className="text-[10px] font-medium">Admin</span>
+          </button>
+        )}
 
         <button
           type="button"
