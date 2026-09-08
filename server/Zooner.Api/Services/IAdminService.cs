@@ -9,7 +9,9 @@ public interface IAdminService
     Task<ApiResponse<List<ReportDto>>> GetReportsAsync(ReportStatus? status = null);
     Task<ApiResponse<ReportDto>> ResolveReportAsync(Guid adminId, Guid reportId, ResolveReportRequest request);
     Task<ApiResponse<List<ShopDto>>> GetShopsForVerificationAsync();
+    Task<ApiResponse<List<ShopDto>>> GetAllShopsAsync(ShopVerificationStatus? status = null, string? search = null);
     Task<ApiResponse> VerifyShopAsync(Guid adminId, Guid shopId, VerifyShopRequest request);
+    Task<ApiResponse> ToggleShopStatusAsync(Guid adminId, Guid shopId, bool isActive);
     Task<ApiResponse<List<UserDto>>> GetUsersAsync(int page = 1, int pageSize = 50);
     Task<ApiResponse> UpdateUserStatusAsync(Guid adminId, Guid targetUserId, UpdateUserStatusRequest request);
     Task<ApiResponse<List<BusinessSettingDto>>> GetSettingsAsync();

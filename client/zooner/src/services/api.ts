@@ -1039,6 +1039,24 @@ export interface AdminAuditLogDto {
   createdAtUtc: string;
 }
 
+export async function getAdminShops(status?: string, search?: string): Promise<PendingShopDto[]> {
+  try {
+    const params = new URLSearchParams();
+    if (status && status !== 'All') params.append('status', status);
+    if (search && search.trim()) params.append('search', search.trim());
+    const query = params.toString() ? `?${params.toString()}` : '';
+    const res = await authenticatedFetch(`${API_BASE_URL}/Admin/shops${query}`);
+    if (res.ok) {
+      const json: ApiResponse<PendingShopDto[]> = await res.json();
+      return json.data || [];
+    }
+    return [];
+  } catch (err) {
+    console.error('getAdminShops error:', err);
+    return [];
+  }
+}
+
 export async function getPendingShops(): Promise<PendingShopDto[]> {
   try {
     const res = await authenticatedFetch(`${API_BASE_URL}/Admin/shops/pending`);
@@ -1050,6 +1068,20 @@ export async function getPendingShops(): Promise<PendingShopDto[]> {
   } catch (err) {
     console.error('getPendingShops error:', err);
     return [];
+  }
+}
+
+export async function toggleAdminShopStatus(shopId: string, isActive: boolean): Promise<boolean> {
+  try {
+    const res = await authenticatedFetch(`${API_BASE_URL}/Admin/shops/${shopId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isActive })
+    });
+    return res.ok;
+  } catch (err) {
+    console.error('toggleAdminShopStatus error:', err);
+    return false;
   }
 }
 

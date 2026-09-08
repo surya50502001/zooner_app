@@ -66,6 +66,13 @@ public class AdminController : ControllerBase
     #endregion
 
     #region Shops & Verification
+    [HttpGet("shops")]
+    public async Task<IActionResult> GetAllShops([FromQuery] ShopVerificationStatus? status = null, [FromQuery] string? search = null)
+    {
+        var response = await _adminService.GetAllShopsAsync(status, search);
+        return Ok(response);
+    }
+
     [HttpGet("shops/pending")]
     public async Task<IActionResult> GetPendingShops()
     {
@@ -78,6 +85,14 @@ public class AdminController : ControllerBase
     {
         var adminId = GetCurrentUserId();
         var response = await _adminService.VerifyShopAsync(adminId, id, request);
+        return response.Success ? Ok(response) : BadRequest(response);
+    }
+
+    [HttpPatch("shops/{id:guid}/status")]
+    public async Task<IActionResult> ToggleShopStatus(Guid id, [FromBody] UpdateUserStatusRequest request)
+    {
+        var adminId = GetCurrentUserId();
+        var response = await _adminService.ToggleShopStatusAsync(adminId, id, request.IsActive);
         return response.Success ? Ok(response) : BadRequest(response);
     }
     #endregion

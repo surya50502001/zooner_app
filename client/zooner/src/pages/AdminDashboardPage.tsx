@@ -14,11 +14,14 @@ import {
   Plus,
   LogOut,
   MapPin,
-  Phone
+  Phone,
+  Search,
+  Building2
 } from 'lucide-react';
 import {
-  getPendingShops,
+  getAdminShops,
   verifyShop,
+  toggleAdminShopStatus,
   fetchCategories,
   createAdminCategory,
   toggleAdminCategoryStatus,
@@ -74,7 +77,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // State for data
+  const [allShops, setAllShops] = useState<PendingShopDto[]>([]);
   const [pendingShops, setPendingShops] = useState<PendingShopDto[]>([]);
+  const [storeFilter, setStoreFilter] = useState<'All' | 'Pending' | 'Approved' | 'Rejected'>('All');
+  const [storeSearchQuery, setStoreSearchQuery] = useState('');
   const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [users, setUsers] = useState<AdminUserDto[]>([]);
   const [settings, setSettings] = useState<AdminSettingDto[]>([]);
@@ -101,8 +107,9 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
     setIsLoading(true);
     try {
       if (activeTab === 'verifications') {
-        const data = await getPendingShops();
-        setPendingShops(data);
+        const data = await getAdminShops();
+        setAllShops(data);
+        setPendingShops(data.filter(s => s.verificationStatus === 'Pending'));
       } else if (activeTab === 'categories') {
         const data = await fetchCategories();
         setCategories(data);
@@ -235,9 +242,27 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
     const success = await verifyShop(shopId, status);
     if (success) {
       showToast(`Store ${status.toLowerCase()} successfully.`);
+      setAllShops(prev =>
+        prev.map(s => (s.id === shopId ? { ...s, verificationStatus: status } : s))
+      );
       setPendingShops(prev => prev.filter(s => s.id !== shopId));
     } else {
       showToast(`Failed to update store verification status.`);
+    }
+  };
+
+  const handleToggleShopStatus = async (shopId: string, currentActive: boolean) => {
+    const success = await toggleAdminShopStatus(shopId, !currentActive);
+    if (success) {
+      showToast(`Store ${!currentActive ? 'activated' : 'suspended'} successfully.`);
+      setAllShops(prev =>
+        prev.map(s => (s.id === shopId ? { ...s, isActive: !currentActive } : s))
+      );
+      setPendingShops(prev =>
+        prev.map(s => (s.id === shopId ? { ...s, isActive: !currentActive } : s))
+      );
+    } else {
+      showToast(`Failed to update store status.`);
     }
   };
 
@@ -498,13 +523,17 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
           >
             <div className="flex items-center gap-2.5">
               <Store className="w-4 h-4" />
-              <span>Store Approvals</span>
+              <span>Stores & Approvals</span>
             </div>
-            {pendingShops.length > 0 && (
+            {pendingShops.length > 0 ? (
               <span className="bg-amber-500/20 text-amber-300 text-[10px] font-bold px-1.5 py-0.5 rounded-full border border-amber-500/30">
-                {pendingShops.length}
+                {pendingShops.length} pending
               </span>
-            )}
+            ) : allShops.length > 0 ? (
+              <span className="bg-slate-800 text-slate-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                {allShops.length}
+              </span>
+            ) : null}
           </button>
 
           <button
@@ -566,14 +595,14 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-800">
             <div>
               <h2 className="text-lg font-bold text-white tracking-tight">
-                {activeTab === 'verifications' && 'Pending Retailer Store Approvals'}
+                {activeTab === 'verifications' && 'Storefronts & Verification Queue'}
                 {activeTab === 'categories' && 'Master Catalog Categories'}
                 {activeTab === 'users' && 'Registered Users & Capabilities'}
                 {activeTab === 'settings' && 'Global Business Parameters'}
                 {activeTab === 'audit' && 'Administrative Audit Logs'}
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                {activeTab === 'verifications' && 'Review and approve local storefronts before they appear on the discovery map.'}
+                {activeTab === 'verifications' && 'Audit, verify, monitor, and configure all physical retail stores on the Zooner network.'}
                 {activeTab === 'categories' && 'Manage high-level store categories used for nearby inventory filtering.'}
                 {activeTab === 'users' && 'Manage shopper and merchant identities and account access states.'}
                 {activeTab === 'settings' && 'Configure search radius limits and live request expiration timeouts.'}
@@ -605,70 +634,280 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
             </div>
           </div>
 
-          {/* TAB 1: STORE APPROVALS */}
+          {/* TAB 1: STORES & VERIFICATIONS */}
           {activeTab === 'verifications' && (
-            <div>
-              {pendingShops.length === 0 ? (
-                <div className="py-16 text-center text-slate-400 space-y-2">
-                  <CheckCircle className="w-10 h-10 text-emerald-400/80 mx-auto" />
-                  <p className="text-sm font-semibold text-white">Verification Queue Clean</p>
-                  <p className="text-xs text-slate-400">All registered physical stores have been processed.</p>
+            <div className="space-y-4">
+              {/* Summary Metric Counters */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setStoreFilter('All')}
+                  className={`p-3.5 rounded-2xl border text-left transition cursor-pointer ${
+                    storeFilter === 'All'
+                      ? 'bg-indigo-600/20 border-indigo-500/40 text-white'
+                      : 'bg-slate-900/60 border-slate-800 hover:border-slate-700 text-slate-300'
+                  }`}
+                >
+                  <p className="text-[11px] text-slate-400">Total Stores</p>
+                  <p className="text-xl font-bold mt-0.5">{allShops.length}</p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setStoreFilter('Pending')}
+                  className={`p-3.5 rounded-2xl border text-left transition cursor-pointer ${
+                    storeFilter === 'Pending'
+                      ? 'bg-amber-500/20 border-amber-500/40 text-white'
+                      : 'bg-slate-900/60 border-slate-800 hover:border-slate-700 text-slate-300'
+                  }`}
+                >
+                  <p className="text-[11px] text-amber-400">Pending Review</p>
+                  <p className="text-xl font-bold mt-0.5 text-amber-300">
+                    {allShops.filter(s => s.verificationStatus === 'Pending').length}
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setStoreFilter('Approved')}
+                  className={`p-3.5 rounded-2xl border text-left transition cursor-pointer ${
+                    storeFilter === 'Approved'
+                      ? 'bg-emerald-500/20 border-emerald-500/40 text-white'
+                      : 'bg-slate-900/60 border-slate-800 hover:border-slate-700 text-slate-300'
+                  }`}
+                >
+                  <p className="text-[11px] text-emerald-400">Verified Stores</p>
+                  <p className="text-xl font-bold mt-0.5 text-emerald-300">
+                    {allShops.filter(s => s.verificationStatus === 'Approved').length}
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setStoreFilter('Rejected')}
+                  className={`p-3.5 rounded-2xl border text-left transition cursor-pointer ${
+                    storeFilter === 'Rejected'
+                      ? 'bg-rose-500/20 border-rose-500/40 text-white'
+                      : 'bg-slate-900/60 border-slate-800 hover:border-slate-700 text-slate-300'
+                  }`}
+                >
+                  <p className="text-[11px] text-rose-400">Rejected</p>
+                  <p className="text-xl font-bold mt-0.5 text-rose-300">
+                    {allShops.filter(s => s.verificationStatus === 'Rejected').length}
+                  </p>
+                </button>
+              </div>
+
+              {/* Filters and Search Bar */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-900/80 p-2.5 rounded-2xl border border-slate-800">
+                <div className="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+                  {(['All', 'Pending', 'Approved', 'Rejected'] as const).map(f => (
+                    <button
+                      key={f}
+                      type="button"
+                      onClick={() => setStoreFilter(f)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+                        storeFilter === f
+                          ? 'bg-indigo-600 text-white shadow-md'
+                          : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                      }`}
+                    >
+                      {f === 'All' && `All (${allShops.length})`}
+                      {f === 'Pending' && `Pending (${allShops.filter(s => s.verificationStatus === 'Pending').length})`}
+                      {f === 'Approved' && `Approved (${allShops.filter(s => s.verificationStatus === 'Approved').length})`}
+                      {f === 'Rejected' && `Rejected (${allShops.filter(s => s.verificationStatus === 'Rejected').length})`}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="relative w-full sm:w-64">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <input
+                    type="text"
+                    value={storeSearchQuery}
+                    onChange={e => setStoreSearchQuery(e.target.value)}
+                    placeholder="Search stores, address, owner..."
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-8.5 pr-3 py-1.5 text-xs text-white placeholder-slate-500 outline-hidden focus:border-indigo-500"
+                  />
+                  {storeSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setStoreSearchQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-500 hover:text-white cursor-pointer"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Store List */}
+              {allShops
+                .filter(shop => {
+                  const matchesFilter =
+                    storeFilter === 'All'
+                      ? true
+                      : shop.verificationStatus?.toLowerCase() === storeFilter.toLowerCase();
+                  if (!matchesFilter) return false;
+                  if (!storeSearchQuery.trim()) return true;
+                  const q = storeSearchQuery.toLowerCase();
+                  return (
+                    shop.name?.toLowerCase().includes(q) ||
+                    shop.address?.toLowerCase().includes(q) ||
+                    shop.phone?.toLowerCase().includes(q) ||
+                    shop.ownerName?.toLowerCase().includes(q)
+                  );
+                }).length === 0 ? (
+                <div className="py-16 text-center text-slate-400 space-y-2 bg-slate-900/30 rounded-2xl border border-slate-800/60">
+                  <Building2 className="w-10 h-10 text-slate-600 mx-auto" />
+                  <p className="text-sm font-semibold text-white">
+                    {storeFilter === 'Pending'
+                      ? 'Verification Queue Clean'
+                      : storeSearchQuery
+                      ? 'No stores matching search criteria'
+                      : 'No stores found'}
+                  </p>
+                  <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                    {storeFilter === 'Pending'
+                      ? 'All registered physical stores have been reviewed! Switch to "All" or "Approved" to view storefronts.'
+                      : storeSearchQuery
+                      ? 'Try searching with a different term or clear your search query.'
+                      : 'No stores currently match the selected filter tab.'}
+                  </p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-3.5">
-                  {pendingShops.map(shop => (
-                    <div
-                      key={shop.id}
-                      className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-slate-700 transition"
-                    >
-                      <div className="space-y-1.5 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h4 className="text-sm font-bold text-white truncate">{shop.name}</h4>
-                          <span className="bg-amber-500/20 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-500/30">
-                            Pending Review
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400">
-                          <div className="flex items-center gap-1">
-                            <MapPin className="w-3.5 h-3.5 text-slate-500" />
-                            <span>{shop.address || 'No address provided'}</span>
-                          </div>
-                          {shop.phone && (
-                            <div className="flex items-center gap-1">
-                              <Phone className="w-3.5 h-3.5 text-slate-500" />
-                              <span>{shop.phone}</span>
-                            </div>
-                          )}
-                          <div className="flex items-center gap-1">
-                            <Clock className="w-3.5 h-3.5 text-slate-500" />
-                            <span>Registered: {new Date(shop.createdAtUtc).toLocaleDateString()}</span>
-                          </div>
-                        </div>
-                        {shop.ownerName && (
-                          <p className="text-[11px] text-indigo-400">Owner: {shop.ownerName}</p>
-                        )}
-                      </div>
+                  {allShops
+                    .filter(shop => {
+                      const matchesFilter =
+                        storeFilter === 'All'
+                          ? true
+                          : shop.verificationStatus?.toLowerCase() === storeFilter.toLowerCase();
+                      if (!matchesFilter) return false;
+                      if (!storeSearchQuery.trim()) return true;
+                      const q = storeSearchQuery.toLowerCase();
+                      return (
+                        shop.name?.toLowerCase().includes(q) ||
+                        shop.address?.toLowerCase().includes(q) ||
+                        shop.phone?.toLowerCase().includes(q) ||
+                        shop.ownerName?.toLowerCase().includes(q)
+                      );
+                    })
+                    .map(shop => (
+                      <div
+                        key={shop.id}
+                        className="bg-slate-900 border border-slate-800 rounded-2xl p-4.5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-slate-700 transition"
+                      >
+                        <div className="space-y-2 min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h4 className="text-sm font-bold text-white truncate">{shop.name}</h4>
 
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => handleVerifyShop(shop.id, 'Approved')}
-                          className="flex items-center gap-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl transition cursor-pointer shadow-md shadow-emerald-600/20"
-                        >
-                          <CheckCircle className="w-3.5 h-3.5" />
-                          <span>Approve Store</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleVerifyShop(shop.id, 'Rejected')}
-                          className="flex items-center gap-1.5 text-xs font-semibold bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 px-3 py-2 rounded-xl transition cursor-pointer"
-                        >
-                          <XCircle className="w-3.5 h-3.5" />
-                          <span>Reject</span>
-                        </button>
+                            {/* Status Badge */}
+                            {shop.verificationStatus === 'Approved' && (
+                              <span className="bg-emerald-500/20 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
+                                <CheckCircle className="w-3 h-3" />
+                                <span>Verified & Approved</span>
+                              </span>
+                            )}
+                            {shop.verificationStatus === 'Pending' && (
+                              <span className="bg-amber-500/20 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-500/30 flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                <span>Pending Approval</span>
+                              </span>
+                            )}
+                            {shop.verificationStatus === 'Rejected' && (
+                              <span className="bg-rose-500/20 text-rose-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-rose-500/30 flex items-center gap-1">
+                                <XCircle className="w-3 h-3" />
+                                <span>Rejected</span>
+                              </span>
+                            )}
+
+                            {/* Active/Suspended Badge */}
+                            <span
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                shop.isActive
+                                  ? 'bg-slate-800 text-slate-300 border-slate-700'
+                                  : 'bg-rose-950/60 text-rose-400 border-rose-800/60'
+                              }`}
+                            >
+                              {shop.isActive ? 'Active' : 'Suspended'}
+                            </span>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-400">
+                            <div className="flex items-center gap-1">
+                              <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                              <span className="truncate max-w-xs">{shop.address || 'No address provided'}</span>
+                            </div>
+                            {shop.phone && (
+                              <div className="flex items-center gap-1">
+                                <Phone className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                                <span>{shop.phone}</span>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-1">
+                              <Clock className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                              <span>Registered: {new Date(shop.createdAtUtc).toLocaleDateString()}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px]">
+                            {shop.ownerName && (
+                              <span className="text-indigo-400 font-medium">Owner: {shop.ownerName}</span>
+                            )}
+                            {shop.categories && shop.categories.length > 0 && (
+                              <div className="flex items-center gap-1 flex-wrap">
+                                {shop.categories.map(c => (
+                                  <span
+                                    key={c.categoryId || c.name}
+                                    className="bg-slate-800/80 text-slate-300 px-2 py-0.5 rounded-md text-[10px] font-medium border border-slate-700/60"
+                                  >
+                                    {c.name}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex flex-wrap items-center gap-2 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-800">
+                          {shop.verificationStatus !== 'Approved' && (
+                            <button
+                              type="button"
+                              onClick={() => handleVerifyShop(shop.id, 'Approved')}
+                              className="flex items-center gap-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-xl transition cursor-pointer shadow-md shadow-emerald-600/20"
+                            >
+                              <CheckCircle className="w-3.5 h-3.5" />
+                              <span>Approve</span>
+                            </button>
+                          )}
+
+                          {shop.verificationStatus !== 'Rejected' && (
+                            <button
+                              type="button"
+                              onClick={() => handleVerifyShop(shop.id, 'Rejected')}
+                              className="flex items-center gap-1.5 text-xs font-semibold bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 px-3 py-1.5 rounded-xl transition cursor-pointer"
+                            >
+                              <XCircle className="w-3.5 h-3.5" />
+                              <span>Reject</span>
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => handleToggleShopStatus(shop.id, shop.isActive)}
+                            className={`flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-xl border transition cursor-pointer ${
+                              shop.isActive
+                                ? 'bg-slate-800 text-slate-400 hover:text-rose-400 hover:border-rose-500/40 border-slate-700'
+                                : 'bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white border-emerald-500/30'
+                            }`}
+                          >
+                            <span>{shop.isActive ? 'Suspend' : 'Activate'}</span>
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
                 </div>
               )}
             </div>

@@ -121,13 +121,35 @@ public class AdminService : IAdminService
 
     public async Task<ApiResponse<List<ShopDto>>> GetShopsForVerificationAsync()
     {
-        var shops = await _context.Shops
-            .Where(s => s.VerificationStatus == ShopVerificationStatus.Pending)
-            .OrderByDescending(s => s.CreatedAtUtc)
+        return await GetAllShopsAsync(ShopVerificationStatus.Pending);
+    }
+
+    public async Task<ApiResponse<List<ShopDto>>> GetAllShopsAsync(ShopVerificationStatus? status = null, string? search = null)
+    {
+        var query = _context.Shops
             .Include(s => s.Owner)
             .Include(s => s.ShopCategories).ThenInclude(sc => sc.Category)
             .Include(s => s.OperatingHours)
             .AsNoTracking()
+            .AsQueryable();
+
+        if (status.HasValue)
+        {
+            query = query.Where(s => s.VerificationStatus == status.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var sLower = search.Trim().ToLower();
+            query = query.Where(s =>
+                s.Name.ToLower().Contains(sLower) ||
+                (s.Address != null && s.Address.ToLower().Contains(sLower)) ||
+                (s.Phone != null && s.Phone.ToLower().Contains(sLower)) ||
+                (s.Owner != null && (s.Owner.FullName.ToLower().Contains(sLower) || s.Owner.Email.ToLower().Contains(sLower))));
+        }
+
+        var shops = await query
+            .OrderByDescending(s => s.CreatedAtUtc)
             .ToListAsync();
 
         var dtos = shops.Select(s => new VendorShopDto
@@ -145,7 +167,14 @@ public class AdminService : IAdminService
             VerificationStatus = s.VerificationStatus.ToString(),
             IsActive = s.IsActive,
             IsLiveEnabled = s.IsLiveEnabled,
-            CreatedAtUtc = s.CreatedAtUtc
+            CreatedAtUtc = s.CreatedAtUtc,
+            Categories = s.ShopCategories.Select(sc => new ShopCategorySummaryDto
+            {
+                CategoryId = sc.CategoryId,
+                Name = sc.Category?.Name ?? string.Empty,
+                Slug = sc.Category?.Slug ?? string.Empty,
+                Icon = sc.Category?.Icon ?? string.Empty
+            }).ToList()
         }).Cast<ShopDto>().ToList();
 
         return ApiResponse<List<ShopDto>>.Ok(dtos);
@@ -166,7 +195,7 @@ public class AdminService : IAdminService
             Action = "VerifyShop",
             TargetEntity = "Shop",
             TargetId = shopId.ToString(),
-            Details = $"Shop verification status set to {request.Status}",
+            Details = $"Shop '{shop.Name}' verification status set to {request.Status}",
             TimestampUtc = DateTime.UtcNow
         });
 
@@ -184,6 +213,29 @@ public class AdminService : IAdminService
 
         await _context.SaveChangesAsync();
         return ApiResponse.Ok($"Shop status updated to {request.Status}.");
+    }
+
+    public async Task<ApiResponse> ToggleShopStatusAsync(Guid adminId, Guid shopId, bool isActive)
+    {
+        var shop = await _context.Shops.FindAsync(shopId);
+        if (shop == null) return ApiResponse.Fail("Shop not found.");
+
+        shop.IsActive = isActive;
+        shop.UpdatedAtUtc = DateTime.UtcNow;
+
+        _context.AdminActions.Add(new AdminAction
+        {
+            Id = Guid.NewGuid(),
+            AdminUserId = adminId,
+            Action = "ToggleShopStatus",
+            TargetEntity = "Shop",
+            TargetId = shopId.ToString(),
+            Details = $"Shop '{shop.Name}' active status set to {isActive}",
+            TimestampUtc = DateTime.UtcNow
+        });
+
+        await _context.SaveChangesAsync();
+        return ApiResponse.Ok($"Shop '{shop.Name}' is now {(isActive ? "active" : "suspended")}.");
     }
 
     public async Task<ApiResponse<List<UserDto>>> GetUsersAsync(int page = 1, int pageSize = 50)
