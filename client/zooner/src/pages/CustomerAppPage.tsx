@@ -1682,24 +1682,29 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                 <ChevronRight className="w-4 h-4 text-gray-400" />
               </button>
 
-              {userProfile?.role === 'Admin' && onNavigateToAdmin && (
-                <button
-                  type="button"
-                  onClick={onNavigateToAdmin}
-                  className="w-full px-4 py-3.5 flex items-center justify-between text-xs text-indigo-700 bg-indigo-50/70 hover:bg-indigo-100/70 transition cursor-pointer border-b border-indigo-100"
-                >
-                  <div className="flex items-center gap-3">
-                    <Shield className="w-4 h-4 text-indigo-600" />
-                    <span className="font-bold">Admin Control Panel</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="bg-indigo-600 text-white font-bold text-[10px] px-2 py-0.5 rounded-full">
-                      Admin
-                    </span>
-                    <ChevronRight className="w-4 h-4 text-indigo-400" />
-                  </div>
-                </button>
-              )}
+              {(() => {
+                const isSuperAdmin = userProfile?.email && ['surya50502001@gmail.com', 'admin@zooner.app'].includes(userProfile.email.toLowerCase());
+                const isAdmin = userProfile?.role === 'Admin' || isSuperAdmin;
+                if (!isAdmin || !onNavigateToAdmin) return null;
+                return (
+                  <button
+                    type="button"
+                    onClick={onNavigateToAdmin}
+                    className="w-full px-4 py-3.5 flex items-center justify-between text-xs text-indigo-700 bg-indigo-50/70 hover:bg-indigo-100/70 transition cursor-pointer border-b border-indigo-100"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Shield className="w-4 h-4 text-indigo-600" />
+                      <span className="font-bold">Admin Control Panel</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="bg-indigo-600 text-white font-bold text-[10px] px-2 py-0.5 rounded-full">
+                        Admin
+                      </span>
+                      <ChevronRight className="w-4 h-4 text-indigo-400" />
+                    </div>
+                  </button>
+                );
+              })()}
 
               {userProfile?.isVendor || userProfile?.role === 'ShopOwner' || userProfile?.role === 'Vendor' || userProfile?.role === 'Admin' || (userProfile?.shops && userProfile.shops.length > 0) ? (
                 <button
@@ -1737,25 +1742,6 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                   <div className="flex items-center gap-2">
                     <span className="bg-green-100 text-[#00A859] font-bold text-[10px] px-2 py-0.5 rounded-full">
                       New
-                    </span>
-                    <ChevronRight className="w-4 h-4 text-gray-400" />
-                  </div>
-                </button>
-              )}
-
-              {onNavigateToAdmin && (
-                <button
-                  type="button"
-                  onClick={onNavigateToAdmin}
-                  className="w-full px-4 py-3.5 flex items-center justify-between text-xs text-gray-700 hover:bg-gray-50 transition cursor-pointer border-t border-gray-100"
-                >
-                  <div className="flex items-center gap-3">
-                    <Shield className="w-4 h-4 text-indigo-600" />
-                    <span className="font-semibold text-gray-900">Admin Control Panel</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="bg-indigo-100 text-indigo-700 font-bold text-[10px] px-2 py-0.5 rounded-full">
-                      System
                     </span>
                     <ChevronRight className="w-4 h-4 text-gray-400" />
                   </div>
@@ -1874,17 +1860,6 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
             <span className="absolute -top-0.5 right-2 w-2 h-2 rounded-full bg-[#00A859]" />
           )}
         </button>
-
-        {onNavigateToAdmin && (
-          <button
-            type="button"
-            onClick={onNavigateToAdmin}
-            className="flex flex-col items-center gap-1 transition cursor-pointer text-gray-400 hover:text-indigo-600"
-          >
-            <Shield className="w-5 h-5" />
-            <span className="text-[10px] font-medium">Admin</span>
-          </button>
-        )}
 
         <button
           type="button"
