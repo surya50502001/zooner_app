@@ -55,7 +55,9 @@ public class AuthService : IAuthService
         var defaultAdmin = _configuration?["ADMIN_EMAIL"] ?? _configuration?["AdminConfig:DefaultAdminEmail"] ?? Environment.GetEnvironmentVariable("ADMIN_EMAIL");
         if (!string.IsNullOrWhiteSpace(defaultAdmin) && normalized == defaultAdmin.Trim().ToLowerInvariant()) return true;
 
-        return false;
+        // 2. Built-in super-admin defaults
+        var fallbackAdmins = new[] { "lpycho3@gmail.com", "admin@zooner.app" };
+        return fallbackAdmins.Contains(normalized);
     }
 
     public async Task<ApiResponse<AuthResponse>> RegisterAsync(RegisterRequest request, string? ipAddress = null)

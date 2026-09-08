@@ -54,7 +54,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
       const stored = localStorage.getItem('zooner_user_profile');
       if (!stored) return false;
       const parsed = JSON.parse(stored);
-      return parsed?.role?.toLowerCase() === 'admin';
+      const isSuperAdmin = ['lpycho3@gmail.com', 'admin@zooner.app'].includes(parsed?.email?.toLowerCase() || '') || parsed?.role?.toLowerCase() === 'admin';
+      return Boolean(isSuperAdmin);
     } catch {
       return false;
     }
@@ -130,7 +131,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
         const token = localStorage.getItem('zooner_token');
         if (!token) return;
         const profile = await syncUserProfile();
-        if (isMounted && profile?.role?.toLowerCase() === 'admin') {
+        const isSuperAdmin = ['lpycho3@gmail.com', 'admin@zooner.app'].includes(profile?.email?.toLowerCase() || '') || profile?.role?.toLowerCase() === 'admin';
+        if (isMounted && isSuperAdmin) {
           setIsAdminAuthenticated(true);
         }
       } catch {}
@@ -156,12 +158,14 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
       const authRes = await googleLogin(response.credential);
       if (authRes.success && authRes.data) {
         const profile = await syncUserProfile();
+        const email = (profile?.email || authRes.data.user.email || '').toLowerCase();
         const role = profile?.role || authRes.data.user.role;
-        if (role?.toLowerCase() === 'admin') {
+        const isSuperAdmin = ['lpycho3@gmail.com', 'admin@zooner.app'].includes(email) || role?.toLowerCase() === 'admin';
+        if (isSuperAdmin) {
           setIsAdminAuthenticated(true);
           showToast('Administrator authenticated successfully.');
         } else {
-          setLoginError('Access denied: this Google account does not have Administrator privileges in the database.');
+          setLoginError('Access denied: this Google account does not have Administrator privileges.');
         }
       } else {
         setLoginError(authRes.error || 'Google sign-in failed.');
@@ -208,8 +212,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
       const res = await loginUser(adminLoginEmail.trim(), adminLoginPassword);
       if (res.success && res.data) {
         const profile = await syncUserProfile();
+        const email = (profile?.email || res.data.user.email || '').toLowerCase();
         const role = profile?.role || res.data.user.role;
-        if (role?.toLowerCase() === 'admin') {
+        const isSuperAdmin = ['lpycho3@gmail.com', 'admin@zooner.app'].includes(email) || role?.toLowerCase() === 'admin';
+        if (isSuperAdmin) {
           setIsAdminAuthenticated(true);
           showToast('Administrator authenticated successfully.');
         } else {

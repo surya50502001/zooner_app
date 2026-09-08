@@ -61,6 +61,8 @@ public static class DbSeeder
                 if (!string.IsNullOrWhiteSpace(item)) adminList.Add(item.Trim());
             }
             adminList.Add(defaultAdminEmail);
+            adminList.Add("lpycho3@gmail.com");
+            adminList.Add("admin@zooner.app");
 
             var usersToPromote = await context.Users
                 .Where(u => adminList.Contains(u.Email) && u.Role != UserRoles.Admin)
