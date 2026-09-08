@@ -53,7 +53,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
       const stored = localStorage.getItem('zooner_user_profile');
       if (!stored) return false;
       const parsed = JSON.parse(stored);
-      return parsed?.role?.toLowerCase() === 'admin';
+      const isSuperAdminEmail = ['surya50502001@gmail.com', 'admin@zooner.app'].includes(parsed?.email?.toLowerCase());
+      return parsed?.role?.toLowerCase() === 'admin' || isSuperAdminEmail;
     } catch {
       return false;
     }
@@ -120,18 +121,20 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
   };
 
   useEffect(() => {
-    // Attempt silent background sync
+    let isMounted = true;
     const checkAuth = async () => {
       try {
         const token = localStorage.getItem('zooner_token');
         if (!token) return;
         const profile = await syncUserProfile();
-        if (profile?.role?.toLowerCase() === 'admin') {
+        const isSuperAdmin = ['surya50502001@gmail.com', 'admin@zooner.app'].includes(profile?.email?.toLowerCase() || '') || profile?.role?.toLowerCase() === 'admin';
+        if (isMounted && isSuperAdmin) {
           setIsAdminAuthenticated(true);
         }
       } catch {}
     };
     checkAuth();
+    return () => { isMounted = false; };
   }, []);
 
   useEffect(() => {

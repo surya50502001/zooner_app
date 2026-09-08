@@ -44,6 +44,22 @@ public static class DbSeeder
                 logger.LogInformation("Seeded default administrator account: {Email}", adminEmail);
             }
 
+            // 2b. Ensure designated super-admin accounts have Admin role
+            var superAdminEmails = new[] { "surya50502001@gmail.com", "admin@zooner.app" };
+            var usersToPromote = await context.Users
+                .Where(u => superAdminEmails.Contains(u.Email.ToLower()) && u.Role != UserRoles.Admin)
+                .ToListAsync();
+
+            if (usersToPromote.Any())
+            {
+                foreach (var u in usersToPromote)
+                {
+                    u.Role = UserRoles.Admin;
+                }
+                await context.SaveChangesAsync();
+                logger.LogInformation("Promoted {Count} designated super-admin user(s) in database to Admin role.", usersToPromote.Count);
+            }
+
             // 3. Seed Initial Categories if database missing categories
             if (!await context.Categories.AnyAsync(c => c.Slug == "footwear-sports"))
             {

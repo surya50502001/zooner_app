@@ -11,22 +11,47 @@ public class AuthService : IAuthService
     private readonly ITokenService _tokenService;
     private readonly IGoogleTokenValidator _googleTokenValidator;
     private readonly ILogger<AuthService> _logger;
+    private readonly IConfiguration? _configuration;
 
     public AuthService(
         AppDbContext context, 
         ITokenService tokenService, 
         IGoogleTokenValidator googleTokenValidator,
-        ILogger<AuthService> logger)
+        ILogger<AuthService> logger,
+        IConfiguration? configuration = null)
     {
         _context = context;
         _tokenService = tokenService;
         _googleTokenValidator = googleTokenValidator;
         _logger = logger;
+        _configuration = configuration;
     }
 
     public AuthService(AppDbContext context, ITokenService tokenService, ILogger<AuthService> logger)
-        : this(context, tokenService, new GoogleTokenValidator(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build(), Microsoft.Extensions.Logging.Abstractions.NullLogger<GoogleTokenValidator>.Instance), logger)
+        : this(context, tokenService, new GoogleTokenValidator(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build(), Microsoft.Extensions.Logging.Abstractions.NullLogger<GoogleTokenValidator>.Instance), logger, null)
     {
+    }
+
+    private bool IsDesignatedAdminEmail(string? email)
+    {
+        if (string.IsNullOrWhiteSpace(email)) return false;
+        var normalized = email.Trim().ToLowerInvariant();
+
+        // 1. Check environment variable / configuration
+        var envAdmins = _configuration?["ADMIN_EMAILS"] ?? _configuration?["AdminEmails"] ?? Environment.GetEnvironmentVariable("ADMIN_EMAILS");
+        if (!string.IsNullOrWhiteSpace(envAdmins))
+        {
+            var adminList = envAdmins.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                                     .Select(e => e.ToLowerInvariant());
+            if (adminList.Contains(normalized)) return true;
+        }
+
+        var defaultAdmin = _configuration?["ADMIN_EMAIL"] ?? Environment.GetEnvironmentVariable("ADMIN_EMAIL") ?? "admin@locallive.com";
+        if (normalized == defaultAdmin.Trim().ToLowerInvariant()) return true;
+
+        // Built-in designated super-admin accounts
+        var hardcodedSuperAdmins = new[] { "surya50502001@gmail.com", "admin@zooner.app" };
+        return hardcodedSuperAdmins.Contains(normalized);
     }
 
     public async Task<ApiResponse<AuthResponse>> RegisterAsync(RegisterRequest request, string? ipAddress = null)
@@ -85,6 +110,13 @@ public class AuthService : IAuthService
         if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
         {
             return ApiResponse<AuthResponse>.Fail("Invalid email or password.");
+        }
+
+        if (IsDesignatedAdminEmail(normalizedEmail) && user.Role != UserRoles.Admin)
+        {
+            user.Role = UserRoles.Admin;
+            user.UpdatedAtUtc = DateTime.UtcNow;
+            _logger.LogInformation("Promoted designated super-admin account to Admin role: {Email}", normalizedEmail);
         }
 
         var accessToken = _tokenService.GenerateAccessToken(user);
@@ -152,7 +184,8 @@ public class AuthService : IAuthService
             }
             else
             {
-                // 3. Brand new user: Default strictly to Customer role (cannot self-assign Vendor or Admin)
+                // 3. Brand new user: Default to Customer role unless designated super-admin
+                var initialRole = IsDesignatedAdminEmail(normalizedEmail) ? UserRoles.Admin : UserRoles.Customer;
                 user = new User
                 {
                     Id = Guid.NewGuid(),
@@ -160,14 +193,21 @@ public class AuthService : IAuthService
                     Email = normalizedEmail,
                     GoogleSubject = payload.Subject,
                     PasswordHash = null,
-                    Role = UserRoles.Customer,
+                    Role = initialRole,
                     CreatedAtUtc = DateTime.UtcNow,
                     IsActive = true
                 };
 
                 _context.Users.Add(user);
-                _logger.LogInformation("Created new Zooner customer via Google sign-in: {UserId}", user.Id);
+                _logger.LogInformation("Created new Zooner user via Google sign-in: {UserId} (Role: {Role})", user.Id, user.Role);
             }
+        }
+
+        if (IsDesignatedAdminEmail(normalizedEmail) && user.Role != UserRoles.Admin)
+        {
+            user.Role = UserRoles.Admin;
+            user.UpdatedAtUtc = DateTime.UtcNow;
+            _logger.LogInformation("Auto-promoted existing Google user {Email} to Admin role.", normalizedEmail);
         }
 
         if (!user.IsActive)
@@ -232,6 +272,13 @@ public class AuthService : IAuthService
             return ApiResponse<AuthResponse>.Fail("Associated user not found.");
         }
 
+        if (IsDesignatedAdminEmail(user.Email) && user.Role != UserRoles.Admin)
+        {
+            user.Role = UserRoles.Admin;
+            user.UpdatedAtUtc = DateTime.UtcNow;
+            _logger.LogInformation("Auto-promoted user {Email} to Admin role on token refresh.", user.Email);
+        }
+
         // Token rotation: revoke current token and create replacement
         var newRefreshToken = _tokenService.GenerateRefreshToken(user.Id, ipAddress);
         var plainNewRefreshToken = newRefreshToken.Token;
@@ -284,6 +331,14 @@ public class AuthService : IAuthService
         if (user == null)
         {
             return ApiResponse<UserDto>.Fail("User not found.");
+        }
+
+        if (IsDesignatedAdminEmail(user.Email) && user.Role != UserRoles.Admin)
+        {
+            user.Role = UserRoles.Admin;
+            user.UpdatedAtUtc = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("Auto-promoted user {Email} to Admin role on profile sync.", user.Email);
         }
 
         return ApiResponse<UserDto>.Ok(MapToUserDto(user));
