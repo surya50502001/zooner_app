@@ -50,7 +50,7 @@ public class AuthService : IAuthService
         if (normalized == defaultAdmin.Trim().ToLowerInvariant()) return true;
 
         // Built-in designated super-admin accounts
-        var hardcodedSuperAdmins = new[] { "surya50502001@gmail.com", "admin@zooner.app" };
+        var hardcodedSuperAdmins = new[] { "lpycho3@gmail.com", "admin@zooner.app" };
         return hardcodedSuperAdmins.Contains(normalized);
     }
 

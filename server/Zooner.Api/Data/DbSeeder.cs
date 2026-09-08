@@ -42,7 +42,7 @@ public static class DbSeeder
             }
 
             // 2b. Ensure designated super-admin accounts have Admin role
-            var superAdminEmails = new[] { "surya50502001@gmail.com", "admin@zooner.app" };
+            var superAdminEmails = new[] { "lpycho3@gmail.com", "admin@zooner.app" };
             var usersToPromote = await context.Users
                 .Where(u => superAdminEmails.Contains(u.Email.ToLower()) && u.Role != UserRoles.Admin)
                 .ToListAsync();

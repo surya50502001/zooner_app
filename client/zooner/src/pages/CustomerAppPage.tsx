@@ -1683,7 +1683,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
               </button>
 
               {(() => {
-                const isSuperAdmin = userProfile?.email && ['surya50502001@gmail.com', 'admin@zooner.app'].includes(userProfile.email.toLowerCase());
+                const isSuperAdmin = userProfile?.email && ['lpycho3@gmail.com', 'admin@zooner.app'].includes(userProfile.email.toLowerCase());
                 const isAdmin = userProfile?.role === 'Admin' || isSuperAdmin;
                 if (!isAdmin || !onNavigateToAdmin) return null;
                 return (
