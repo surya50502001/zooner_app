@@ -134,6 +134,76 @@ const MiniQRCode: React.FC<{ value: string; size?: number }> = ({ value, size = 
   );
 };
 
+const detectCategoryFromQuery = (text: string, categories: CategoryDto[]): string => {
+  const q = text.toLowerCase().trim();
+  if (!q || !categories || categories.length === 0) return '';
+
+  const groceryKeywords = [
+    'curd', 'milk', 'bread', 'maggie', 'maggi', 'noodle', 'noodles', 'egg', 'eggs', 'paneer', 'cheese',
+    'butter', 'rice', 'dal', 'oil', 'sugar', 'salt', 'atta', 'flour', 'biscuit', 'biscuits', 'cookie',
+    'cookies', 'chips', 'snack', 'snacks', 'chocolate', 'chocolates', 'tea', 'coffee', 'juice', 'water',
+    'soap', 'shampoo', 'toothpaste', 'grocery', 'groceries', 'fruit', 'fruits', 'vegetable', 'vegetables',
+    'apple', 'banana', 'potato', 'onion', 'tomato', 'dosa', 'idli', 'batter', 'sweet', 'sweets', 'ghee',
+    'masala', 'spice', 'spices', 'cereal', 'oats', 'yoghurt', 'yogurt', 'namkeen', 'beverage', 'drink',
+    'pasta', 'sauce', 'jam', 'honey', 'dry fruit', 'almond', 'cashew', 'varkey', 'peda', 'cake'
+  ];
+  const electronicsKeywords = [
+    'phone', 'iphone', 'samsung', 'mobile', 'laptop', 'macbook', 'charger', 'cable', 'cord',
+    'earphone', 'earphones', 'headphone', 'headphones', 'airpod', 'airpods', 'buds', 'watch',
+    'smartwatch', 'tv', 'battery', 'powerbank', 'adapter', 'camera', 'keyboard', 'mouse',
+    'ipad', 'tablet', 'speaker', 'usb', 'gadget', 'gadgets', 'electronic'
+  ];
+  const footwearSportsKeywords = [
+    'shoe', 'shoes', 'sneaker', 'sneakers', 'boots', 'sandals', 'slipper', 'slippers', 'crocs',
+    'football', 'cricket', 'bat', 'ball', 'badminton', 'racket', 'shuttle', 'jersey', 'gym',
+    'dumbbell', 'yoga', 'cycle', 'bicycle', 'sports', 'fitness', 'athletic', 'cleats'
+  ];
+  const pharmacyKeywords = [
+    'medicine', 'medicines', 'tablet', 'tablets', 'pill', 'pills', 'capsule', 'capsules', 'syrup',
+    'paracetamol', 'crocin', 'dolo', 'bandage', 'ointment', 'pain', 'balm', 'thermometer', 'mask',
+    'sanitizer', 'vitamin', 'vitamins', 'health', 'pharma', 'medical'
+  ];
+  const clothingKeywords = [
+    'shirt', 'shirts', 't-shirt', 'tshirt', 'pant', 'pants', 'jeans', 'trousers', 'dress', 'saree',
+    'sari', 'kurti', 'kurta', 'jacket', 'hoodie', 'socks', 'underwear', 'cloth', 'clothes', 'fabric', 'suit'
+  ];
+  const beautyKeywords = [
+    'lipstick', 'makeup', 'perfume', 'perfumes', 'deodorant', 'deo', 'cream', 'lotion', 'serum',
+    'sunscreen', 'face wash', 'facewash', 'kajal', 'foundation', 'eyeliner', 'cosmetics', 'beauty'
+  ];
+
+  const findCat = (kw: string) => categories.find(c => 
+    c.slug?.toLowerCase().includes(kw) || c.name?.toLowerCase().includes(kw)
+  );
+
+  if (groceryKeywords.some(k => q.includes(k))) {
+    const cat = findCat('groc') || findCat('food') || findCat('essential');
+    if (cat) return cat.id;
+  }
+  if (electronicsKeywords.some(k => q.includes(k))) {
+    const cat = findCat('elect') || findCat('gadget');
+    if (cat) return cat.id;
+  }
+  if (footwearSportsKeywords.some(k => q.includes(k))) {
+    const cat = findCat('foot') || findCat('sport');
+    if (cat) return cat.id;
+  }
+  if (pharmacyKeywords.some(k => q.includes(k))) {
+    const cat = findCat('pharm') || findCat('health');
+    if (cat) return cat.id;
+  }
+  if (clothingKeywords.some(k => q.includes(k))) {
+    const cat = findCat('cloth') || findCat('fashion') || findCat('apparel');
+    if (cat) return cat.id;
+  }
+  if (beautyKeywords.some(k => q.includes(k))) {
+    const cat = findCat('beauty') || findCat('personal');
+    if (cat) return cat.id;
+  }
+
+  return '';
+};
+
 export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
   currentLocation,
   onOpenLocationModal,
@@ -168,6 +238,8 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
   // Live Ask Form State
   const [askProductName, setAskProductName] = useState('');
   const [askVariant, setAskVariant] = useState('');
+  const [askCategory, setAskCategory] = useState<string>('');
+  const [isCategoryUserSelected, setIsCategoryUserSelected] = useState<boolean>(false);
   const [askRadius, setAskRadius] = useState<'2 km' | '5 km' | '10 km' | '15 km'>('5 km');
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [broadcastDone, setBroadcastDone] = useState(false);
@@ -235,6 +307,13 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
         const cats = await fetchCategories();
         if (isMounted && cats) {
           setDbCategories(cats);
+          if (cats.length > 0) {
+            setAskCategory(prev => {
+              if (prev) return prev;
+              const groc = cats.find(c => c.slug?.toLowerCase().includes('groc') || c.name?.toLowerCase().includes('groc'));
+              return groc ? groc.id : cats[0].id;
+            });
+          }
         }
       } catch (err) {
         console.error('Failed to load categories:', err);
@@ -381,40 +460,48 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
       const isGuid = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
       
       let categoryId = '';
-      if (selectedCategory && selectedCategory !== 'all' && isGuid(selectedCategory)) {
+      if (askCategory && isGuid(askCategory)) {
+        categoryId = askCategory;
+      } else if (selectedCategory && selectedCategory !== 'all' && isGuid(selectedCategory)) {
         categoryId = selectedCategory;
       } else if (dbCategories.length > 0) {
-        const found = dbCategories.find(c => isGuid(c.id));
-        if (found) categoryId = found.id;
+        const grocCat = dbCategories.find(c => (c.slug?.toLowerCase().includes('groc') || c.name?.toLowerCase().includes('groc')) && isGuid(c.id));
+        const firstCat = dbCategories.find(c => isGuid(c.id));
+        categoryId = (grocCat || firstCat)?.id || '';
       }
 
       if (!categoryId) {
         const fetchedCats = await fetchCategories();
         if (fetchedCats && fetchedCats.length > 0) {
-          const found = fetchedCats.find(c => isGuid(c.id));
-          if (found) categoryId = found.id;
+          const grocCat = fetchedCats.find(c => (c.slug?.toLowerCase().includes('groc') || c.name?.toLowerCase().includes('groc')) && isGuid(c.id));
+          const firstCat = fetchedCats.find(c => isGuid(c.id));
+          categoryId = (grocCat || firstCat)?.id || '';
         }
+      }
+
+      if (!categoryId) {
+        alert('Please choose a store category to broadcast your request.');
+        return;
       }
 
       const requestText = askVariant.trim()
         ? `${askProductName.trim()} (Variant: ${askVariant.trim()})`
         : askProductName.trim();
 
-      if (categoryId) {
-        await createLiveRequest({
-          requestText,
-          categoryId,
-          latitude: currentLocation.lat || 11.0168,
-          longitude: currentLocation.lng || 76.9558,
-          searchRadiusKm: radiusNumber
-        });
-      }
+      await createLiveRequest({
+        requestText,
+        categoryId,
+        latitude: currentLocation.lat || 11.0168,
+        longitude: currentLocation.lng || 76.9558,
+        searchRadiusKm: radiusNumber
+      });
 
       setBroadcastDone(true);
       setTimeout(() => {
         setBroadcastDone(false);
         setAskProductName('');
         setAskVariant('');
+        setIsCategoryUserSelected(false);
       }, 4000);
     } catch (err) {
       console.error('Failed broadcasting request:', err);
@@ -1262,29 +1349,86 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
             <form onSubmit={handleBroadcast} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                  Product name / model
+                  Product name / item <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. iPhone 15, Nike Air, Amul Milk"
+                  placeholder="e.g. Curd, Amul Butter, Maggie, iPhone 15, Nike Shoes"
                   value={askProductName}
-                  onChange={(e) => setAskProductName(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setAskProductName(val);
+                    if (!isCategoryUserSelected && dbCategories.length > 0) {
+                      const detected = detectCategoryFromQuery(val, dbCategories);
+                      if (detected) {
+                        setAskCategory(detected);
+                      }
+                    }
+                  }}
                   className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-3.5 text-xs text-gray-900 placeholder-gray-400 focus:border-[#00A859] focus:ring-1 focus:ring-[#00A859] outline-hidden shadow-xs"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                  Size / Variant (optional)
+                  Size / Quantity / Variant (optional)
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. 256GB, UK 9, 1 Litre"
+                  placeholder="e.g. 500g, 1 Litre, 256GB, UK 9, Pack of 4"
                   value={askVariant}
                   onChange={(e) => setAskVariant(e.target.value)}
                   className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-3.5 text-xs text-gray-900 placeholder-gray-400 focus:border-[#00A859] focus:ring-1 focus:ring-[#00A859] outline-hidden shadow-xs"
                 />
+              </div>
+
+              {/* Category Selector */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold text-gray-700">
+                    Store Type / Category <span className="text-red-500">*</span>
+                  </label>
+                  {askCategory && (
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                      isCategoryUserSelected
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-amber-100 text-amber-800'
+                    }`}>
+                      {isCategoryUserSelected ? 'Selected by you' : 'Auto-suggested'}
+                    </span>
+                  )}
+                </div>
+                {dbCategories.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {dbCategories.map((cat) => {
+                      const isSelected = askCategory === cat.id;
+                      return (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => {
+                            setAskCategory(cat.id);
+                            setIsCategoryUserSelected(true);
+                          }}
+                          className={`p-2.5 rounded-xl border text-left flex items-center gap-2 transition cursor-pointer ${
+                            isSelected
+                              ? 'bg-emerald-50 border-[#00A859] text-gray-950 ring-1 ring-[#00A859] shadow-xs font-semibold'
+                              : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300'
+                          }`}
+                        >
+                          <span className="text-base shrink-0">{cat.iconName ? cat.iconName.charAt(0).toUpperCase() : '🛍️'}</span>
+                          <span className="text-xs truncate">{cat.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-xs text-gray-400 py-2">Loading categories...</div>
+                )}
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Your broadcast will only be sent to verified stores matching this category.
+                </p>
               </div>
 
               <div>
@@ -1317,7 +1461,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                 {isBroadcasting ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Broadcasting...</span>
+                    <span>Broadcasting to stores...</span>
                   </>
                 ) : (
                   <>

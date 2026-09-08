@@ -150,11 +150,16 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
   };
 
   const handleAcceptRequest = async (id: string) => {
-    if (!currentStoreId) return;
-    const response = await respondToLiveRequest(id, currentStoreId);
-    if (response) {
-      setRequests(previous => previous.filter(request => request.id !== id));
+    if (!currentStoreId) {
+      showToast('No active store selected.', true);
       return;
+    }
+    const res = await respondToLiveRequest(id, currentStoreId);
+    if (res && res.success) {
+      showToast('Confirmed in-stock! Shopper notified instantly.', false);
+      setRequests(previous => previous.map(request => request.id === id ? { ...request, status: 'accepted' } : request));
+    } else {
+      showToast(res?.message || 'Failed to confirm request availability.', true);
     }
   };
 
@@ -726,36 +731,40 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                       <div>
                         <div className="flex items-center gap-2">
                           <h3 className="font-bold text-white text-base">{req.product}</h3>
-                          <span className="text-xs font-bold text-indigo-400 bg-indigo-950/80 px-2 py-0.5 rounded border border-indigo-800">
-                            {req.size}
-                          </span>
+                          {(req.size || req.subCategoryName || req.categoryName) && (
+                            <span className="text-xs font-bold text-indigo-400 bg-indigo-950/80 px-2 py-0.5 rounded border border-indigo-800">
+                              {req.size || req.subCategoryName || req.categoryName}
+                            </span>
+                          )}
                         </div>
                         <div className="text-xs text-slate-400 mt-1 flex items-center gap-2">
-                          <span>By {req.shopperName}</span>
+                          <span>By {req.shopperName || 'Nearby Shopper'}</span>
                           <span>·</span>
                           <span className="text-emerald-400 font-medium">{req.distance}</span>
                           <span>·</span>
                           <span>{req.timeAgo}</span>
                         </div>
-                        <div className="text-xs text-slate-300 mt-2 font-mono">
-                          Customer Target Budget: <strong className="text-white">{req.budget}</strong>
-                        </div>
+                        {req.budget && (
+                          <div className="text-xs text-slate-300 mt-2 font-mono">
+                            Customer Target Budget: <strong className="text-white">{req.budget}</strong>
+                          </div>
+                        )}
                       </div>
 
                       {/* Request Action Buttons */}
                       <div className="flex items-center gap-2 shrink-0 pt-2 sm:pt-0">
-                        {req.status === 'pending' && (
+                        {(req.status === 'pending' || req.status === 'active') && (
                           <>
                             <button
                               onClick={() => handleAcceptRequest(req.id)}
-                              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md shadow-indigo-600/30 flex items-center gap-1.5"
+                              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md shadow-indigo-600/30 flex items-center gap-1.5 cursor-pointer"
                             >
                               <Check className="h-3.5 w-3.5" />
-                              <span>Confirm In-Stock (₹6,499)</span>
+                              <span>Confirm In-Stock</span>
                             </button>
                             <button
                               onClick={() => handleDeclineRequest(req.id)}
-                              className="px-3 py-2 rounded-xl border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white text-xs font-semibold"
+                              className="px-3 py-2 rounded-xl border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white text-xs font-semibold cursor-pointer"
                             >
                               Decline
                             </button>

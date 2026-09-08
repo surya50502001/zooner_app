@@ -600,16 +600,20 @@ export async function getIncomingRequests(shopId: string): Promise<LiveRequestSu
   }
 }
 
-export async function respondToLiveRequest(requestId: string, shopId: string): Promise<Record<string, unknown> | null> {
+export async function respondToLiveRequest(requestId: string, shopId: string): Promise<ApiResponse<Record<string, unknown>>> {
   try {
     const response = await authenticatedFetch(`${API_BASE_URL}/Requests/${requestId}/respond`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ shopId })
     });
-    return responseData<Record<string, unknown>>(response);
-  } catch {
-    return null;
+    return await parseApiResponse<Record<string, unknown>>(response, 'Failed to respond to request');
+  } catch (err: any) {
+    return {
+      success: false,
+      message: err?.message || 'Network error responding to request',
+      data: null as any
+    };
   }
 }
 
