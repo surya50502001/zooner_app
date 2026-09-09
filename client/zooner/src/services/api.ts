@@ -535,11 +535,19 @@ export async function createShop(shopData: {
   latitude: number;
   longitude: number;
   categoryIds: string[];
+  description?: string;
+  imageUrl?: string;
 }): Promise<ShopProfileDto | null> {
   try {
     const isGuid = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
     const sanitizedData = {
-      ...shopData,
+      name: shopData.name.trim(),
+      description: (shopData.description || '').trim(),
+      phone: shopData.phone.trim(),
+      address: shopData.address.trim(),
+      latitude: shopData.latitude,
+      longitude: shopData.longitude,
+      imageUrl: shopData.imageUrl || null,
       categoryIds: (shopData.categoryIds || []).filter(isGuid)
     };
 
@@ -548,19 +556,21 @@ export async function createShop(shopData: {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(sanitizedData)
     });
-    if (res.ok) {
-      const result = await responseData<ShopProfileDto>(res);
-      if (result) {
-        await syncUserProfile();
-        return result;
-      }
+
+    const parsed = await parseApiResponse<ShopProfileDto>(res, 'Failed to create storefront');
+    if (parsed.success && parsed.data) {
+      await syncUserProfile();
+      return parsed.data;
     }
-    const errBody = await res.json().catch(() => null);
-    console.error('Create shop error response:', errBody);
+
+    if (!parsed.success) {
+      throw new Error(parsed.message || 'Server rejected store creation request.');
+    }
+
     return null;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to create shop:', error);
-    return null;
+    throw error;
   }
 }
 

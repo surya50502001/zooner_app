@@ -107,6 +107,12 @@ public class ShopService : IShopService
             });
         }
 
+        if (owner.Role == UserRoles.Customer)
+        {
+            owner.Role = UserRoles.Vendor;
+            owner.UpdatedAtUtc = DateTime.UtcNow;
+        }
+
         _context.Shops.Add(shop);
         await _context.SaveChangesAsync();
 

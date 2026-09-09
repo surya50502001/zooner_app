@@ -523,17 +523,25 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
       });
       if (shop) {
         const shops = await getMyShops();
-        setUserShops(shops);
-        if (shops.length > 0) handleSelectShop(shops[0]);
-        showToast('Store created successfully! Welcome to Merchant OS.', false);
+        setUserShops(shops.length > 0 ? shops : [shop]);
+        handleSelectShop(shops.length > 0 ? shops[0] : shop);
+        showToast('Storefront registered and Merchant OS activated!', false);
       } else {
-        setSetupError('Failed to create store. Please check your connection.');
+        const shops = await getMyShops();
+        if (shops.length > 0) {
+          setUserShops(shops);
+          handleSelectShop(shops[0]);
+          showToast('Welcome to Merchant OS!', false);
+        } else {
+          setSetupError('Unable to complete storefront setup. Please try again.');
+        }
       }
     } catch (err: any) {
       setSetupError(err?.message || 'Error creating store.');
     } finally {
       setIsCreatingStore(false);
     }
+
   };
 
   // Sign out from Merchant OS

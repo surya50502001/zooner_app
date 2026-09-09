@@ -23,9 +23,9 @@ public class ShopsController : ControllerBase
     }
 
     /// <summary>
-    /// Register a new shop (Requires Vendor capability or Admin)
+    /// Register a new shop (Requires authenticated user)
     /// </summary>
-    [Authorize(Policy = "VendorPolicy")]
+    [Authorize]
     [HttpPost]
     [ProducesResponseType(typeof(ApiResponse<ShopDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<ShopDto>), StatusCodes.Status400BadRequest)]
