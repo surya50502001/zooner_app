@@ -248,9 +248,14 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
     if (success) {
       showToast(`Store ${status.toLowerCase()} successfully.`);
       setAllShops(prev =>
-        prev.map(s => (s.id === shopId ? { ...s, verificationStatus: status } : s))
+        prev.map(s => (s.id === shopId ? { ...s, verificationStatus: status, isActive: status === 'Approved' ? true : s.isActive } : s))
       );
       setPendingShops(prev => prev.filter(s => s.id !== shopId));
+      try {
+        const fresh = await getAdminShops();
+        setAllShops(fresh);
+        setPendingShops(fresh.filter(s => s.verificationStatus === 'Pending'));
+      } catch {}
     } else {
       showToast(`Failed to update store verification status.`);
     }

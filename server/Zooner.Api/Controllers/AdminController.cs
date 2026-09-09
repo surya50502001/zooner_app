@@ -166,7 +166,8 @@ public class AdminController : ControllerBase
 
     private Guid GetCurrentUserId()
     {
-        var claim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
-        return Guid.Parse(claim!);
+        var claim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub") ?? User.FindFirstValue(ClaimTypes.Name);
+        if (Guid.TryParse(claim, out var id)) return id;
+        return Guid.Empty;
     }
 }

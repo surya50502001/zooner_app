@@ -196,12 +196,22 @@ public class AdminService : IAdminService
         if (shop == null) return ApiResponse.Fail("Shop not found.");
 
         shop.VerificationStatus = request.Status;
+        if (request.Status == ShopVerificationStatus.Approved)
+        {
+            shop.IsActive = true;
+            var owner = await _context.Users.FindAsync(shop.OwnerId);
+            if (owner != null && owner.Role != UserRoles.Admin)
+            {
+                owner.Role = UserRoles.Vendor;
+                owner.UpdatedAtUtc = DateTime.UtcNow;
+            }
+        }
         shop.UpdatedAtUtc = DateTime.UtcNow;
 
         _context.AdminActions.Add(new AdminAction
         {
             Id = Guid.NewGuid(),
-            AdminUserId = adminId,
+            AdminUserId = adminId != Guid.Empty ? adminId : null,
             Action = "VerifyShop",
             TargetEntity = "Shop",
             TargetId = shopId.ToString(),

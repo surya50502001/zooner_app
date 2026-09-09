@@ -1148,6 +1148,15 @@ export async function verifyShop(shopId: string, status: 'Approved' | 'Rejected'
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status, reason })
     });
+    if (!res.ok) {
+      const numStatus = status === 'Approved' ? 1 : 2;
+      const fallbackRes = await authenticatedFetch(`${API_BASE_URL}/Admin/shops/${shopId}/verify`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: numStatus, reason })
+      });
+      return fallbackRes.ok;
+    }
     return res.ok;
   } catch (err) {
     console.error('verifyShop error:', err);

@@ -679,4 +679,66 @@ public class ProductionReadinessTests
         Assert.Equal(4, validUpdate.Data.AvailableQuantity);
         Assert.Equal(120m, validUpdate.Data.Price);
     }
+
+    [Fact]
+    public async Task Admin_VerifyShop_Approves_And_Activates_Store()
+    {
+        using var context = TestDbContextFactory.Create(nameof(Admin_VerifyShop_Approves_And_Activates_Store));
+        var adminService = new AdminService(context);
+
+        var adminUser = new User
+        {
+            Id = Guid.NewGuid(),
+            FullName = "Admin User",
+            Email = "admin@zooner.app",
+            PasswordHash = "h",
+            Role = "Admin"
+        };
+        var ownerUser = new User
+        {
+            Id = Guid.NewGuid(),
+            FullName = "Store Owner",
+            Email = "owner@store.com",
+            PasswordHash = "h",
+            Role = "Customer"
+        };
+        var pendingShop = new Shop
+        {
+            Id = Guid.NewGuid(),
+            OwnerId = ownerUser.Id,
+            Name = "New Electronics Store",
+            Phone = "9876543210",
+            Address = "100 Main St",
+            VerificationStatus = ShopVerificationStatus.Pending,
+            IsActive = false
+        };
+
+        context.Users.AddRange(adminUser, ownerUser);
+        context.Shops.Add(pendingShop);
+        await context.SaveChangesAsync();
+
+        var res = await adminService.VerifyShopAsync(adminUser.Id, pendingShop.Id, new VerifyShopRequest
+        {
+            Status = ShopVerificationStatus.Approved
+        });
+
+        Assert.True(res.Success);
+
+        var updatedShop = await context.Shops.FindAsync(pendingShop.Id);
+        Assert.NotNull(updatedShop);
+        Assert.Equal(ShopVerificationStatus.Approved, updatedShop.VerificationStatus);
+        Assert.True(updatedShop.IsActive);
+
+        var updatedOwner = await context.Users.FindAsync(ownerUser.Id);
+        Assert.NotNull(updatedOwner);
+        Assert.Equal("Vendor", updatedOwner.Role);
+
+        var notification = await context.Notifications.FirstOrDefaultAsync(n => n.UserId == ownerUser.Id);
+        Assert.NotNull(notification);
+        Assert.Contains("Approved", notification.Message);
+
+        var action = await context.AdminActions.FirstOrDefaultAsync(a => a.TargetId == pendingShop.Id.ToString());
+        Assert.NotNull(action);
+        Assert.Equal("VerifyShop", action.Action);
+    }
 }
