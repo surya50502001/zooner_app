@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, CheckCircle2, Eye, EyeOff, Loader2, Lock, Mail, Phone, Store, User as UserIcon } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Eye, EyeOff, Loader2, Lock, Mail, Phone, User as UserIcon } from 'lucide-react';
 import { loginUser, registerUser, syncUserProfile, googleLogin } from '../services/api';
 
 interface SignInModalProps {
@@ -20,9 +20,6 @@ export const SignInModal: React.FC<SignInModalProps> = ({
   initialTab = 'signin',
 }) => {
   const [activeTab, setActiveTab] = useState<'signin' | 'register'>(initialTab);
-  const [selectedRole, setSelectedRole] = useState<'Customer' | 'Vendor'>(
-    initialRole === 'V' ? 'Vendor' : 'Customer'
-  );
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -142,7 +139,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
 
       if (authRes.success && authRes.data) {
         const profile = await syncUserProfile();
-        const isVendor = profile?.isVendor || authRes.data.user.role === 'Vendor' || authRes.data.user.role === 'ShopOwner' || selectedRole === 'Vendor';
+        const isVendor = profile?.isVendor || authRes.data.user.role === 'Vendor' || authRes.data.user.role === 'ShopOwner';
         const finalRole = isVendor ? 'Merchant' : 'Customer';
         setSignedInRole(finalRole);
         setSignedInEmail(authRes.data.user.email || cleanEmail);
@@ -188,12 +185,12 @@ export const SignInModal: React.FC<SignInModalProps> = ({
         email: cleanEmail,
         password,
         phoneNumber: phone.trim() ? `+91 ${phone.replace(/[^0-9]/g, '')}` : undefined,
-        role: selectedRole === 'Vendor' ? 'ShopOwner' : 'Customer',
+        role: initialRole === 'V' ? 'ShopOwner' : 'Customer',
       });
 
       if (authRes.success && authRes.data) {
         const profile = await syncUserProfile();
-        const isVendor = profile?.isVendor || selectedRole === 'Vendor';
+        const isVendor = profile?.isVendor || initialRole === 'V';
         const finalRole = isVendor ? 'Merchant' : 'Customer';
         setSignedInRole(finalRole);
         setSignedInEmail(authRes.data.user.email || cleanEmail);
@@ -219,15 +216,15 @@ export const SignInModal: React.FC<SignInModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
       <div 
         className="absolute inset-0"
         onClick={onClose}
       />
 
-      <div className="relative w-full max-w-[420px] bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-gray-100 text-gray-900 z-10">
+      <div className="relative w-full max-w-[400px] bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-gray-100 text-gray-900 z-10">
         {/* Top Header Bar */}
-        <div className="relative flex items-center justify-center mb-6">
+        <div className="relative flex items-center justify-center mb-5">
           <button 
             onClick={onClose}
             type="button"
@@ -237,20 +234,20 @@ export const SignInModal: React.FC<SignInModalProps> = ({
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div className="font-bold text-2xl tracking-tight text-gray-950 select-none">
-            zooner<span className="text-[#00A859]">.</span>
+            zooner<span className="text-[#7C5CFF]">.</span>
           </div>
         </div>
 
         {isSuccess ? (
           <div className="py-8 text-center space-y-3">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-50 text-[#00A859] border border-green-200">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-[#20D99A] border border-emerald-200">
               <CheckCircle2 className="h-8 w-8" />
             </div>
             <h4 className="text-xl font-bold text-gray-900 font-['Inter']">
               {activeTab === 'signin' ? 'Welcome back!' : 'Account created successfully!'}
             </h4>
             <p className="text-xs text-gray-500 font-medium">
-              Signed in as <span className="text-[#00A859] font-bold">{signedInRole}</span>
+              Signed in as <span className="text-[#20D99A] font-bold">{signedInRole}</span>
             </p>
             {signedInEmail && (
               <p className="text-xs text-gray-400 font-mono">
@@ -259,39 +256,11 @@ export const SignInModal: React.FC<SignInModalProps> = ({
             )}
           </div>
         ) : activeTab === 'signin' ? (
-          /* ── Screen 7: Sign In ── */
+          /* ── Screen: Customer Sign In ── */
           <div>
-            <div className="text-center mb-4">
-              <h3 className="text-2xl font-bold text-gray-950 tracking-tight">Welcome back</h3>
-              <p className="text-xs text-gray-500 mt-1">Sign in to continue to Zooner.</p>
-            </div>
-
-            {/* Account Type Selector (Shopper vs Store Owner) */}
-            <div className="grid grid-cols-2 p-1 bg-gray-100 rounded-2xl mb-5 text-xs font-semibold">
-              <button
-                type="button"
-                onClick={() => setSelectedRole('Customer')}
-                className={`py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                  selectedRole === 'Customer'
-                    ? 'bg-white text-gray-950 shadow-xs'
-                    : 'text-gray-500 hover:text-gray-900'
-                }`}
-              >
-                <UserIcon className="w-3.5 h-3.5" />
-                <span>Shopper</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedRole('Vendor')}
-                className={`py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                  selectedRole === 'Vendor'
-                    ? 'bg-white text-gray-950 shadow-xs'
-                    : 'text-gray-500 hover:text-gray-900'
-                }`}
-              >
-                <Store className="w-3.5 h-3.5" />
-                <span>Store Owner</span>
-              </button>
+            <div className="text-center mb-5">
+              <h3 className="text-xl font-bold text-gray-950 tracking-tight">Sign in to Zooner</h3>
+              <p className="text-xs text-gray-500 mt-1">Reserve products and pick up in store today.</p>
             </div>
 
             {authError && (
@@ -300,7 +269,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
               </div>
             )}
 
-            <form onSubmit={handleSignIn} className="space-y-4">
+            <form onSubmit={handleSignIn} className="space-y-3.5">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">
                   Email address
@@ -313,7 +282,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                     placeholder="your@email.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full rounded-xl bg-white border border-gray-200 py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:border-[#00A859] focus:ring-1 focus:ring-[#00A859] outline-hidden transition-all"
+                    className="w-full rounded-xl bg-white border border-gray-200 py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:border-[#7C5CFF] focus:ring-1 focus:ring-[#7C5CFF] outline-hidden transition-all shadow-xs"
                   />
                 </div>
               </div>
@@ -330,7 +299,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                     placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full rounded-xl bg-white border border-gray-200 py-2.5 pl-10 pr-10 text-sm text-gray-900 placeholder-gray-400 focus:border-[#00A859] focus:ring-1 focus:ring-[#00A859] outline-hidden transition-all"
+                    className="w-full rounded-xl bg-white border border-gray-200 py-2.5 pl-10 pr-10 text-sm text-gray-900 placeholder-gray-400 focus:border-[#7C5CFF] focus:ring-1 focus:ring-[#7C5CFF] outline-hidden transition-all shadow-xs"
                   />
                   <button
                     type="button"
@@ -343,8 +312,8 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                 <div className="flex justify-end mt-1.5">
                   <button
                     type="button"
-                    onClick={() => alert('Password reset link sent to your registered email.')}
-                    className="text-xs font-medium text-[#00A859] hover:underline cursor-pointer"
+                    onClick={() => alert('Password reset instructions will be sent to your email.')}
+                    className="text-xs font-medium text-[#7C5CFF] hover:underline cursor-pointer"
                   >
                     Forgot password?
                   </button>
@@ -354,7 +323,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#00A859] hover:bg-[#00924d] py-3 text-sm font-semibold text-white transition-all shadow-xs disabled:opacity-60 cursor-pointer mt-2"
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#7C5CFF] hover:bg-[#6842FF] py-3 text-sm font-semibold text-white transition-all shadow-sm disabled:opacity-60 cursor-pointer mt-2"
               >
                 {isLoading ? (
                   <>
@@ -366,7 +335,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                 )}
               </button>
 
-              <div className="relative my-4">
+              <div className="relative my-3">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-gray-200" />
                 </div>
@@ -396,7 +365,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                 </div>
               )}
 
-              <p className="text-center text-xs text-gray-500 pt-3">
+              <p className="text-center text-xs text-gray-500 pt-2">
                 Don't have an account?{' '}
                 <button
                   type="button"
@@ -404,7 +373,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                     setActiveTab('register');
                     setAuthError('');
                   }}
-                  className="font-semibold text-[#00A859] hover:underline cursor-pointer"
+                  className="font-semibold text-[#7C5CFF] hover:underline cursor-pointer"
                 >
                   Create one
                 </button>
@@ -419,7 +388,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                       onClose();
                       onSwitchToRetailer();
                     }}
-                    className="text-[#00A859] font-semibold hover:underline cursor-pointer"
+                    className="text-[#7C5CFF] font-semibold hover:underline cursor-pointer"
                   >
                     Register your store →
                   </button>
@@ -428,42 +397,14 @@ export const SignInModal: React.FC<SignInModalProps> = ({
             </form>
           </div>
         ) : (
-          /* ── Screen 8: Create Account ── */
+          /* ── Screen: Create Account ── */
           <div>
             <div className="text-center mb-4">
-              <h3 className="text-2xl font-bold text-gray-950 tracking-tight">Create your account</h3>
-              <p className="text-xs text-gray-500 mt-1">Join Zooner for a better local shopping experience.</p>
+              <h3 className="text-xl font-bold text-gray-950 tracking-tight">Create your account</h3>
+              <p className="text-xs text-gray-500 mt-1">Reserve products and discover local stores.</p>
             </div>
 
-            {/* Account Type Selector (Shopper vs Store Owner) */}
-            <div className="grid grid-cols-2 p-1 bg-gray-100 rounded-2xl mb-4 text-xs font-semibold">
-              <button
-                type="button"
-                onClick={() => setSelectedRole('Customer')}
-                className={`py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                  selectedRole === 'Customer'
-                    ? 'bg-white text-gray-950 shadow-xs'
-                    : 'text-gray-500 hover:text-gray-900'
-                }`}
-              >
-                <UserIcon className="w-3.5 h-3.5" />
-                <span>Shopper</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedRole('Vendor')}
-                className={`py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                  selectedRole === 'Vendor'
-                    ? 'bg-white text-gray-950 shadow-xs'
-                    : 'text-gray-500 hover:text-gray-900'
-                }`}
-              >
-                <Store className="w-3.5 h-3.5" />
-                <span>Store Owner</span>
-              </button>
-            </div>
-
-            <form onSubmit={handleRegister} className="space-y-3.5">
+            <form onSubmit={handleRegister} className="space-y-3">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">
                   Full name
@@ -476,7 +417,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                     placeholder="Alex Morgan"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="w-full rounded-xl bg-white border border-gray-200 py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:border-[#00A859] focus:ring-1 focus:ring-[#00A859] outline-hidden transition-all"
+                    className="w-full rounded-xl bg-white border border-gray-200 py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:border-[#7C5CFF] focus:ring-1 focus:ring-[#7C5CFF] outline-hidden transition-all shadow-xs"
                   />
                 </div>
               </div>
@@ -496,8 +437,8 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                       setEmail(e.target.value);
                       if (authError) setAuthError('');
                     }}
-                    className={`w-full rounded-xl bg-white border py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 outline-hidden transition-all ${
-                      authError ? 'border-red-400 focus:border-red-500 focus:ring-1 focus:ring-red-400 bg-red-50/10' : 'border-gray-200 focus:border-[#00A859] focus:ring-1 focus:ring-[#00A859]'
+                    className={`w-full rounded-xl bg-white border py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 outline-hidden transition-all shadow-xs ${
+                      authError ? 'border-red-400 focus:border-red-500 focus:ring-1 focus:ring-red-400 bg-red-50/10' : 'border-gray-200 focus:border-[#7C5CFF] focus:ring-1 focus:ring-[#7C5CFF]'
                     }`}
                   />
                 </div>
@@ -519,7 +460,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                     placeholder="9876543210"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="w-full rounded-xl bg-white border border-gray-200 py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:border-[#00A859] focus:ring-1 focus:ring-[#00A859] outline-hidden transition-all"
+                    className="w-full rounded-xl bg-white border border-gray-200 py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:border-[#7C5CFF] focus:ring-1 focus:ring-[#7C5CFF] outline-hidden transition-all shadow-xs"
                   />
                 </div>
               </div>
@@ -536,7 +477,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full rounded-xl bg-white border border-gray-200 py-2.5 pl-10 pr-10 text-sm text-gray-900 placeholder-gray-400 focus:border-[#00A859] focus:ring-1 focus:ring-[#00A859] outline-hidden transition-all"
+                    className="w-full rounded-xl bg-white border border-gray-200 py-2.5 pl-10 pr-10 text-sm text-gray-900 placeholder-gray-400 focus:border-[#7C5CFF] focus:ring-1 focus:ring-[#7C5CFF] outline-hidden transition-all shadow-xs"
                   />
                   <button
                     type="button"
@@ -551,7 +492,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#00A859] hover:bg-[#00924d] py-3 text-sm font-semibold text-white transition-all shadow-xs disabled:opacity-60 cursor-pointer mt-1"
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#7C5CFF] hover:bg-[#6842FF] py-3 text-sm font-semibold text-white transition-all shadow-sm disabled:opacity-60 cursor-pointer mt-1"
               >
                 {isLoading ? (
                   <>
@@ -563,7 +504,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                 )}
               </button>
 
-              <div className="relative my-3">
+              <div className="relative my-2.5">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-gray-200" />
                 </div>
@@ -593,7 +534,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                 </div>
               )}
 
-              <p className="text-center text-xs text-gray-500 pt-2">
+              <p className="text-center text-xs text-gray-500 pt-1.5">
                 Already have an account?{' '}
                 <button
                   type="button"
@@ -601,7 +542,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                     setActiveTab('signin');
                     setAuthError('');
                   }}
-                  className="font-semibold text-[#00A859] hover:underline cursor-pointer"
+                  className="font-semibold text-[#7C5CFF] hover:underline cursor-pointer"
                 >
                   Sign In
                 </button>

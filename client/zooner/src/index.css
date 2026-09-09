@@ -6,7 +6,8 @@
   :root {
     --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --font-heading: 'Inter', 'Outfit', sans-serif;
-    --brand-green: #00A859;
+    --brand-purple: #7C5CFF;
+    --brand-green: #20D99A;
   }
 
   body {

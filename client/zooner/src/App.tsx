@@ -74,10 +74,10 @@ export function AppContent() {
         setIsSignInModalOpen(true);
       } else if (hash.includes('vendor') || hash.includes('merchant') || path.includes('/vendor') || path.includes('/merchant')) {
         setCurrentRoute('vendor');
-      } else if (hash.includes('app') || hash.includes('customer') || path.includes('/app')) {
-        setCurrentRoute('customer');
+      } else if (hash.includes('marketing') || path.includes('/marketing')) {
+        setCurrentRoute('marketing');
       } else {
-        setCurrentRoute(Capacitor.isNativePlatform() ? 'customer' : 'marketing');
+        setCurrentRoute('customer');
       }
     };
     window.addEventListener('hashchange', handleHashChange);
@@ -90,10 +90,10 @@ export function AppContent() {
       window.location.hash = '#admin';
     } else if (route === 'vendor') {
       window.location.hash = '#merchant';
-    } else if (route === 'customer') {
-      window.location.hash = '#app';
+    } else if (route === 'marketing') {
+      window.location.hash = '#marketing';
     } else {
-      window.location.hash = '#';
+      window.location.hash = '#app';
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -145,7 +145,7 @@ export function AppContent() {
   // ── EXPERIENCE 1B: CUSTOMER APPLICATION (Discovery & Shopping) ──
   if (Capacitor.isNativePlatform() || currentRoute === 'customer') {
     return (
-      <div className="min-h-screen bg-[#F0F2F5] text-gray-950 flex flex-col items-center justify-start selection:bg-[#00A859] selection:text-white sm:py-0">
+      <div className="min-h-screen bg-[#F0F2F5] text-gray-950 flex flex-col items-center justify-start selection:bg-[#7C5CFF] selection:text-white sm:py-0">
         <div className="w-full max-w-[440px] min-h-screen bg-white sm:shadow-2xl sm:border-x sm:border-gray-100 flex flex-col relative">
           <CustomerAppPage
             currentLocation={currentLocation}

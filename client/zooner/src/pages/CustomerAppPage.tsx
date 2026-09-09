@@ -29,6 +29,7 @@ import {
   fetchShops, 
   searchProducts, 
   reserveInventoryHold,
+  releaseInventoryHold,
   fetchMyActiveHolds,
   syncUserProfile,
   createLiveRequest,
@@ -51,6 +52,8 @@ type TabType = 'explore' | 'live-ask' | 'holds' | 'account';
 interface ActiveHold {
   id: string;
   holdId: string;
+  storeId?: string;
+  storeInventoryId?: string;
   productName: string;
   storeName: string;
   storeAddress: string;
@@ -253,6 +256,13 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
     return null;
   });
 
+  // Pending Hold intent for guest reservation
+  const [pendingHold, setPendingHold] = useState<{
+    prod: ProductSearchResult;
+    storeInventory?: StoreInventoryItem;
+  } | null>(null);
+  const [isReservingHold, setIsReservingHold] = useState(false);
+
   // User Profile
   const [userProfile, setUserProfile] = useState<{
     id?: string;
@@ -383,6 +393,8 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
           const mapped: ActiveHold = {
             id: first.holdId,
             holdId: `#${first.holdCode}`,
+            storeId: first.storeId,
+            storeInventoryId: first.storeInventoryId,
             productName: first.productName,
             storeName: first.storeName,
             storeAddress: first.storeAddress,
@@ -407,7 +419,12 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
     if (!activeHold || activeHold.totalSeconds <= 0) return;
     const interval = setInterval(() => {
       setActiveHold(prev => {
-        if (!prev || prev.totalSeconds <= 0) return prev;
+        if (!prev) return null;
+        if (prev.totalSeconds <= 1) {
+          const expired: ActiveHold = { ...prev, totalSeconds: 0, status: 'expired' };
+          localStorage.setItem('zooner_active_primary_hold', JSON.stringify(expired));
+          return expired;
+        }
         const updated = { ...prev, totalSeconds: prev.totalSeconds - 1 };
         localStorage.setItem('zooner_active_primary_hold', JSON.stringify(updated));
         return updated;
@@ -415,30 +432,6 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
     }, 1000);
     return () => clearInterval(interval);
   }, [activeHold]);
-
-  // Profile Sync
-  useEffect(() => {
-    const handleStorage = () => {
-      const saved = localStorage.getItem('zooner_user_profile');
-      if (saved) {
-        try {
-          setUserProfile(JSON.parse(saved));
-          return;
-        } catch {}
-      }
-      setUserProfile(null);
-    };
-
-    const token = localStorage.getItem('zooner_token');
-    if (token) {
-      syncUserProfile().then((p: any) => {
-        if (p) setUserProfile(p);
-      }).catch(() => {});
-    }
-
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, []);
 
   const toggleBookmark = (id: string) => {
     setBookmarkedIds(prev => ({ ...prev, [id]: !prev[id] }));
@@ -510,40 +503,84 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
     }
   };
 
-  // Real hold reservation (Task 5 & 6)
+  // Real backend hold reservation (Zero Fake Fallbacks)
   const handleReserveProduct = async (prod: ProductSearchResult, storeInventory?: StoreInventoryItem) => {
     const store = storeInventory || (prod.carryingStores && prod.carryingStores.length > 0 ? prod.carryingStores[0] : null);
-    if (!store) {
+    if (!store || !store.storeId || !store.inventoryId) {
       alert('This product does not currently have verified store inventory nearby.');
       return;
     }
 
-    try {
-      if (store.inventoryId && store.storeId) {
-        await reserveInventoryHold(store.storeId, store.inventoryId, 1);
-      }
-    } catch {
-      // Fallback local simulation if offline
+    const token = localStorage.getItem('zooner_token');
+    if (!token) {
+      setPendingHold({ prod, storeInventory: store });
+      onOpenSignIn('C');
+      return;
     }
 
-    const newHold: ActiveHold = {
-      id: `hold-${Date.now()}`,
-      holdId: `#ZH${Math.floor(1000 + Math.random() * 9000)}`,
-      productName: prod.name,
-      storeName: store.storeName,
-      storeAddress: store.storeAddress || 'Local Area, Coimbatore',
-      storePhone: store.storePhone || '+91 98422 12345',
-      price: store.price || prod.minPrice || 0,
-      status: 'active',
-      reservedUntil: 'Today, ' + new Date(Date.now() + 30 * 60 * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      totalSeconds: 30 * 60,
-      qrCode: `zooner:hold:${Date.now()}:${prod.name}`
-    };
+    setIsReservingHold(true);
+    try {
+      const res = await reserveInventoryHold(store.storeId, store.inventoryId, 1);
+      if (res.success && res.hold) {
+        const expiresTime = new Date(res.hold.expiresAtUtc).getTime();
+        const remainingSec = Math.max(0, Math.floor((expiresTime - Date.now()) / 1000));
+        const newHold: ActiveHold = {
+          id: res.hold.holdId,
+          holdId: `#${res.hold.holdCode}`,
+          storeId: res.hold.storeId || store.storeId,
+          storeInventoryId: res.hold.storeInventoryId || store.inventoryId,
+          productName: res.hold.productName,
+          storeName: res.hold.storeName,
+          storeAddress: res.hold.storeAddress,
+          storePhone: res.hold.storePhone,
+          price: res.hold.price,
+          status: 'active',
+          reservedUntil: new Date(res.hold.expiresAtUtc).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          totalSeconds: remainingSec,
+          qrCode: res.hold.qrToken || `zooner:hold:${res.hold.holdId}:${res.hold.holdCode}`
+        };
 
-    setActiveHold(newHold);
-    localStorage.setItem('zooner_active_primary_hold', JSON.stringify(newHold));
-    setSelectedStore(null);
-    setActiveTab('holds');
+        setActiveHold(newHold);
+        localStorage.setItem('zooner_active_primary_hold', JSON.stringify(newHold));
+        setSelectedStore(null);
+        setActiveTab('holds');
+        setPendingHold(null);
+      } else {
+        alert(res.error || 'Failed to reserve hold pass. Please check stock availability and try again.');
+        setPendingHold(null);
+      }
+    } catch (err: any) {
+      console.error('Failed reserving inventory hold:', err);
+      alert(err?.message || 'Unable to connect to server. Please try again.');
+      setPendingHold(null);
+    } finally {
+      setIsReservingHold(false);
+    }
+  };
+
+  // Auto-execute pending hold reservation once customer signs in
+  useEffect(() => {
+    if (!pendingHold) return;
+    const token = localStorage.getItem('zooner_token');
+    if (token) {
+      handleReserveProduct(pendingHold.prod, pendingHold.storeInventory);
+    }
+  }, [userProfile]);
+
+  // Release / Cancel Active Hold
+  const handleCancelHold = async () => {
+    if (!activeHold) return;
+    if (!window.confirm('Are you sure you want to release this 30-minute hold pass?')) return;
+
+    if (activeHold.storeId && activeHold.storeInventoryId && activeHold.id) {
+      try {
+        await releaseInventoryHold(activeHold.storeId, activeHold.storeInventoryId, activeHold.id);
+      } catch (err) {
+        console.error('Error releasing hold pass:', err);
+      }
+    }
+    setActiveHold(null);
+    localStorage.removeItem('zooner_active_primary_hold');
   };
 
   const formatTimer = (totalSec: number) => {
@@ -606,7 +643,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                     className="w-9 h-9 rounded-full bg-white text-gray-800 flex items-center justify-center shadow-md hover:bg-gray-100 transition cursor-pointer"
                     aria-label="Bookmark"
                   >
-                    <Bookmark className={`w-4 h-4 ${bookmarkedIds[selectedStore.id] ? 'fill-[#00A859] text-[#00A859]' : ''}`} />
+                    <Bookmark className={`w-4 h-4 ${bookmarkedIds[selectedStore.id] ? 'fill-[#7C5CFF] text-[#7C5CFF]' : ''}`} />
                   </button>
                 </div>
               </div>
@@ -627,7 +664,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                   <div>
                     <h2 className="text-base font-bold text-gray-950 flex items-center gap-1.5">
                       <span>{selectedStore.name}</span>
-                      <CheckCircle2 className="w-4 h-4 text-[#00A859]" />
+                      <CheckCircle2 className="w-4 h-4 text-[#20D99A]" />
                     </h2>
                     <p className="text-xs text-gray-500 mt-0.5 truncate max-w-[220px]">
                       {selectedStore.address || 'Verified physical retailer'}
@@ -637,13 +674,13 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
 
                 <div className="text-right">
                   {selectedStore.distanceKm !== undefined && (
-                    <div className="flex items-center justify-end gap-1 text-xs text-[#00A859] font-medium">
-                      <MapPin className="w-3 h-3 text-[#00A859]" />
+                    <div className="flex items-center justify-end gap-1 text-xs text-[#7C5CFF] font-medium">
+                      <MapPin className="w-3 h-3 text-[#7C5CFF]" />
                       {formatDistance(selectedStore.distanceKm)}
                     </div>
                   )}
                   <div className="text-xs text-gray-500 mt-0.5">
-                    <span className="text-[#00A859] font-semibold">Open Now</span>
+                    <span className="text-[#20D99A] font-semibold">Open Now</span>
                   </div>
                 </div>
               </div>
@@ -656,7 +693,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                 onClick={() => setStoreActiveTab('products')}
                 className={`py-3 px-4 text-xs font-semibold capitalize border-b-2 transition cursor-pointer ${
                   storeActiveTab === 'products'
-                    ? 'border-[#00A859] text-gray-950'
+                    ? 'border-[#7C5CFF] text-gray-950'
                     : 'border-transparent text-gray-400 hover:text-gray-700'
                 }`}
               >
@@ -667,7 +704,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                 onClick={() => setStoreActiveTab('about')}
                 className={`py-3 px-4 text-xs font-semibold capitalize border-b-2 transition cursor-pointer ${
                   storeActiveTab === 'about'
-                    ? 'border-[#00A859] text-gray-950'
+                    ? 'border-[#7C5CFF] text-gray-950'
                     : 'border-transparent text-gray-400 hover:text-gray-700'
                 }`}
               >
@@ -711,7 +748,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                             </div>
                             <span className={`inline-block text-[10px] font-medium px-2 py-0.5 rounded-full mt-1 ${
                               inStock
-                                ? (stock <= 2 ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-[#00A859]')
+                                ? (stock <= 2 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-[#20D99A] font-semibold')
                                 : 'bg-gray-100 text-gray-500'
                             }`}>
                               {inStock ? (stock <= 2 ? `Low stock (${stock} left)` : 'In stock') : 'Out of stock'}
@@ -721,11 +758,18 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
 
                         <button
                           type="button"
-                          disabled={!inStock}
+                          disabled={!inStock || isReservingHold}
                           onClick={() => handleReserveProduct(item, storeInv)}
-                          className="shrink-0 bg-[#00A859] hover:bg-[#00924d] disabled:bg-gray-200 disabled:text-gray-400 text-white px-4 py-2 rounded-xl text-xs font-semibold transition cursor-pointer shadow-xs"
+                          className="shrink-0 bg-[#7C5CFF] hover:bg-[#6842FF] disabled:bg-gray-200 disabled:text-gray-400 text-white px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer shadow-xs flex items-center gap-1.5"
                         >
-                          Reserve
+                          {isReservingHold ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              <span>Reserving...</span>
+                            </>
+                          ) : (
+                            <span>Hold for 30 min</span>
+                          )}
                         </button>
                       </div>
                     );
@@ -741,7 +785,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                         setSelectedStore(null);
                         setActiveTab('live-ask');
                       }}
-                      className="mt-2 text-xs font-semibold text-[#00A859] hover:underline"
+                      className="mt-2 text-xs font-semibold text-[#7C5CFF] hover:underline"
                     >
                       Ask store for a product →
                     </button>
@@ -792,7 +836,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                   placeholder="Search products or stores..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-10 pr-9 text-xs text-gray-900 placeholder-gray-400 focus:border-[#00A859] focus:ring-1 focus:ring-[#00A859] outline-hidden shadow-xs"
+                  className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-10 pr-9 text-xs text-gray-900 placeholder-gray-400 focus:border-[#7C5CFF] focus:ring-1 focus:ring-[#7C5CFF] outline-hidden shadow-xs"
                 />
                 {searchQuery && (
                   <button
@@ -828,7 +872,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
             {/* Product Cards List or Empty State */}
             {isLoadingCatalog ? (
               <div className="py-16 text-center text-gray-400 space-y-2">
-                <Loader2 className="w-7 h-7 mx-auto animate-spin text-[#00A859]" />
+                <Loader2 className="w-7 h-7 mx-auto animate-spin text-[#7C5CFF]" />
                 <p className="text-xs">Searching verified shelf inventory...</p>
               </div>
             ) : dbProducts.length > 0 ? (
@@ -870,7 +914,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                           onClick={() => toggleBookmark(prod.id)}
                           className="absolute top-3 right-3 text-gray-400 hover:text-gray-700 cursor-pointer"
                         >
-                          <Bookmark className={`w-4 h-4 ${bookmarkedIds[prod.id] ? 'fill-[#00A859] text-[#00A859]' : ''}`} />
+                          <Bookmark className={`w-4 h-4 ${bookmarkedIds[prod.id] ? 'fill-[#7C5CFF] text-[#7C5CFF]' : ''}`} />
                         </button>
 
                         <div className="text-sm font-bold text-gray-950 mt-1">
@@ -880,7 +924,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                         <div className="mt-1">
                           <span className={`inline-block text-[10px] font-medium px-2 py-0.5 rounded-full ${
                             inStock
-                              ? (stock <= 2 ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-[#00A859]')
+                              ? (stock <= 2 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-[#20D99A] font-semibold')
                               : 'bg-gray-100 text-gray-500'
                           }`}>
                             {inStock ? (stock <= 2 ? `Low stock (${stock} left)` : 'In stock') : 'Out of stock'}
@@ -917,7 +961,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                                 handleReserveProduct(prod);
                               }
                             }}
-                            className="bg-[#00A859] hover:bg-[#00924d] text-white px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer shadow-xs transition"
+                            className="bg-[#7C5CFF] hover:bg-[#6842FF] text-white px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer shadow-xs transition"
                           >
                             {firstStore ? 'View Store' : 'Reserve'}
                           </button>
@@ -968,7 +1012,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                       setAskProductName(searchQuery);
                       setActiveTab('live-ask');
                     }}
-                    className="mt-2 w-full max-w-xs mx-auto bg-[#00A859] hover:bg-[#00924d] text-white py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer shadow-xs"
+                    className="mt-2 w-full max-w-xs mx-auto bg-[#7C5CFF] hover:bg-[#6842FF] text-white py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer shadow-xs"
                   >
                     Ask nearby stores
                   </button>
@@ -989,7 +1033,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                 className="font-bold text-2xl tracking-tight text-gray-950 select-none cursor-pointer"
                 title="Zooner Home"
               >
-                zooner<span className="text-[#00A859]">.</span>
+                zooner<span className="text-[#7C5CFF]">.</span>
               </div>
 
               <button
@@ -997,7 +1041,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                 onClick={onOpenLocationModal}
                 className="flex items-center gap-1.5 text-xs font-semibold text-gray-800 hover:text-gray-950 transition cursor-pointer"
               >
-                <MapPin className="w-3.5 h-3.5 text-[#00A859]" />
+                <MapPin className="w-3.5 h-3.5 text-[#7C5CFF]" />
                 <span>{currentLocation.city || 'Coimbatore'}</span>
                 <ChevronDown className="w-3 h-3 text-gray-400" />
               </button>
@@ -1021,7 +1065,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                 placeholder="Search for products (e.g., iPhone, milk, shoe...)"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-white border border-gray-200 rounded-xl py-3 pl-10 pr-9 text-xs text-gray-900 placeholder-gray-400 focus:border-[#00A859] focus:ring-1 focus:ring-[#00A859] outline-hidden transition"
+                className="w-full bg-white border border-gray-200 rounded-xl py-3 pl-10 pr-9 text-xs text-gray-900 placeholder-gray-400 focus:border-[#7C5CFF] focus:ring-1 focus:ring-[#7C5CFF] outline-hidden transition"
               />
               {searchQuery && (
                 <button
@@ -1044,7 +1088,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                     onClick={() => setRadiusFilter(rad)}
                     className={`px-4 py-1.5 rounded-full text-xs font-semibold transition cursor-pointer ${
                       radiusFilter === rad
-                        ? 'bg-[#00A859] text-white shadow-xs'
+                        ? 'bg-[#7C5CFF] text-white shadow-xs'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
@@ -1063,7 +1107,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                   <button
                     type="button"
                     onClick={() => setSelectedCategory('all')}
-                    className="text-xs font-semibold text-[#00A859] hover:underline cursor-pointer"
+                    className="text-xs font-semibold text-[#7C5CFF] hover:underline cursor-pointer"
                   >
                     Show all
                   </button>
@@ -1083,7 +1127,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                         }}
                         className={`rounded-2xl p-2.5 flex flex-col items-center justify-center gap-1.5 transition cursor-pointer border ${
                           isSelected
-                            ? 'bg-green-50 border-[#00A859] text-[#00A859] shadow-xs'
+                            ? 'bg-purple-50 border-[#7C5CFF] text-[#7C5CFF] shadow-xs ring-1 ring-[#7C5CFF]'
                             : 'bg-gray-50/80 hover:bg-gray-100 border-transparent hover:border-gray-200 text-gray-700'
                         }`}
                       >
@@ -1114,7 +1158,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
 
               {isLoadingCatalog ? (
                 <div className="py-10 text-center text-gray-400 space-y-2">
-                  <Loader2 className="w-6 h-6 mx-auto animate-spin text-[#00A859]" />
+                  <Loader2 className="w-6 h-6 mx-auto animate-spin text-[#7C5CFF]" />
                   <p className="text-xs">{searchQuery ? 'Searching nearby inventory...' : 'Loading nearby inventory...'}</p>
                 </div>
               ) : dbProducts.length > 0 ? (
@@ -1151,7 +1195,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                           <div className="flex items-center gap-2 mt-1">
                             <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
                               inStock
-                                ? (stock <= 2 ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-[#00A859]')
+                                ? (stock <= 2 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-[#20D99A] font-semibold')
                                 : 'bg-gray-100 text-gray-500'
                             }`}>
                               {inStock ? (stock <= 2 ? `Low stock (${stock} left)` : 'In stock') : 'Out of stock'}
@@ -1183,7 +1227,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                               handleReserveProduct(prod);
                             }
                           }}
-                          className="shrink-0 bg-[#00A859] hover:bg-[#00924d] text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer shadow-xs"
+                          className="shrink-0 bg-[#7C5CFF] hover:bg-[#6842FF] text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer shadow-xs"
                         >
                           View Store
                         </button>
@@ -1212,7 +1256,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                     <button
                       type="button"
                       onClick={() => setActiveTab('live-ask')}
-                      className="text-xs font-semibold px-3.5 py-1.5 bg-[#00A859] text-white rounded-lg hover:bg-[#00924d]"
+                      className="text-xs font-semibold px-3.5 py-1.5 bg-[#7C5CFF] text-white rounded-lg hover:bg-[#6842FF]"
                     >
                       Ask nearby stores
                     </button>
@@ -1248,7 +1292,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                         <div className="min-w-0">
                           <h4 className="text-xs font-bold text-gray-900 truncate flex items-center gap-1">
                             <span>{shop.name}</span>
-                            <CheckCircle2 className="w-3.5 h-3.5 text-[#00A859]" />
+                            <CheckCircle2 className="w-3.5 h-3.5 text-[#20D99A]" />
                           </h4>
                           <p className="text-[11px] text-gray-500 truncate mt-0.5">
                             {shop.address || 'Local Shop'}
@@ -1258,11 +1302,11 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
 
                       <div className="text-right shrink-0">
                         {shop.distanceKm !== undefined && (
-                          <div className="text-xs font-semibold text-[#00A859]">
+                          <div className="text-xs font-semibold text-[#7C5CFF]">
                             {formatDistance(shop.distanceKm)}
                           </div>
                         )}
-                        <span className="text-[10px] text-gray-400">Open</span>
+                        <span className="text-[10px] text-[#20D99A] font-semibold">Open</span>
                       </div>
                     </div>
                   ))}
@@ -1314,7 +1358,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                 className="font-bold text-2xl tracking-tight text-gray-950 select-none cursor-pointer"
                 title="Zooner Home"
               >
-                zooner<span className="text-[#00A859]">.</span>
+                zooner<span className="text-[#7C5CFF]">.</span>
               </div>
 
               <button
@@ -1322,7 +1366,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                 onClick={onOpenLocationModal}
                 className="flex items-center gap-1 text-xs font-semibold text-gray-800 hover:text-gray-950 transition cursor-pointer"
               >
-                <MapPin className="w-3.5 h-3.5 text-[#00A859]" />
+                <MapPin className="w-3.5 h-3.5 text-[#7C5CFF]" />
                 <span>{currentLocation.city || 'Coimbatore'}</span>
                 <ChevronDown className="w-3 h-3 text-gray-400" />
               </button>
@@ -1339,7 +1383,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
             </div>
 
             {broadcastDone && (
-              <div className="p-3.5 rounded-xl bg-green-50 border border-green-200 text-xs font-medium text-[#00A859] flex items-center gap-2">
+              <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-medium text-[#20D99A] flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 shrink-0" />
                 <span>Broadcast dispatched! Verified stores in {askRadius} radius notified.</span>
               </div>
@@ -1366,7 +1410,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                       }
                     }
                   }}
-                  className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-3.5 text-xs text-gray-900 placeholder-gray-400 focus:border-[#00A859] focus:ring-1 focus:ring-[#00A859] outline-hidden shadow-xs"
+                  className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-3.5 text-xs text-gray-900 placeholder-gray-400 focus:border-[#7C5CFF] focus:ring-1 focus:ring-[#7C5CFF] outline-hidden shadow-xs"
                 />
               </div>
 
@@ -1379,7 +1423,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                   placeholder="e.g. 500g, 1 Litre, 256GB, UK 9, Pack of 4"
                   value={askVariant}
                   onChange={(e) => setAskVariant(e.target.value)}
-                  className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-3.5 text-xs text-gray-900 placeholder-gray-400 focus:border-[#00A859] focus:ring-1 focus:ring-[#00A859] outline-hidden shadow-xs"
+                  className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-3.5 text-xs text-gray-900 placeholder-gray-400 focus:border-[#7C5CFF] focus:ring-1 focus:ring-[#7C5CFF] outline-hidden shadow-xs"
                 />
               </div>
 
@@ -1392,7 +1436,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                   {askCategory && (
                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
                       isCategoryUserSelected
-                        ? 'bg-emerald-100 text-emerald-800'
+                        ? 'bg-purple-100 text-purple-800'
                         : 'bg-amber-100 text-amber-800'
                     }`}>
                       {isCategoryUserSelected ? 'Selected by you' : 'Auto-suggested'}
@@ -1413,7 +1457,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                           }}
                           className={`p-2.5 rounded-xl border text-left flex items-center gap-2 transition cursor-pointer ${
                             isSelected
-                              ? 'bg-emerald-50 border-[#00A859] text-gray-950 ring-1 ring-[#00A859] shadow-xs font-semibold'
+                              ? 'bg-purple-50 border-[#7C5CFF] text-gray-950 ring-1 ring-[#7C5CFF] shadow-xs font-semibold'
                               : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300'
                           }`}
                         >
@@ -1443,7 +1487,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                       onClick={() => setAskRadius(r)}
                       className={`flex-1 py-2 rounded-xl text-xs font-semibold transition cursor-pointer ${
                         askRadius === r
-                          ? 'bg-[#00A859] text-white shadow-xs'
+                          ? 'bg-[#7C5CFF] text-white shadow-xs'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
                     >
@@ -1456,7 +1500,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
               <button
                 type="submit"
                 disabled={isBroadcasting}
-                className="w-full bg-[#00A859] hover:bg-[#00924d] text-white py-3.5 rounded-xl font-semibold text-xs flex items-center justify-center gap-2 shadow-xs cursor-pointer transition disabled:opacity-60 mt-2"
+                className="w-full bg-[#7C5CFF] hover:bg-[#6842FF] text-white py-3.5 rounded-xl font-semibold text-xs flex items-center justify-center gap-2 shadow-xs cursor-pointer transition disabled:opacity-60 mt-2"
               >
                 {isBroadcasting ? (
                   <>
@@ -1475,15 +1519,15 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
             {/* Trust Highlights */}
             <div className="space-y-3 pt-2">
               <div className="flex items-center gap-2.5 text-xs text-gray-700 font-medium">
-                <ShieldCheck className="w-4 h-4 text-[#00A859] shrink-0" />
+                <ShieldCheck className="w-4 h-4 text-[#7C5CFF] shrink-0" />
                 <span>We notify verified local stores</span>
               </div>
               <div className="flex items-center gap-2.5 text-xs text-gray-700 font-medium">
-                <Clock className="w-4 h-4 text-[#00A859] shrink-0" />
+                <Clock className="w-4 h-4 text-[#7C5CFF] shrink-0" />
                 <span>You get responses in real-time</span>
               </div>
               <div className="flex items-center gap-2.5 text-xs text-gray-700 font-medium">
-                <Shield className="w-4 h-4 text-[#00A859] shrink-0" />
+                <Shield className="w-4 h-4 text-[#7C5CFF] shrink-0" />
                 <span>No spam. Only relevant stores</span>
               </div>
             </div>
@@ -1508,16 +1552,17 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                     <p className="text-xs text-gray-500 mt-0.5">{activeHold.storeName}</p>
                   </div>
 
-                  <span className="bg-green-100 text-[#00A859] font-bold text-[10px] px-2 py-0.5 rounded-full">
-                    Active
+                  <span className="bg-emerald-50 text-[#20D99A] font-bold text-[10px] px-2.5 py-0.5 rounded-full border border-emerald-200/60 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#20D99A] animate-pulse" />
+                    {activeHold.status === 'expired' || activeHold.totalSeconds <= 0 ? 'Expired' : 'Active Pass'}
                   </span>
                 </div>
 
                 {/* Details row: Hold ID + Reserved until */}
                 <div className="grid grid-cols-2 gap-2 pt-1 border-t border-gray-100">
                   <div>
-                    <div className="text-[11px] text-gray-400">Hold ID</div>
-                    <div className="text-xs font-bold text-gray-900 mt-0.5">{activeHold.holdId}</div>
+                    <div className="text-[11px] text-gray-400">Hold Pass ID</div>
+                    <div className="text-xs font-bold text-gray-900 mt-0.5 font-mono">{activeHold.holdId}</div>
                   </div>
                   <div>
                     <div className="text-[11px] text-gray-400">Reserved until</div>
@@ -1526,38 +1571,48 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                 </div>
 
                 {/* Countdown Timer Box */}
-                <div className="bg-green-50/70 border border-green-100 rounded-xl p-3 text-center">
-                  <div className="text-2xl font-black font-mono text-[#00A859] tracking-wider">
+                <div className="bg-[#7C5CFF]/10 border border-[#7C5CFF]/20 rounded-2xl p-3 text-center">
+                  <div className="text-2xl font-black font-mono text-[#7C5CFF] tracking-wider">
                     {formatTimer(activeHold.totalSeconds)}
                   </div>
-                  <div className="text-[11px] font-medium text-green-700 mt-0.5">
-                    minutes remaining
+                  <div className="text-[11px] font-semibold text-[#7C5CFF] mt-0.5">
+                    {activeHold.totalSeconds > 0 ? 'minutes remaining to pickup' : 'Hold reservation expired'}
                   </div>
                 </div>
 
                 {/* QR Code Section */}
-                <div className="flex flex-col items-center justify-center pt-2">
-                  <div className="p-3 bg-white rounded-2xl border border-gray-200 shadow-xs">
+                <div className="flex flex-col items-center justify-center pt-1">
+                  <div className="p-3.5 bg-white rounded-2xl border border-gray-200 shadow-xs">
                     <MiniQRCode value={activeHold.qrCode} size={140} />
                   </div>
-                  <p className="text-xs text-gray-500 mt-2">Show this code at the store</p>
+                  <p className="text-xs text-gray-500 mt-2 font-medium">Show this QR pass at the store checkout</p>
                 </div>
 
-                {/* Action button */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    const matchedShop = dbShops.find(s => s.name === activeHold.storeName);
-                    if (matchedShop) {
-                      setSelectedStore(matchedShop);
-                    } else {
-                      alert(`Store address: ${activeHold.storeAddress}\nPhone: ${activeHold.storePhone}`);
-                    }
-                  }}
-                  className="w-full border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl py-2.5 text-xs font-semibold transition cursor-pointer text-center"
-                >
-                  View Store Details
-                </button>
+                {/* Action buttons */}
+                <div className="space-y-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const matchedShop = dbShops.find(s => s.name === activeHold.storeName || s.id === activeHold.storeId);
+                      if (matchedShop) {
+                        setSelectedStore(matchedShop);
+                      } else {
+                        alert(`Store address: ${activeHold.storeAddress}\nPhone: ${activeHold.storePhone}`);
+                      }
+                    }}
+                    className="w-full bg-[#7C5CFF] hover:bg-[#6842FF] text-white rounded-xl py-2.5 text-xs font-semibold transition cursor-pointer text-center shadow-xs"
+                  >
+                    View Store & Directions
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleCancelHold}
+                    className="w-full border border-gray-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200 text-gray-500 rounded-xl py-2 text-xs font-semibold transition cursor-pointer text-center"
+                  >
+                    Cancel Hold Pass
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="py-16 text-center text-gray-400 space-y-3">
@@ -1566,7 +1621,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveTab('explore')}
-                  className="bg-[#00A859] text-white px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer"
+                  className="bg-[#7C5CFF] hover:bg-[#6842FF] text-white px-5 py-2.5 rounded-xl text-xs font-semibold cursor-pointer shadow-xs transition"
                 >
                   Browse Products
                 </button>
@@ -1609,8 +1664,8 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                   )}
                   <span className={`inline-block mt-1 font-medium text-[10px] px-2 py-0.5 rounded-full ${
                     userProfile.isVendor || userProfile.role === 'ShopOwner' || userProfile.role === 'Vendor'
-                      ? 'bg-green-50 text-[#00A859]'
-                      : 'bg-purple-50 text-purple-600'
+                      ? 'bg-emerald-50 text-[#20D99A] font-semibold'
+                      : 'bg-purple-50 text-[#7C5CFF] font-semibold'
                   }`}>
                     {userProfile.isVendor || userProfile.role === 'ShopOwner' || userProfile.role === 'Vendor' ? 'Store Owner' : (userProfile.role || 'Shopper')}
                   </span>
@@ -1633,8 +1688,8 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                 </div>
                 <button
                   type="button"
-                  onClick={() => onOpenSignIn()}
-                  className="bg-[#00A859] hover:bg-[#008f4c] text-white font-semibold text-xs px-3.5 py-2 rounded-xl transition cursor-pointer shrink-0 shadow-xs"
+                  onClick={() => onOpenSignIn('C')}
+                  className="bg-[#7C5CFF] hover:bg-[#6842FF] text-white font-semibold text-xs px-3.5 py-2 rounded-xl transition cursor-pointer shrink-0 shadow-xs"
                 >
                   Sign In
                 </button>
@@ -1645,7 +1700,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
             <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-100 overflow-hidden shadow-xs">
               <button
                 type="button"
-                onClick={() => onOpenSignIn()}
+                onClick={() => onOpenSignIn('C')}
                 className="w-full px-4 py-3.5 flex items-center justify-between text-xs text-gray-700 hover:bg-gray-50 transition cursor-pointer"
               >
                 <div className="flex items-center gap-3">
@@ -1713,11 +1768,11 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                   className="w-full px-4 py-3.5 flex items-center justify-between text-xs text-gray-700 hover:bg-gray-50 transition cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
-                    <StoreIcon className="w-4 h-4 text-[#00A859]" />
+                    <StoreIcon className="w-4 h-4 text-[#7C5CFF]" />
                     <span className="font-semibold text-gray-900">Switch to Merchant Dashboard</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="bg-green-100 text-[#00A859] font-bold text-[10px] px-2 py-0.5 rounded-full">
+                    <span className="bg-emerald-50 text-[#20D99A] font-bold text-[10px] px-2 py-0.5 rounded-full border border-emerald-200/60">
                       Store Owner
                     </span>
                     <ChevronRight className="w-4 h-4 text-gray-400" />
@@ -1740,7 +1795,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                     <span className="font-medium">Become a Store Owner</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="bg-green-100 text-[#00A859] font-bold text-[10px] px-2 py-0.5 rounded-full">
+                    <span className="bg-purple-100 text-[#7C5CFF] font-bold text-[10px] px-2 py-0.5 rounded-full">
                       New
                     </span>
                     <ChevronRight className="w-4 h-4 text-gray-400" />
@@ -1792,10 +1847,10 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
             ) : (
               <button
                 type="button"
-                onClick={() => onOpenSignIn()}
-                className="w-full flex items-center justify-center gap-2 text-xs font-semibold text-[#00A859] hover:text-[#008f4c] px-4 py-3 transition cursor-pointer bg-white rounded-2xl border border-gray-100 shadow-xs"
+                onClick={() => onOpenSignIn('C')}
+                className="w-full flex items-center justify-center gap-2 text-xs font-semibold text-[#7C5CFF] hover:text-[#6842FF] px-4 py-3 transition cursor-pointer bg-white rounded-2xl border border-gray-100 shadow-xs"
               >
-                <User className="w-4 h-4 text-[#00A859]" />
+                <User className="w-4 h-4 text-[#7C5CFF]" />
                 <span>Sign In to Your Account</span>
               </button>
             )}
@@ -1816,12 +1871,12 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
           }}
           className={`flex flex-col items-center gap-1 transition cursor-pointer ${
             activeTab === 'explore' && !selectedStore && !isSearching
-              ? 'text-[#00A859]'
+              ? 'text-[#7C5CFF] font-semibold'
               : 'text-gray-400 hover:text-gray-600'
           }`}
         >
           <Compass className="w-5 h-5" />
-          <span className="text-[10px] font-medium">Explore</span>
+          <span className="text-[10px]">Explore</span>
         </button>
 
         <button
@@ -1833,12 +1888,12 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
           }}
           className={`flex flex-col items-center gap-1 transition cursor-pointer ${
             activeTab === 'live-ask'
-              ? 'text-[#00A859]'
+              ? 'text-[#7C5CFF] font-semibold'
               : 'text-gray-400 hover:text-gray-600'
           }`}
         >
           <Radio className="w-5 h-5" />
-          <span className="text-[10px] font-medium">Live Ask</span>
+          <span className="text-[10px]">Live Ask</span>
         </button>
 
         <button
@@ -1850,14 +1905,14 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
           }}
           className={`flex flex-col items-center gap-1 transition cursor-pointer relative ${
             activeTab === 'holds'
-              ? 'text-[#00A859]'
+              ? 'text-[#7C5CFF] font-semibold'
               : 'text-gray-400 hover:text-gray-600'
           }`}
         >
           <Clock className="w-5 h-5" />
-          <span className="text-[10px] font-medium">My Holds</span>
-          {activeHold && (
-            <span className="absolute -top-0.5 right-2 w-2 h-2 rounded-full bg-[#00A859]" />
+          <span className="text-[10px]">My Holds</span>
+          {activeHold && activeHold.totalSeconds > 0 && (
+            <span className="absolute -top-0.5 right-2 w-2 h-2 rounded-full bg-[#20D99A] animate-pulse" />
           )}
         </button>
 
@@ -1870,12 +1925,12 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
           }}
           className={`flex flex-col items-center gap-1 transition cursor-pointer ${
             activeTab === 'account'
-              ? 'text-[#00A859]'
+              ? 'text-[#7C5CFF] font-semibold'
               : 'text-gray-400 hover:text-gray-600'
           }`}
         >
           <User className="w-5 h-5" />
-          <span className="text-[10px] font-medium">Account</span>
+          <span className="text-[10px]">Account</span>
         </button>
       </div>
     </div>
