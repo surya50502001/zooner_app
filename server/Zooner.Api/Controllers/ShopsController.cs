@@ -194,12 +194,23 @@ public class ShopsController : ControllerBase
     public async Task<IActionResult> VerifyOwnerShop(Guid id)
     {
         var userId = GetCurrentUserId();
-        var userEmail = User.FindFirstValue(ClaimTypes.Email) ?? User.FindFirstValue("email") ?? string.Empty;
+        var userEmail = User.FindFirstValue(ClaimTypes.Email)
+                     ?? User.FindFirstValue("email")
+                     ?? User.FindFirstValue("preferred_username")
+                     ?? string.Empty;
+
+        // Check JWT role claim first, then super-admin email list
         var isAdmin = User.IsInRole("Admin") || _adminService.IsSuperAdminEmail(userEmail);
+
+        // Fallback: if email claim is missing, check the database role directly
+        if (!isAdmin && userId != Guid.Empty)
+        {
+            isAdmin = await _adminService.IsAdminUserAsync(userId);
+        }
 
         if (!isAdmin)
         {
-            return Forbid();
+            return StatusCode(403, new { success = false, message = "Verification failed. Check admin privileges." });
         }
 
         var response = await _adminService.VerifyShopAsync(userId, id, new VerifyShopRequest 
@@ -211,7 +222,11 @@ public class ShopsController : ControllerBase
 
     private Guid GetCurrentUserId()
     {
-        var claim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
-        return Guid.Parse(claim!);
+        var claim = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                 ?? User.FindFirstValue("sub")
+                 ?? User.FindFirstValue(ClaimTypes.Name);
+        if (string.IsNullOrEmpty(claim) || !Guid.TryParse(claim, out var id))
+            return Guid.Empty;
+        return id;
     }
 }

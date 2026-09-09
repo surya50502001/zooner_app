@@ -19,4 +19,5 @@ public interface IAdminService
     Task<ApiResponse<List<AdminActionDto>>> GetAdminActionsAsync(int page = 1, int pageSize = 50);
     Task<ApiResponse<List<AuditLogDto>>> GetAuditLogsAsync(int page = 1, int pageSize = 50);
     bool IsSuperAdminEmail(string email);
+    Task<bool> IsAdminUserAsync(Guid userId);
 }

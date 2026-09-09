@@ -24,6 +24,14 @@ public class AdminService : IAdminService
         return superAdmins.Any(a => a.Equals(email.Trim(), StringComparison.OrdinalIgnoreCase));
     }
 
+    public async Task<bool> IsAdminUserAsync(Guid userId)
+    {
+        if (userId == Guid.Empty) return false;
+        var user = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null) return false;
+        return user.Role == UserRoles.Admin || IsSuperAdminEmail(user.Email ?? string.Empty);
+    }
+
     public async Task<ApiResponse<ReportDto>> CreateReportAsync(Guid reporterId, CreateReportRequest request)
     {
         var report = new Report
