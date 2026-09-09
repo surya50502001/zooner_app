@@ -106,38 +106,64 @@ public class AuthService : IAuthService
 
     public async Task<ApiResponse<AuthResponse>> LoginAsync(LoginRequest request, string? ipAddress = null)
     {
-        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
-
-        var user = await _context.Users
-            .FirstOrDefaultAsync(u => u.Email.ToLower() == normalizedEmail);
-
-        if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+        try
         {
-            return ApiResponse<AuthResponse>.Fail("Invalid email or password.");
+            var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.Email.ToLower() == normalizedEmail);
+
+            // Guard: user not found
+            if (user == null)
+            {
+                return ApiResponse<AuthResponse>.Fail("Invalid email or password.");
+            }
+
+            // Guard: Google-only account (no password set)
+            if (string.IsNullOrEmpty(user.PasswordHash))
+            {
+                return ApiResponse<AuthResponse>.Fail("This account uses Google Sign-In. Please sign in with Google instead.");
+            }
+
+            // Guard: wrong password
+            bool passwordValid;
+            try { passwordValid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash); }
+            catch { passwordValid = false; }
+
+            if (!passwordValid)
+            {
+                return ApiResponse<AuthResponse>.Fail("Invalid email or password.");
+            }
+
+            // Auto-promote designated admin emails
+            if (IsDesignatedAdminEmail(normalizedEmail) && user.Role != UserRoles.Admin)
+            {
+                user.Role = UserRoles.Admin;
+                user.UpdatedAtUtc = DateTime.UtcNow;
+                _logger.LogInformation("Promoted designated super-admin account to Admin role: {Email}", normalizedEmail);
+            }
+
+            var accessToken = _tokenService.GenerateAccessToken(user);
+            var refreshToken = _tokenService.GenerateRefreshToken(user.Id, ipAddress);
+            var plainRefreshToken = refreshToken.Token;
+            refreshToken.Token = HashToken(plainRefreshToken);
+
+            _context.RefreshTokens.Add(refreshToken);
+            await _context.SaveChangesAsync();
+
+            return ApiResponse<AuthResponse>.Ok(new AuthResponse
+            {
+                AccessToken = accessToken,
+                RefreshToken = plainRefreshToken,
+                ExpiresInMinutes = _tokenService.GetAccessTokenExpiryMinutes(),
+                User = MapToUserDto(user)
+            }, "Login successful.");
         }
-
-        if (IsDesignatedAdminEmail(normalizedEmail) && user.Role != UserRoles.Admin)
+        catch (Exception ex)
         {
-            user.Role = UserRoles.Admin;
-            user.UpdatedAtUtc = DateTime.UtcNow;
-            _logger.LogInformation("Promoted designated super-admin account to Admin role: {Email}", normalizedEmail);
+            _logger.LogError(ex, "Unexpected error during login for {Email}", request.Email?.Trim());
+            return ApiResponse<AuthResponse>.Fail("An unexpected error occurred. Please try again.");
         }
-
-        var accessToken = _tokenService.GenerateAccessToken(user);
-        var refreshToken = _tokenService.GenerateRefreshToken(user.Id, ipAddress);
-        var plainRefreshToken = refreshToken.Token;
-        refreshToken.Token = HashToken(plainRefreshToken);
-
-        _context.RefreshTokens.Add(refreshToken);
-        await _context.SaveChangesAsync();
-
-        return ApiResponse<AuthResponse>.Ok(new AuthResponse
-        {
-            AccessToken = accessToken,
-            RefreshToken = plainRefreshToken,
-            ExpiresInMinutes = _tokenService.GetAccessTokenExpiryMinutes(),
-            User = MapToUserDto(user)
-        }, "Login successful.");
     }
 
     public async Task<ApiResponse<AuthResponse>> GoogleLoginAsync(GoogleLoginRequest request, string? ipAddress = null)
