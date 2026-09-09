@@ -85,7 +85,7 @@ interface VendorRequestItem extends LiveRequestSummary {
 export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
   onSwitchToCustomer,
   onNavigateToVendorLanding: _onNavigateToVendorLanding,
-  onNavigateToAdmin,
+  onNavigateToAdmin: _onNavigateToAdmin,
   onOpenExperienceSwitcher,
   isMultiRole,
 }) => {

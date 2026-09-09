@@ -213,6 +213,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
   currentLocation,
   onOpenLocationModal,
   onNavigateToHome,
+  onNavigateToAdmin,
   onOpenSignIn,
   onOpenRetailerModal: _onOpenRetailerModal,
   onOpenExperienceSwitcher,

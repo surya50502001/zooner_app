@@ -49,6 +49,25 @@ public class ShopService : IShopService
         var isSuperAdmin = owner.IsAdmin || superAdmins.Any(a => a.Equals(owner.Email.Trim(), StringComparison.OrdinalIgnoreCase));
         var autoApprove = (_configuration?.GetValue<bool>("AutoApproveShops", false) ?? false) || isSuperAdmin;
 
+        // Prevent duplicate store submissions: reuse and update existing pending request
+        var existingPending = await _context.Shops
+            .Include(s => s.ShopCategories).ThenInclude(sc => sc.Category)
+            .Include(s => s.OperatingHours)
+            .FirstOrDefaultAsync(s => s.OwnerId == ownerId && s.VerificationStatus == ShopVerificationStatus.Pending);
+
+        if (existingPending != null)
+        {
+            existingPending.Name = request.Name.Trim();
+            existingPending.Description = request.Description?.Trim() ?? "";
+            existingPending.Phone = request.Phone.Trim();
+            existingPending.Address = request.Address.Trim();
+            existingPending.Latitude = request.Latitude;
+            existingPending.Longitude = request.Longitude;
+            existingPending.UpdatedAtUtc = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            return ApiResponse<ShopDto>.Ok(MapToShopDto(existingPending), "Storefront request is already pending verification. Details updated.");
+        }
+
         var shop = new Shop
         {
             Id = Guid.NewGuid(),
