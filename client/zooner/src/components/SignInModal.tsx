@@ -233,21 +233,21 @@ export const SignInModal: React.FC<SignInModalProps> = ({
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <div className="font-bold text-2xl tracking-tight text-gray-950 select-none">
-            zooner<span className="text-[#7C5CFF]">.</span>
+          <div className="font-bold text-2xl tracking-tight text-gray-950 select-none font-apple">
+            zooner<span className="text-[#007AFF]">.</span>
           </div>
         </div>
 
         {isSuccess ? (
           <div className="py-8 text-center space-y-3">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-[#20D99A] border border-emerald-200">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-[#34C759] border border-emerald-200">
               <CheckCircle2 className="h-8 w-8" />
             </div>
-            <h4 className="text-xl font-bold text-gray-900 font-['Inter']">
+            <h4 className="text-xl font-bold text-gray-900 font-apple">
               {activeTab === 'signin' ? 'Welcome back!' : 'Account created successfully!'}
             </h4>
             <p className="text-xs text-gray-500 font-medium">
-              Signed in as <span className="text-[#20D99A] font-bold">{signedInRole}</span>
+              Signed in as <span className="text-[#34C759] font-bold">{signedInRole}</span>
             </p>
             {signedInEmail && (
               <p className="text-xs text-gray-400 font-mono">
@@ -259,12 +259,12 @@ export const SignInModal: React.FC<SignInModalProps> = ({
           /* ── Screen: Customer Sign In ── */
           <div>
             <div className="text-center mb-5">
-              <h3 className="text-xl font-bold text-gray-950 tracking-tight">Sign in to Zooner</h3>
+              <h3 className="text-xl font-bold text-gray-950 tracking-tight font-apple">Sign in to Zooner</h3>
               <p className="text-xs text-gray-500 mt-1">Reserve products and pick up in store today.</p>
             </div>
 
             {authError && (
-              <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-xs font-medium text-red-600">
+              <div className="mb-4 p-3 rounded-2xl bg-red-50 border border-red-200 text-xs font-medium text-[#FF3B30]">
                 {authError}
               </div>
             )}
@@ -282,7 +282,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                     placeholder="your@email.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full rounded-xl bg-white border border-gray-200 py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:border-[#7C5CFF] focus:ring-1 focus:ring-[#7C5CFF] outline-hidden transition-all shadow-xs"
+                    className="w-full rounded-2xl bg-gray-100/80 border-0 py-3 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:bg-white focus:ring-2 focus:ring-[#007AFF] outline-hidden transition-all"
                   />
                 </div>
               </div>
@@ -299,7 +299,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                     placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full rounded-xl bg-white border border-gray-200 py-2.5 pl-10 pr-10 text-sm text-gray-900 placeholder-gray-400 focus:border-[#7C5CFF] focus:ring-1 focus:ring-[#7C5CFF] outline-hidden transition-all shadow-xs"
+                    className="w-full rounded-2xl bg-gray-100/80 border-0 py-3 pl-10 pr-10 text-sm text-gray-900 placeholder-gray-400 focus:bg-white focus:ring-2 focus:ring-[#007AFF] outline-hidden transition-all"
                   />
                   <button
                     type="button"
@@ -313,7 +313,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                   <button
                     type="button"
                     onClick={() => alert('Password reset instructions will be sent to your email.')}
-                    className="text-xs font-medium text-[#7C5CFF] hover:underline cursor-pointer"
+                    className="text-xs font-medium text-[#007AFF] hover:underline cursor-pointer"
                   >
                     Forgot password?
                   </button>
@@ -323,7 +323,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#7C5CFF] hover:bg-[#6842FF] py-3 text-sm font-semibold text-white transition-all shadow-sm disabled:opacity-60 cursor-pointer mt-2"
+                className="w-full flex items-center justify-center gap-2 rounded-2xl bg-[#007AFF] hover:bg-[#0071E3] active:scale-[0.98] py-3.5 text-sm font-semibold text-white transition-all shadow-sm disabled:opacity-60 cursor-pointer mt-2"
               >
                 {isLoading ? (
                   <>
@@ -349,7 +349,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setAuthError('Google Client ID is not configured. Please set VITE_GOOGLE_CLIENT_ID in your client environment (.env).')}
-                  className="w-full flex items-center justify-center gap-2.5 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all cursor-pointer shadow-xs"
+                  className="w-full flex items-center justify-center gap-2.5 rounded-2xl border border-gray-200 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 active:scale-[0.98] transition-all cursor-pointer"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.15z" />
@@ -373,7 +373,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                     setActiveTab('register');
                     setAuthError('');
                   }}
-                  className="font-semibold text-[#7C5CFF] hover:underline cursor-pointer"
+                  className="font-semibold text-[#007AFF] hover:underline cursor-pointer"
                 >
                   Create one
                 </button>
@@ -388,7 +388,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                       onClose();
                       onSwitchToRetailer();
                     }}
-                    className="text-[#7C5CFF] font-semibold hover:underline cursor-pointer"
+                    className="text-[#007AFF] font-semibold hover:underline cursor-pointer"
                   >
                     Register your store →
                   </button>
@@ -396,11 +396,12 @@ export const SignInModal: React.FC<SignInModalProps> = ({
               )}
             </form>
           </div>
+
         ) : (
           /* ── Screen: Create Account ── */
           <div>
             <div className="text-center mb-4">
-              <h3 className="text-xl font-bold text-gray-950 tracking-tight">Create your account</h3>
+              <h3 className="text-xl font-bold text-gray-950 tracking-tight font-apple">Create your account</h3>
               <p className="text-xs text-gray-500 mt-1">Reserve products and discover local stores.</p>
             </div>
 
@@ -417,7 +418,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                     placeholder="Alex Morgan"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="w-full rounded-xl bg-white border border-gray-200 py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:border-[#7C5CFF] focus:ring-1 focus:ring-[#7C5CFF] outline-hidden transition-all shadow-xs"
+                    className="w-full rounded-2xl bg-gray-100/80 border-0 py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:bg-white focus:ring-2 focus:ring-[#007AFF] outline-hidden transition-all"
                   />
                 </div>
               </div>
@@ -427,7 +428,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                   Email address
                 </label>
                 <div className="relative">
-                  <Mail className={`absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 ${authError ? 'text-red-400' : 'text-gray-400'}`} />
+                  <Mail className={`absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 ${authError ? 'text-[#FF3B30]' : 'text-gray-400'}`} />
                   <input
                     type="email"
                     required
@@ -437,13 +438,13 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                       setEmail(e.target.value);
                       if (authError) setAuthError('');
                     }}
-                    className={`w-full rounded-xl bg-white border py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 outline-hidden transition-all shadow-xs ${
-                      authError ? 'border-red-400 focus:border-red-500 focus:ring-1 focus:ring-red-400 bg-red-50/10' : 'border-gray-200 focus:border-[#7C5CFF] focus:ring-1 focus:ring-[#7C5CFF]'
+                    className={`w-full rounded-2xl bg-gray-100/80 border-0 py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 outline-hidden transition-all focus:bg-white ${
+                      authError ? 'ring-2 ring-[#FF3B30]/60 bg-red-50/10' : 'focus:ring-2 focus:ring-[#007AFF]'
                     }`}
                   />
                 </div>
                 {authError && (
-                  <p className="text-[11px] font-medium text-red-500 mt-1 pl-1">
+                  <p className="text-[11px] font-medium text-[#FF3B30] mt-1 pl-1">
                     {authError}
                   </p>
                 )}
@@ -460,7 +461,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                     placeholder="9876543210"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="w-full rounded-xl bg-white border border-gray-200 py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:border-[#7C5CFF] focus:ring-1 focus:ring-[#7C5CFF] outline-hidden transition-all shadow-xs"
+                    className="w-full rounded-2xl bg-gray-100/80 border-0 py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:bg-white focus:ring-2 focus:ring-[#007AFF] outline-hidden transition-all"
                   />
                 </div>
               </div>
@@ -477,7 +478,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full rounded-xl bg-white border border-gray-200 py-2.5 pl-10 pr-10 text-sm text-gray-900 placeholder-gray-400 focus:border-[#7C5CFF] focus:ring-1 focus:ring-[#7C5CFF] outline-hidden transition-all shadow-xs"
+                    className="w-full rounded-2xl bg-gray-100/80 border-0 py-2.5 pl-10 pr-10 text-sm text-gray-900 placeholder-gray-400 focus:bg-white focus:ring-2 focus:ring-[#007AFF] outline-hidden transition-all"
                   />
                   <button
                     type="button"
@@ -492,7 +493,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#7C5CFF] hover:bg-[#6842FF] py-3 text-sm font-semibold text-white transition-all shadow-sm disabled:opacity-60 cursor-pointer mt-1"
+                className="w-full flex items-center justify-center gap-2 rounded-2xl bg-[#007AFF] hover:bg-[#0071E3] active:scale-[0.98] py-3 text-sm font-semibold text-white transition-all shadow-sm disabled:opacity-60 cursor-pointer mt-1"
               >
                 {isLoading ? (
                   <>
@@ -518,7 +519,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setAuthError('Google Client ID is not configured. Please set VITE_GOOGLE_CLIENT_ID in your client environment (.env).')}
-                  className="w-full flex items-center justify-center gap-2.5 rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all cursor-pointer shadow-xs"
+                  className="w-full flex items-center justify-center gap-2.5 rounded-2xl border border-gray-200 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 active:scale-[0.98] transition-all cursor-pointer"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.15z" />
@@ -542,7 +543,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                     setActiveTab('signin');
                     setAuthError('');
                   }}
-                  className="font-semibold text-[#7C5CFF] hover:underline cursor-pointer"
+                  className="font-semibold text-[#007AFF] hover:underline cursor-pointer"
                 >
                   Sign In
                 </button>
@@ -550,6 +551,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
             </form>
           </div>
         )}
+
       </div>
     </div>
   );

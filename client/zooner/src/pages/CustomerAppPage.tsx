@@ -1803,7 +1803,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
       {/* ══════════════════════════════════════════════════════════════════
           BOTTOM NAVIGATION BAR (EXPLORE, LIVE ASK, HOLDS, [ADMIN], ACCOUNT)
       ══════════════════════════════════════════════════════════════════ */}
-      <div className="fixed bottom-0 left-0 right-0 max-w-[440px] mx-auto bg-white/95 backdrop-blur-md border-t border-gray-100 flex items-center justify-around py-2.5 px-2 z-30">
+      <div className="fixed bottom-0 left-0 right-0 max-w-[440px] mx-auto bg-white/80 backdrop-blur-xl border-t border-gray-200/60 flex items-center justify-around py-2.5 px-2 z-30 shadow-[0_-1px_12px_rgba(0,0,0,0.03)]">
         <button
           type="button"
           onClick={() => {
@@ -1811,9 +1811,9 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
             setIsSearching(false);
             setActiveTab('explore');
           }}
-          className={`flex flex-col items-center gap-1 transition cursor-pointer ${
+          className={`flex flex-col items-center gap-1 transition-all active:scale-[0.94] cursor-pointer ${
             activeTab === 'explore' && !selectedStore && !isSearching
-              ? 'text-[#7C5CFF] font-semibold'
+              ? 'text-[#007AFF] font-semibold'
               : 'text-gray-400 hover:text-gray-600'
           }`}
         >
@@ -1828,9 +1828,9 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
             setIsSearching(false);
             setActiveTab('live-ask');
           }}
-          className={`flex flex-col items-center gap-1 transition cursor-pointer ${
+          className={`flex flex-col items-center gap-1 transition-all active:scale-[0.94] cursor-pointer ${
             activeTab === 'live-ask'
-              ? 'text-[#7C5CFF] font-semibold'
+              ? 'text-[#007AFF] font-semibold'
               : 'text-gray-400 hover:text-gray-600'
           }`}
         >
@@ -1845,16 +1845,16 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
             setIsSearching(false);
             setActiveTab('holds');
           }}
-          className={`flex flex-col items-center gap-1 transition cursor-pointer relative ${
+          className={`flex flex-col items-center gap-1 transition-all active:scale-[0.94] cursor-pointer relative ${
             activeTab === 'holds'
-              ? 'text-[#7C5CFF] font-semibold'
+              ? 'text-[#007AFF] font-semibold'
               : 'text-gray-400 hover:text-gray-600'
           }`}
         >
           <Clock className="w-5 h-5" />
           <span className="text-[10px]">My Holds</span>
           {activeHold && activeHold.totalSeconds > 0 && (
-            <span className="absolute -top-0.5 right-2 w-2 h-2 rounded-full bg-[#20D99A] animate-pulse" />
+            <span className="absolute -top-0.5 right-2 w-2 h-2 rounded-full bg-[#34C759] animate-pulse" />
           )}
         </button>
 
@@ -1863,7 +1863,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
           <button
             type="button"
             onClick={onNavigateToAdmin}
-            className="flex flex-col items-center gap-1 transition cursor-pointer text-indigo-500 hover:text-indigo-600"
+            className="flex flex-col items-center gap-1 transition-all active:scale-[0.94] cursor-pointer text-indigo-500 hover:text-indigo-600"
             title="Admin Panel"
           >
             <Shield className="w-5 h-5" />
@@ -1878,9 +1878,9 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
             setIsSearching(false);
             setActiveTab('account');
           }}
-          className={`flex flex-col items-center gap-1 transition cursor-pointer ${
+          className={`flex flex-col items-center gap-1 transition-all active:scale-[0.94] cursor-pointer ${
             activeTab === 'account'
-              ? 'text-[#7C5CFF] font-semibold'
+              ? 'text-[#007AFF] font-semibold'
               : 'text-gray-400 hover:text-gray-600'
           }`}
         >
@@ -1888,6 +1888,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
           <span className="text-[10px]">Account</span>
         </button>
       </div>
+
     </div>
   );
 };

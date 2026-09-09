@@ -190,12 +190,12 @@ export const ExperienceHeaderPill: React.FC<{
   const getLabel = () => {
     switch (currentExperience) {
       case 'admin':
-        return { label: 'Admin Panel', icon: Shield, color: 'border-indigo-500/40 text-indigo-400 bg-indigo-950/60' };
+        return { label: 'Admin Panel', icon: Shield, color: 'border-indigo-500/30 text-indigo-400 bg-indigo-950/70' };
       case 'vendor':
-        return { label: 'Merchant Portal', icon: Store, color: 'border-emerald-500/40 text-emerald-400 bg-emerald-950/60' };
+        return { label: 'Merchant Portal', icon: Store, color: 'border-emerald-500/30 text-[#34C759] bg-emerald-950/70' };
       case 'customer':
       default:
-        return { label: 'Customer App', icon: ShoppingBag, color: 'border-purple-500/40 text-purple-400 bg-purple-950/60' };
+        return { label: 'Customer App', icon: ShoppingBag, color: 'border-[#007AFF]/30 text-[#007AFF] bg-[#007AFF]/10' };
     }
   };
 
@@ -205,7 +205,7 @@ export const ExperienceHeaderPill: React.FC<{
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold shadow-xs hover:brightness-125 transition cursor-pointer ${color}`}
+      className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-xs font-semibold shadow-xs hover:opacity-90 active:scale-[0.97] transition-all cursor-pointer ${color}`}
       title="Switch Zooner Product Workspace"
     >
       <Icon className="w-3.5 h-3.5" />
@@ -214,3 +214,4 @@ export const ExperienceHeaderPill: React.FC<{
     </button>
   );
 };
+
