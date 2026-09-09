@@ -61,11 +61,14 @@ import {
   type ValidateHoldQrResponseDto
 } from '../services/api';
 import type { StoreInventoryItem, ProductSearchResult, CategoryDto, LiveRequestSummary, ProductVariantDto } from '../types';
+import { ExperienceHeaderPill } from '../components/ExperienceSwitcher';
 
 interface VendorDashboardPageProps {
   onSwitchToCustomer: () => void;
   onNavigateToVendorLanding?: () => void;
   onNavigateToAdmin?: () => void;
+  onOpenExperienceSwitcher?: () => void;
+  isMultiRole?: boolean;
 }
 
 type DashboardTab = 'requests' | 'inventory' | 'holds' | 'analytics' | 'settings';
@@ -83,6 +86,8 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
   onSwitchToCustomer,
   onNavigateToVendorLanding: _onNavigateToVendorLanding,
   onNavigateToAdmin,
+  onOpenExperienceSwitcher,
+  isMultiRole,
 }) => {
   // Authentication & Gate State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => Boolean(localStorage.getItem('zooner_token')));
@@ -1416,15 +1421,10 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
               <span>{isLiveOnline ? 'Online' : 'Go Online'}</span>
             </button>
 
-            {/* Switch to Customer Shopping */}
-            <button
-              onClick={onSwitchToCustomer}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-xs font-bold text-emerald-300 transition-colors cursor-pointer shadow-sm"
-              title="Switch back to Shopping on Zooner"
-            >
-              <Compass className="h-3.5 w-3.5 text-emerald-400" />
-              <span>Switch to Shopping</span>
-            </button>
+            {/* Workspace Switcher for Multi-Role */}
+            {isMultiRole && onOpenExperienceSwitcher && (
+              <ExperienceHeaderPill currentExperience="vendor" onClick={onOpenExperienceSwitcher} />
+            )}
 
             {/* Merchant Sign Out */}
             <button

@@ -40,17 +40,22 @@ import {
   type AdminAuditLogDto
 } from '../services/api';
 import type { CategoryDto } from '../types';
+import { ExperienceHeaderPill } from '../components/ExperienceSwitcher';
 
 interface AdminDashboardProps {
   onSwitchToCustomer: () => void;
   onSwitchToVendor?: () => void;
+  onOpenExperienceSwitcher?: () => void;
+  isMultiRole?: boolean;
 }
 
 type AdminTab = 'verifications' | 'categories' | 'users' | 'settings' | 'audit';
 
 export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
   onSwitchToCustomer,
-  onSwitchToVendor
+  onSwitchToVendor,
+  onOpenExperienceSwitcher,
+  isMultiRole,
 }) => {
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
     try {
@@ -466,24 +471,9 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
         </div>
 
         <div className="flex items-center gap-2.5">
-          <button
-            type="button"
-            onClick={onSwitchToCustomer}
-            className="flex items-center gap-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-xl border border-slate-700 transition cursor-pointer"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Shopper App</span>
-          </button>
-
-          {onSwitchToVendor && (
-            <button
-              type="button"
-              onClick={onSwitchToVendor}
-              className="flex items-center gap-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-xl border border-slate-700 transition cursor-pointer"
-            >
-              <Store className="w-3.5 h-3.5" />
-              <span>Merchant OS</span>
-            </button>
+          {/* Workspace Switcher for Multi-Role */}
+          {isMultiRole && onOpenExperienceSwitcher && (
+            <ExperienceHeaderPill currentExperience="admin" onClick={onOpenExperienceSwitcher} />
           )}
 
           <div className="h-5 w-px bg-slate-800 mx-1" />

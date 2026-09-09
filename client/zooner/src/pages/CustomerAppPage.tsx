@@ -11,9 +11,6 @@ import {
   User, 
   ChevronRight,
   ChevronDown,
-  Store as StoreIcon,
-  ShieldCheck,
-  Shield,
   Share2,
   Settings,
   Bell,
@@ -36,16 +33,19 @@ import {
   ensureCustomerSession,
   type ShopProfileDto 
 } from '../services/api';
+import { ExperienceHeaderPill } from '../components/ExperienceSwitcher';
 import type { LocationArea, ProductSearchResult, StoreInventoryItem, CategoryDto } from '../types';
 
 interface CustomerAppPageProps {
   currentLocation: LocationArea;
   onOpenLocationModal: () => void;
   onNavigateToHome: () => void;
-  onNavigateToVendor: () => void;
+  onNavigateToVendor?: () => void;
   onNavigateToAdmin?: () => void;
   onOpenSignIn: (roleHint?: 'C' | 'V' | 'VC') => void;
   onOpenRetailerModal?: () => void;
+  onOpenExperienceSwitcher?: () => void;
+  isMultiRole?: boolean;
 }
 
 type TabType = 'explore' | 'live-ask' | 'holds' | 'account';
@@ -212,10 +212,10 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
   currentLocation,
   onOpenLocationModal,
   onNavigateToHome,
-  onNavigateToVendor,
-  onNavigateToAdmin,
   onOpenSignIn,
-  onOpenRetailerModal,
+  onOpenRetailerModal: _onOpenRetailerModal,
+  onOpenExperienceSwitcher,
+  isMultiRole,
 }) => {
   // Navigation & Screen States
   const [activeTab, setActiveTab] = useState<TabType>('explore');
@@ -1049,15 +1049,20 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                 zooner<span className="text-[#7C5CFF]">.</span>
               </div>
 
-              <button
-                type="button"
-                onClick={onOpenLocationModal}
-                className="flex items-center gap-1.5 text-xs font-semibold text-gray-800 hover:text-gray-950 transition cursor-pointer"
-              >
-                <MapPin className="w-3.5 h-3.5 text-[#7C5CFF]" />
-                <span>{currentLocation.city || 'Coimbatore'}</span>
-                <ChevronDown className="w-3 h-3 text-gray-400" />
-              </button>
+              <div className="flex items-center gap-2">
+                {isMultiRole && onOpenExperienceSwitcher && (
+                  <ExperienceHeaderPill currentExperience="customer" onClick={onOpenExperienceSwitcher} />
+                )}
+                <button
+                  type="button"
+                  onClick={onOpenLocationModal}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-gray-800 hover:text-gray-950 transition cursor-pointer bg-gray-50 border border-gray-100 rounded-full px-2.5 py-1"
+                >
+                  <MapPin className="w-3.5 h-3.5 text-[#7C5CFF]" />
+                  <span>{currentLocation.city || 'Coimbatore'}</span>
+                  <ChevronDown className="w-3 h-3 text-gray-400" />
+                </button>
+              </div>
             </div>
 
             {/* Headline Section */}
@@ -1374,15 +1379,20 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                 zooner<span className="text-[#7C5CFF]">.</span>
               </div>
 
-              <button
-                type="button"
-                onClick={onOpenLocationModal}
-                className="flex items-center gap-1 text-xs font-semibold text-gray-800 hover:text-gray-950 transition cursor-pointer"
-              >
-                <MapPin className="w-3.5 h-3.5 text-[#7C5CFF]" />
-                <span>{currentLocation.city || 'Coimbatore'}</span>
-                <ChevronDown className="w-3 h-3 text-gray-400" />
-              </button>
+              <div className="flex items-center gap-2">
+                {isMultiRole && onOpenExperienceSwitcher && (
+                  <ExperienceHeaderPill currentExperience="customer" onClick={onOpenExperienceSwitcher} />
+                )}
+                <button
+                  type="button"
+                  onClick={onOpenLocationModal}
+                  className="flex items-center gap-1 text-xs font-semibold text-gray-800 hover:text-gray-950 transition cursor-pointer bg-gray-50 border border-gray-100 rounded-full px-2.5 py-1"
+                >
+                  <MapPin className="w-3.5 h-3.5 text-[#7C5CFF]" />
+                  <span>{currentLocation.city || 'Coimbatore'}</span>
+                  <ChevronDown className="w-3 h-3 text-gray-400" />
+                </button>
+              </div>
             </div>
 
             {/* Headline */}
@@ -1468,14 +1478,14 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                             setAskCategory(cat.id);
                             setIsCategoryUserSelected(true);
                           }}
-                          className={`p-2.5 rounded-xl border text-left flex items-center gap-2 transition cursor-pointer ${
+                          className={`p-2.5 rounded-xl text-left border transition flex items-center gap-2 cursor-pointer ${
                             isSelected
-                              ? 'bg-purple-50 border-[#7C5CFF] text-gray-950 ring-1 ring-[#7C5CFF] shadow-xs font-semibold'
+                              ? 'bg-purple-50 border-[#7C5CFF] text-[#7C5CFF] ring-1 ring-[#7C5CFF]'
                               : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300'
                           }`}
                         >
-                          <span className="text-base shrink-0">{cat.iconName ? cat.iconName.charAt(0).toUpperCase() : '🛍️'}</span>
-                          <span className="text-xs truncate">{cat.name}</span>
+                          <span className="text-base">{cat.iconName ? cat.iconName.charAt(0).toUpperCase() : '📦'}</span>
+                          <span className="text-xs font-medium truncate">{cat.name}</span>
                         </button>
                       );
                     })}
@@ -1483,25 +1493,23 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                 ) : (
                   <div className="text-xs text-gray-400 py-2">Loading categories...</div>
                 )}
-                <p className="text-[11px] text-gray-400 mt-1">
-                  Your broadcast will only be sent to verified stores matching this category.
-                </p>
               </div>
 
+              {/* Radius Selector */}
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                  Target radius
+                  Search Radius
                 </label>
-                <div className="flex items-center gap-2">
+                <div className="grid grid-cols-4 gap-2">
                   {(['2 km', '5 km', '10 km', '15 km'] as const).map((r) => (
                     <button
                       key={r}
                       type="button"
                       onClick={() => setAskRadius(r)}
-                      className={`flex-1 py-2 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                      className={`py-2 text-xs font-semibold rounded-xl border transition cursor-pointer ${
                         askRadius === r
-                          ? 'bg-[#7C5CFF] text-white shadow-xs'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          ? 'bg-[#7C5CFF] text-white border-[#7C5CFF] shadow-xs'
+                          : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
                       }`}
                     >
                       {r}
@@ -1513,95 +1521,74 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
               <button
                 type="submit"
                 disabled={isBroadcasting}
-                className="w-full bg-[#7C5CFF] hover:bg-[#6842FF] text-white py-3.5 rounded-xl font-semibold text-xs flex items-center justify-center gap-2 shadow-xs cursor-pointer transition disabled:opacity-60 mt-2"
+                className="w-full bg-[#7C5CFF] hover:bg-[#6842FF] disabled:bg-purple-300 text-white font-semibold py-3 rounded-xl text-xs transition cursor-pointer shadow-md flex items-center justify-center gap-2"
               >
                 {isBroadcasting ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Broadcasting to stores...</span>
+                    <span>Broadcasting to local stores...</span>
                   </>
                 ) : (
                   <>
                     <Radio className="w-4 h-4" />
-                    <span>Broadcast to Nearby Stores</span>
+                    <span>Broadcast Request to Stores</span>
                   </>
                 )}
               </button>
             </form>
-
-            {/* Trust Highlights */}
-            <div className="space-y-3 pt-2">
-              <div className="flex items-center gap-2.5 text-xs text-gray-700 font-medium">
-                <ShieldCheck className="w-4 h-4 text-[#7C5CFF] shrink-0" />
-                <span>We notify verified local stores</span>
-              </div>
-              <div className="flex items-center gap-2.5 text-xs text-gray-700 font-medium">
-                <Clock className="w-4 h-4 text-[#7C5CFF] shrink-0" />
-                <span>You get responses in real-time</span>
-              </div>
-              <div className="flex items-center gap-2.5 text-xs text-gray-700 font-medium">
-                <Shield className="w-4 h-4 text-[#7C5CFF] shrink-0" />
-                <span>No spam. Only relevant stores</span>
-              </div>
-            </div>
           </div>
         ) : activeTab === 'holds' ? (
 
           /* ══════════════════════════════════════════════════════════════════
-              SCREEN 5: MY HOLDS (Real Active Holds)
+              SCREEN 5: MY HOLDS (Active 30-Min Hold Passes)
           ══════════════════════════════════════════════════════════════════ */
-          <div className="animate-in fade-in duration-150 p-5 space-y-4">
+          <div className="animate-in fade-in duration-150 p-5 space-y-5">
             <div>
-              <h2 className="text-2xl font-bold text-gray-950 tracking-tight">My Holds</h2>
-              <p className="text-xs text-gray-500 mt-0.5">Show this code at the store counter</p>
+              <h2 className="text-2xl font-bold text-gray-950 tracking-tight">My Hold Passes</h2>
+              <p className="text-xs text-gray-500 mt-1">
+                Show your 6-digit code or QR pass at the store counter to collect held items.
+              </p>
             </div>
 
-            {activeHold ? (
-              <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-xs space-y-4">
-                {/* Header Row: Product Name + Active badge */}
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <h4 className="text-sm font-bold text-gray-950">{activeHold.productName}</h4>
-                    <p className="text-xs text-gray-500 mt-0.5">{activeHold.storeName}</p>
+            {activeHold && activeHold.totalSeconds > 0 ? (
+              <div className="bg-white rounded-3xl border border-gray-100 p-5 shadow-lg space-y-4 relative overflow-hidden">
+                <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#20D99A] animate-ping" />
+                    <span className="text-xs font-bold text-[#20D99A]">Active Hold Pass</span>
                   </div>
+                  <span className="font-mono font-black text-sm text-gray-900">{activeHold.holdId}</span>
+                </div>
 
-                  <span className="bg-emerald-50 text-[#20D99A] font-bold text-[10px] px-2.5 py-0.5 rounded-full border border-emerald-200/60 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#20D99A] animate-pulse" />
-                    {activeHold.status === 'expired' || activeHold.totalSeconds <= 0 ? 'Expired' : 'Active Pass'}
+                <div className="space-y-1">
+                  <h3 className="text-base font-bold text-gray-950">{activeHold.productName}</h3>
+                  <p className="text-xs text-gray-500">{activeHold.storeName}</p>
+                  <p className="text-[11px] text-gray-400">{activeHold.storeAddress}</p>
+                  {activeHold.price > 0 && (
+                    <div className="text-sm font-black text-gray-950 pt-1">
+                      ₹ {activeHold.price.toLocaleString('en-IN')}
+                    </div>
+                  )}
+                </div>
+
+                {/* Countdown Box */}
+                <div className="bg-[#7C5CFF]/5 border border-[#7C5CFF]/20 rounded-2xl p-3.5 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-gray-700">
+                    <Clock className="w-4 h-4 text-[#7C5CFF]" />
+                    <span>Time remaining:</span>
+                  </div>
+                  <span className="font-mono font-black text-lg text-[#7C5CFF]">
+                    {formatTimer(activeHold.totalSeconds)}
                   </span>
                 </div>
 
-                {/* Details row: Hold ID + Reserved until */}
-                <div className="grid grid-cols-2 gap-2 pt-1 border-t border-gray-100">
-                  <div>
-                    <div className="text-[11px] text-gray-400">Hold Pass ID</div>
-                    <div className="text-xs font-bold text-gray-900 mt-0.5 font-mono">{activeHold.holdId}</div>
-                  </div>
-                  <div>
-                    <div className="text-[11px] text-gray-400">Reserved until</div>
-                    <div className="text-xs font-bold text-gray-900 mt-0.5">{activeHold.reservedUntil}</div>
-                  </div>
+                {/* Server QR Code */}
+                <div className="p-4 bg-gray-50 rounded-2xl flex flex-col items-center justify-center space-y-2 border border-gray-100">
+                  <MiniQRCode value={activeHold.qrCode} size={140} />
+                  <p className="text-[10px] text-gray-400 font-mono">Counter Token: {activeHold.holdId}</p>
                 </div>
 
-                {/* Countdown Timer Box */}
-                <div className="bg-[#7C5CFF]/10 border border-[#7C5CFF]/20 rounded-2xl p-3 text-center">
-                  <div className="text-2xl font-black font-mono text-[#7C5CFF] tracking-wider">
-                    {formatTimer(activeHold.totalSeconds)}
-                  </div>
-                  <div className="text-[11px] font-semibold text-[#7C5CFF] mt-0.5">
-                    {activeHold.totalSeconds > 0 ? 'minutes remaining to pickup' : 'Hold reservation expired'}
-                  </div>
-                </div>
-
-                {/* QR Code Section */}
-                <div className="flex flex-col items-center justify-center pt-1">
-                  <div className="p-3.5 bg-white rounded-2xl border border-gray-200 shadow-xs">
-                    <MiniQRCode value={activeHold.qrCode} size={140} />
-                  </div>
-                  <p className="text-xs text-gray-500 mt-2 font-medium">Show this QR pass at the store checkout</p>
-                </div>
-
-                {/* Action buttons */}
+                {/* Hold Actions */}
                 <div className="space-y-2 pt-1">
                   <button
                     type="button"
@@ -1613,15 +1600,16 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                         alert(`Store address: ${activeHold.storeAddress}\nPhone: ${activeHold.storePhone}`);
                       }
                     }}
-                    className="w-full bg-[#7C5CFF] hover:bg-[#6842FF] text-white rounded-xl py-2.5 text-xs font-semibold transition cursor-pointer text-center shadow-xs"
+                    className="w-full flex items-center justify-center gap-2 bg-[#7C5CFF] hover:bg-[#6842FF] text-white py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer shadow-xs"
                   >
-                    View Store & Directions
+                    <MapPin className="w-3.5 h-3.5" />
+                    <span>View Store & Directions</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={handleCancelHold}
-                    className="w-full border border-gray-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200 text-gray-500 rounded-xl py-2 text-xs font-semibold transition cursor-pointer text-center"
+                    className="w-full text-center text-xs text-red-500 hover:text-red-700 py-1.5 font-medium transition cursor-pointer"
                   >
                     Cancel Hold Pass
                   </button>
@@ -1629,8 +1617,13 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
               </div>
             ) : (
               <div className="py-16 text-center text-gray-400 space-y-3">
-                <Clock className="w-10 h-10 mx-auto text-gray-300" />
-                <p className="text-xs">No active holds. Discover products and reserve before walking in!</p>
+                <Clock className="w-12 h-12 mx-auto text-gray-300" />
+                <div>
+                  <h4 className="text-sm font-bold text-gray-700">No active hold passes</h4>
+                  <p className="text-xs text-gray-400 mt-1 max-w-xs mx-auto">
+                    When you reserve products at nearby stores, your 30-minute hold pass and counter QR will appear here.
+                  </p>
+                </div>
                 <button
                   type="button"
                   onClick={() => setActiveTab('explore')}
@@ -1646,17 +1639,22 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
           /* ══════════════════════════════════════════════════════════════════
               SCREEN 6: ACCOUNT
           ══════════════════════════════════════════════════════════════════ */
-          <div className="animate-in fade-in duration-150 p-5 space-y-4">
-            {/* Top Bar: Title + Settings gear */}
+          <div className="animate-in fade-in duration-150 p-5 space-y-5">
+            {/* Top Bar */}
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold text-gray-950 tracking-tight">Account</h2>
-              <button
-                type="button"
-                onClick={() => alert('Settings preferences saved.')}
-                className="p-1.5 text-gray-700 hover:text-gray-950 hover:bg-gray-100 rounded-full transition cursor-pointer"
-              >
-                <Settings className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                {isMultiRole && onOpenExperienceSwitcher && (
+                  <ExperienceHeaderPill currentExperience="customer" onClick={onOpenExperienceSwitcher} />
+                )}
+                <button
+                  type="button"
+                  onClick={() => alert('Settings preferences saved.')}
+                  className="p-1.5 text-gray-700 hover:text-gray-950 hover:bg-gray-100 rounded-full transition cursor-pointer"
+                >
+                  <Settings className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Profile Card */}
@@ -1675,12 +1673,8 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                       {userProfile.email}
                     </p>
                   )}
-                  <span className={`inline-block mt-1 font-medium text-[10px] px-2 py-0.5 rounded-full ${
-                    userProfile.isVendor || userProfile.role === 'ShopOwner' || userProfile.role === 'Vendor'
-                      ? 'bg-emerald-50 text-[#20D99A] font-semibold'
-                      : 'bg-purple-50 text-[#7C5CFF] font-semibold'
-                  }`}>
-                    {userProfile.isVendor || userProfile.role === 'ShopOwner' || userProfile.role === 'Vendor' ? 'Store Owner' : (userProfile.role || 'Shopper')}
+                  <span className="inline-block mt-1 font-medium text-[10px] px-2 py-0.5 rounded-full bg-purple-50 text-[#7C5CFF] font-semibold">
+                    Shopper Profile
                   </span>
                 </div>
               </div>
@@ -1718,7 +1712,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
               >
                 <div className="flex items-center gap-3">
                   <User className="w-4 h-4 text-gray-500" />
-                  <span className="font-medium">{userProfile ? 'Edit Profile' : 'Sign In / Register'}</span>
+                  <span className="font-medium">{userProfile && !userProfile.email?.includes('@guest.zooner.app') ? 'Edit Profile' : 'Sign In / Register'}</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-gray-400" />
               </button>
@@ -1749,72 +1743,6 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                 </div>
                 <ChevronRight className="w-4 h-4 text-gray-400" />
               </button>
-
-              {(() => {
-                const isSuperAdmin = userProfile?.email && ['lpycho3@gmail.com', 'admin@zooner.app'].includes(userProfile.email.toLowerCase());
-                const isAdmin = userProfile?.role === 'Admin' || isSuperAdmin;
-                if (!isAdmin || !onNavigateToAdmin) return null;
-                return (
-                  <button
-                    type="button"
-                    onClick={onNavigateToAdmin}
-                    className="w-full px-4 py-3.5 flex items-center justify-between text-xs text-indigo-700 bg-indigo-50/70 hover:bg-indigo-100/70 transition cursor-pointer border-b border-indigo-100"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Shield className="w-4 h-4 text-indigo-600" />
-                      <span className="font-bold">Admin Control Panel</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="bg-indigo-600 text-white font-bold text-[10px] px-2 py-0.5 rounded-full">
-                        Admin
-                      </span>
-                      <ChevronRight className="w-4 h-4 text-indigo-400" />
-                    </div>
-                  </button>
-                );
-              })()}
-
-              {userProfile?.isVendor || userProfile?.role === 'ShopOwner' || userProfile?.role === 'Vendor' || userProfile?.role === 'Admin' || (userProfile?.shops && userProfile.shops.length > 0) ? (
-                <button
-                  type="button"
-                  onClick={() => onNavigateToVendor()}
-                  className="w-full px-4 py-3.5 flex items-center justify-between text-xs text-gray-700 hover:bg-gray-50 transition cursor-pointer"
-                >
-                  <div className="flex items-center gap-3">
-                    <StoreIcon className="w-4 h-4 text-[#7C5CFF]" />
-                    <span className="font-semibold text-gray-900">Switch to Merchant Dashboard</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="bg-emerald-50 text-[#20D99A] font-bold text-[10px] px-2 py-0.5 rounded-full border border-emerald-200/60">
-                      Store Owner
-                    </span>
-                    <ChevronRight className="w-4 h-4 text-gray-400" />
-                  </div>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (onOpenRetailerModal) {
-                      onOpenRetailerModal();
-                    } else {
-                      onNavigateToVendor();
-                    }
-                  }}
-                  className="w-full px-4 py-3.5 flex items-center justify-between text-xs text-gray-700 hover:bg-gray-50 transition cursor-pointer"
-                >
-                  <div className="flex items-center gap-3">
-                    <StoreIcon className="w-4 h-4 text-gray-500" />
-                    <span className="font-medium">Become a Store Owner</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="bg-purple-100 text-[#7C5CFF] font-bold text-[10px] px-2 py-0.5 rounded-full">
-                      New
-                    </span>
-                    <ChevronRight className="w-4 h-4 text-gray-400" />
-                  </div>
-                </button>
-              )}
 
               <button
                 type="button"
