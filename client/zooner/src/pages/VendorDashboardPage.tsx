@@ -1549,7 +1549,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
               </div>
 
               <div className="flex items-center gap-2">
-                {isSuperAdminUser ? (
+                {isSuperAdminUser && (
                   <button
                     type="button"
                     onClick={handleInstantVerifyShop}
@@ -1559,15 +1559,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                     <ShieldCheck className="w-3.5 h-3.5" />
                     <span>{isVerifyingShop ? 'Verifying...' : '⚡ Verify Storefront (Super Admin)'}</span>
                   </button>
-                ) : onNavigateToAdmin ? (
-                  <button
-                    type="button"
-                    onClick={onNavigateToAdmin}
-                    className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs transition cursor-pointer border border-slate-700 shrink-0"
-                  >
-                    Admin Panel →
-                  </button>
-                ) : null}
+                )}
               </div>
             </div>
           )}

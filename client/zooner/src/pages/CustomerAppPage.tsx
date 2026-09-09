@@ -19,7 +19,8 @@ import {
   LogOut,
   CheckCircle2,
   Loader2,
-  PackageOpen
+  PackageOpen,
+  Shield
 } from 'lucide-react';
 import { 
   fetchCategories, 
@@ -33,7 +34,7 @@ import {
   ensureCustomerSession,
   type ShopProfileDto 
 } from '../services/api';
-import { ExperienceHeaderPill } from '../components/ExperienceSwitcher';
+import { ExperienceHeaderPill, isSuperAdminEmail } from '../components/ExperienceSwitcher';
 import type { LocationArea, ProductSearchResult, StoreInventoryItem, CategoryDto } from '../types';
 
 interface CustomerAppPageProps {
@@ -1800,7 +1801,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════
-          BOTTOM NAVIGATION BAR (EXPLORE, LIVE ASK, HOLDS, ADMIN, ACCOUNT)
+          BOTTOM NAVIGATION BAR (EXPLORE, LIVE ASK, HOLDS, [ADMIN], ACCOUNT)
       ══════════════════════════════════════════════════════════════════ */}
       <div className="fixed bottom-0 left-0 right-0 max-w-[440px] mx-auto bg-white/95 backdrop-blur-md border-t border-gray-100 flex items-center justify-around py-2.5 px-2 z-30">
         <button
@@ -1856,6 +1857,19 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
             <span className="absolute -top-0.5 right-2 w-2 h-2 rounded-full bg-[#20D99A] animate-pulse" />
           )}
         </button>
+
+        {/* Admin shortcut — only visible to super-admin accounts */}
+        {(isSuperAdminEmail(userProfile?.email) || userProfile?.role?.toLowerCase() === 'admin') && onNavigateToAdmin && (
+          <button
+            type="button"
+            onClick={onNavigateToAdmin}
+            className="flex flex-col items-center gap-1 transition cursor-pointer text-indigo-500 hover:text-indigo-600"
+            title="Admin Panel"
+          >
+            <Shield className="w-5 h-5" />
+            <span className="text-[10px] font-semibold">Admin</span>
+          </button>
+        )}
 
         <button
           type="button"

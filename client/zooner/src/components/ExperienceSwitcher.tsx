@@ -106,9 +106,9 @@ export const ExperienceSwitcherModal: React.FC<ExperienceSwitcherProps> = ({
           </button>
         </div>
 
-        {/* Experience Cards */}
+        {/* Experience Cards — Admin only shown to admin users */}
         <div className="space-y-3">
-          {experiences.map((exp) => {
+          {experiences.filter(exp => exp.id !== 'admin' || caps.canAccessAdmin).map((exp) => {
             const Icon = exp.icon;
             const isCurrent = currentExperience === exp.id;
 
