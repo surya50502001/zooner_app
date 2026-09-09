@@ -434,6 +434,49 @@ export async function registerUser(userData: {
   }
 }
 
+/**
+ * Ensures that the customer has an active authenticated session.
+ * If not signed in with a named account, it automatically initializes a seamless,
+ * persistent anonymous guest shopper session in the background so that customers
+ * can hold products, broadcast requests, and use all features with ZERO LOGIN PROMPTS.
+ */
+export async function ensureCustomerSession(): Promise<string | null> {
+  const existingToken = localStorage.getItem('zooner_token');
+  if (existingToken) return existingToken;
+
+  let guestId = localStorage.getItem('zooner_guest_device_id');
+  if (!guestId) {
+    guestId = 'guest_' + Math.random().toString(36).substring(2, 9) + Math.random().toString(36).substring(2, 6);
+    localStorage.setItem('zooner_guest_device_id', guestId);
+  }
+
+  const guestEmail = `${guestId}@guest.zooner.app`;
+  const guestPassword = `ZoonerGuest_${guestId}!`;
+
+  try {
+    const regRes = await registerUser({
+      fullName: 'Shopper',
+      email: guestEmail,
+      password: guestPassword,
+      role: 'Customer'
+    });
+    if (regRes.success && regRes.data?.accessToken) {
+      return regRes.data.accessToken;
+    }
+  } catch {}
+
+  try {
+    const loginRes = await loginUser(guestEmail, guestPassword);
+    if (loginRes.success && loginRes.data?.accessToken) {
+      return loginRes.data.accessToken;
+    }
+  } catch (err) {
+    console.warn('Guest session initialization notice:', err);
+  }
+
+  return localStorage.getItem('zooner_token');
+}
+
 export async function getCurrentUser(): Promise<UserDto | null> {
   try {
     const res = await authenticatedFetch(`${API_BASE_URL}/Auth/me`);

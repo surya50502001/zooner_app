@@ -33,6 +33,7 @@ import {
   fetchMyActiveHolds,
   syncUserProfile,
   createLiveRequest,
+  ensureCustomerSession,
   type ShopProfileDto 
 } from '../services/api';
 import type { LocationArea, ProductSearchResult, StoreInventoryItem, CategoryDto } from '../types';
@@ -292,6 +293,9 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
     window.addEventListener('storage', handleStorage);
     syncUserProfile().then(p => {
       if (p) setUserProfile(p);
+      else if (!localStorage.getItem('zooner_token')) {
+        ensureCustomerSession().catch(() => {});
+      }
     });
     return () => window.removeEventListener('storage', handleStorage);
   }, []);
@@ -441,13 +445,18 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
     e.preventDefault();
     if (!askProductName.trim()) return;
 
-    const token = localStorage.getItem('zooner_token');
+    setIsBroadcasting(true);
+    let token = localStorage.getItem('zooner_token');
     if (!token) {
-      onOpenSignIn('C');
+      token = await ensureCustomerSession();
+    }
+
+    if (!token) {
+      alert('Unable to connect to server. Please check your internet connection.');
+      setIsBroadcasting(false);
       return;
     }
 
-    setIsBroadcasting(true);
     try {
       const radiusNumber = parseInt(askRadius.replace(/[^0-9]/g, ''), 10) || 5;
       const isGuid = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
@@ -503,7 +512,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
     }
   };
 
-  // Real backend hold reservation (Zero Fake Fallbacks)
+  // Real backend hold reservation (Zero Forced Login, Real Backend Atomic Hold)
   const handleReserveProduct = async (prod: ProductSearchResult, storeInventory?: StoreInventoryItem) => {
     const store = storeInventory || (prod.carryingStores && prod.carryingStores.length > 0 ? prod.carryingStores[0] : null);
     if (!store || !store.storeId || !store.inventoryId) {
@@ -511,14 +520,18 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
       return;
     }
 
-    const token = localStorage.getItem('zooner_token');
+    setIsReservingHold(true);
+    let token = localStorage.getItem('zooner_token');
     if (!token) {
-      setPendingHold({ prod, storeInventory: store });
-      onOpenSignIn('C');
+      token = await ensureCustomerSession();
+    }
+
+    if (!token) {
+      alert('Unable to connect to server. Please check your internet connection.');
+      setIsReservingHold(false);
       return;
     }
 
-    setIsReservingHold(true);
     try {
       const res = await reserveInventoryHold(store.storeId, store.inventoryId, 1);
       if (res.success && res.hold) {
@@ -1647,7 +1660,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
             </div>
 
             {/* Profile Card */}
-            {userProfile ? (
+            {userProfile && !userProfile.email?.includes('@guest.zooner.app') ? (
               <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-xs flex items-center gap-3.5">
                 <div className="w-12 h-12 rounded-full bg-purple-100 text-purple-700 font-bold text-lg flex items-center justify-center shrink-0">
                   {userProfile.name ? userProfile.name.charAt(0).toUpperCase() : 'U'}
@@ -1679,10 +1692,10 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                   </div>
                   <div className="min-w-0">
                     <h3 className="text-base font-bold text-gray-900 truncate">
-                      Guest User
+                      Guest Shopper
                     </h3>
                     <p className="text-xs text-gray-500 truncate">
-                      Sign in to track holds & orders
+                      Browse stores, check stock & holds freely
                     </p>
                   </div>
                 </div>
@@ -1691,7 +1704,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                   onClick={() => onOpenSignIn('C')}
                   className="bg-[#7C5CFF] hover:bg-[#6842FF] text-white font-semibold text-xs px-3.5 py-2 rounded-xl transition cursor-pointer shrink-0 shadow-xs"
                 >
-                  Sign In
+                  Sign In (Optional)
                 </button>
               </div>
             )}
@@ -1829,7 +1842,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
             </div>
 
             {/* Auth Action Button */}
-            {userProfile ? (
+            {userProfile && !userProfile.email?.includes('@guest.zooner.app') ? (
               <button
                 type="button"
                 onClick={() => {
@@ -1851,7 +1864,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                 className="w-full flex items-center justify-center gap-2 text-xs font-semibold text-[#7C5CFF] hover:text-[#6842FF] px-4 py-3 transition cursor-pointer bg-white rounded-2xl border border-gray-100 shadow-xs"
               >
                 <User className="w-4 h-4 text-[#7C5CFF]" />
-                <span>Sign In to Your Account</span>
+                <span>Sign In / Create Account (Optional)</span>
               </button>
             )}
           </div>
