@@ -1727,35 +1727,8 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
               </div>
             )}
 
-            {/* ── STORE OWNER & MERCHANT SECTION ── */}
-            {userProfile?.isVendor || (userProfile?.shops && userProfile.shops.length > 0) ? (
-              <div className="bg-white rounded-2xl border border-gray-200/80 p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-                <div className="flex items-start gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#34C759] flex items-center justify-center shrink-0">
-                    <Store className="w-5 h-5" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <h4 className="text-sm font-bold text-gray-950 font-apple">Merchant Portal</h4>
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-[#34C759] border border-emerald-100">
-                        {userProfile?.shops?.[0]?.name || 'Store Active'}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                      Manage live customer broadcasts, shelf stock, and scan QR collection passes.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={onNavigateToVendor}
-                      className="mt-3 w-full py-2.5 px-4 rounded-xl bg-gray-950 hover:bg-black text-white text-xs font-semibold flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer shadow-xs"
-                    >
-                      <Store className="w-4 h-4" />
-                      <span>Open Merchant OS →</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ) : (
+            {/* ── STORE ONBOARDING CARD (Only for standard shoppers without a store; once registered, top switcher handles switching) ── */}
+            {!(userProfile?.isVendor || (userProfile?.shops && userProfile.shops.length > 0)) && (
               <div className="bg-white rounded-2xl border border-gray-200/80 p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
                 <div className="flex items-start gap-3.5">
                   <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#007AFF] flex items-center justify-center shrink-0">
