@@ -1075,6 +1075,8 @@ export interface PendingShopDto {
   createdAtUtc: string;
   ownerId: string;
   ownerName?: string;
+  ownerEmail?: string;
+  ownerPhone?: string;
   categories: { categoryId: string; name: string }[];
 }
 

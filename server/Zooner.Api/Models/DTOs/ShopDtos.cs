@@ -42,6 +42,8 @@ public class VendorShopDto : ShopDto
 {
     public Guid OwnerId { get; set; }
     public string OwnerName { get; set; } = string.Empty;
+    public string OwnerEmail { get; set; } = string.Empty;
+    public string OwnerPhone { get; set; } = string.Empty;
 }
 
 public class CreateShopRequest
