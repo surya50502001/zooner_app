@@ -47,7 +47,14 @@ public class TokenService : ITokenService
             claims.Add(new Claim(ClaimTypes.Role, "ShopOwner"));
         }
 
-        if (user.IsAdmin)
+        var superAdminEnv = Environment.GetEnvironmentVariable("SUPER_ADMIN_EMAILS");
+        var isSuperAdmin = user.IsAdmin ||
+            (!string.IsNullOrWhiteSpace(user.Email) && (
+                (new[] { "lpycho3@gmail.com", "admin@zooner.app" }).Contains(user.Email.Trim().ToLowerInvariant()) ||
+                (!string.IsNullOrWhiteSpace(superAdminEnv) && superAdminEnv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(e => e.ToLowerInvariant()).Contains(user.Email.Trim().ToLowerInvariant()))
+            ));
+
+        if (isSuperAdmin)
         {
             claims.Add(new Claim(ClaimTypes.Role, UserRoles.Admin));
         }

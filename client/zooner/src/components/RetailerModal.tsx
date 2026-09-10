@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Store, CheckCircle, ArrowRight, ShieldCheck, Upload, MapPin, Loader2, AlertCircle, LogIn, Navigation } from 'lucide-react';
 import { createShop, fetchCategories, becomeVendor } from '../services/api';
-import { detectUserLocation, formatGeolocationError } from '../services/locationService';
+import { detectUserLocation } from '../services/locationService';
 
 interface RetailerModalProps {
   isOpen: boolean;

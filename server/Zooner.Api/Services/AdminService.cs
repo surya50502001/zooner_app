@@ -19,9 +19,27 @@ public class AdminService : IAdminService
     public bool IsSuperAdminEmail(string email)
     {
         if (string.IsNullOrWhiteSpace(email)) return false;
-        var superAdmins = _configuration?.GetSection("AdminConfig:SuperAdminEmails").Get<List<string>>()
-            ?? new List<string> { "lpycho3@gmail.com", "admin@zooner.app" };
-        return superAdmins.Any(a => a.Equals(email.Trim(), StringComparison.OrdinalIgnoreCase));
+        var normalized = email.Trim().ToLowerInvariant();
+
+        var superAdminEnv = Environment.GetEnvironmentVariable("SUPER_ADMIN_EMAILS");
+        if (!string.IsNullOrWhiteSpace(superAdminEnv))
+        {
+            var adminList = superAdminEnv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                                         .Select(e => e.ToLowerInvariant());
+            if (adminList.Contains(normalized)) return true;
+        }
+
+        var configAdmins = _configuration?.GetSection("AdminConfig:SuperAdminEmails").Get<string[]>();
+        if (configAdmins != null && configAdmins.Select(e => e.Trim().ToLowerInvariant()).Contains(normalized))
+        {
+            return true;
+        }
+
+        var defaultAdmin = _configuration?["ADMIN_EMAIL"] ?? _configuration?["AdminConfig:DefaultAdminEmail"] ?? Environment.GetEnvironmentVariable("ADMIN_EMAIL");
+        if (!string.IsNullOrWhiteSpace(defaultAdmin) && normalized == defaultAdmin.Trim().ToLowerInvariant()) return true;
+
+        var fallbackAdmins = new[] { "lpycho3@gmail.com", "admin@zooner.app" };
+        return fallbackAdmins.Contains(normalized);
     }
 
     public async Task<bool> IsAdminUserAsync(Guid userId)
@@ -29,7 +47,7 @@ public class AdminService : IAdminService
         if (userId == Guid.Empty) return false;
         var user = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null) return false;
-        return user.Role == UserRoles.Admin || IsSuperAdminEmail(user.Email ?? string.Empty);
+        return user.Role.Equals(UserRoles.Admin, StringComparison.OrdinalIgnoreCase) || IsSuperAdminEmail(user.Email ?? string.Empty);
     }
 
     public async Task<ApiResponse<ReportDto>> CreateReportAsync(Guid reporterId, CreateReportRequest request)

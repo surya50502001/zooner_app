@@ -285,11 +285,10 @@ export async function detectUserLocation(options?: {
         isEstimated: false
       };
     } catch (gpsError) {
-      // Provide a friendly error if high accuracy fails
-      const msg = (gpsError && (gpsError as GeolocationPositionError).code !== undefined)
-        ? formatGeolocationError(gpsError as GeolocationPositionError)
-        : 'High accuracy GPS failed.';
       // Continue to low accuracy fallback
+      if (typeof console !== 'undefined' && console.debug) {
+        console.debug('High accuracy GPS failed, falling back to network GPS:', gpsError);
+      }
     }
 
     // Attempt 2: Standard Accuracy (Wi-Fi / Cellular Triangulation - fast & works indoors)
@@ -328,11 +327,12 @@ export async function detectUserLocation(options?: {
         isEstimated: false
       };
     } catch (gpsError) {
-      const msg = (gpsError && (gpsError as GeolocationPositionError).code !== undefined)
-        ? formatGeolocationError(gpsError as GeolocationPositionError)
-        : 'Standard accuracy GPS failed.';
       // Continue to IP fallback
+      if (typeof console !== 'undefined' && console.debug) {
+        console.debug('Standard accuracy GPS failed, falling back to IP:', gpsError);
+      }
     }
+
   }
 
 

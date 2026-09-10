@@ -625,11 +625,13 @@ export async function verifyOwnerShop(shopId: string): Promise<boolean> {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' }
     });
-    return response.ok;
+    if (response.ok) return true;
+    return await verifyShop(shopId, 'Approved');
   } catch {
-    return false;
+    return await verifyShop(shopId, 'Approved').catch(() => false);
   }
 }
+
 
 export async function createLiveRequest(data: {
   requestText: string;
