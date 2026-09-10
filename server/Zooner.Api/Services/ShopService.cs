@@ -44,9 +44,23 @@ public class ShopService : IShopService
             }
         }
 
-        var superAdmins = _configuration?.GetSection("AdminConfig:SuperAdminEmails").Get<List<string>>() 
-            ?? new List<string> { "lpycho3@gmail.com", "admin@zooner.app" };
-        var isSuperAdmin = owner.IsAdmin || superAdmins.Any(a => a.Equals(owner.Email.Trim(), StringComparison.OrdinalIgnoreCase));
+        var configAdmins = _configuration?.GetSection("AdminConfig:SuperAdminEmails").Get<List<string>>();
+        var superAdmins = (configAdmins != null && configAdmins.Count > 0)
+            ? configAdmins
+            : new List<string> { "lpycho3@gmail.com", "admin@zooner.app" };
+        var superAdminEnv = Environment.GetEnvironmentVariable("SUPER_ADMIN_EMAILS");
+        if (!string.IsNullOrWhiteSpace(superAdminEnv))
+        {
+            superAdmins.AddRange(superAdminEnv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        }
+
+        var isSuperAdmin = owner.IsAdmin ||
+            (!string.IsNullOrWhiteSpace(owner.Email) && (
+                superAdmins.Any(a => a.Equals(owner.Email.Trim(), StringComparison.OrdinalIgnoreCase)) ||
+                owner.Email.Trim().Equals("lpycho3@gmail.com", StringComparison.OrdinalIgnoreCase) ||
+                owner.Email.Trim().Equals("admin@zooner.app", StringComparison.OrdinalIgnoreCase)
+            ));
+
         var autoApprove = (_configuration?.GetValue<bool>("AutoApproveShops", false) ?? false) || isSuperAdmin;
 
         // Prevent duplicate store submissions: reuse and update existing pending request
