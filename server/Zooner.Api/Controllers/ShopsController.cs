@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Zooner.Api.Data;
 using Zooner.Api.Models.DTOs;
 using Zooner.Api.Services;
 using Zooner.Api.Models;
@@ -14,12 +16,14 @@ public class ShopsController : ControllerBase
     private readonly IShopService _shopService;
     private readonly ILiveRequestService _liveRequestService;
     private readonly IAdminService _adminService;
+    private readonly AppDbContext _context;
 
-    public ShopsController(IShopService shopService, ILiveRequestService liveRequestService, IAdminService adminService)
+    public ShopsController(IShopService shopService, ILiveRequestService liveRequestService, IAdminService adminService, AppDbContext context)
     {
         _shopService = shopService;
         _liveRequestService = liveRequestService;
         _adminService = adminService;
+        _context = context;
     }
 
     /// <summary>
@@ -208,7 +212,14 @@ public class ShopsController : ControllerBase
             isAdmin = await _adminService.IsAdminUserAsync(userId);
         }
 
-        if (!isAdmin)
+        // Check if current user is the owner of this shop
+        var isOwner = false;
+        if (userId != Guid.Empty)
+        {
+            isOwner = await _context.Shops.AnyAsync(s => s.Id == id && s.OwnerId == userId);
+        }
+
+        if (!isAdmin && !isOwner)
         {
             return StatusCode(403, new { success = false, message = "Verification failed. Check admin privileges." });
         }

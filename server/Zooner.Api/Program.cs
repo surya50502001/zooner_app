@@ -149,36 +149,34 @@ builder.Services.AddAuthentication(options =>
 // Centralized Authorization Policies
 builder.Services.AddAuthorization(options =>
 {
-    var superAdminList = builder.Configuration.GetSection("AdminConfig:SuperAdminEmails").Get<List<string>>() 
-        ?? new List<string> { "lpycho3@gmail.com", "admin@zooner.app" };
+    var configAdmins = builder.Configuration.GetSection("AdminConfig:SuperAdminEmails").Get<List<string>>();
+    var superAdminList = (configAdmins != null && configAdmins.Count > 0)
+        ? configAdmins
+        : new List<string> { "lpycho3@gmail.com", "admin@zooner.app" };
 
-    options.AddPolicy("AdminPolicy", policy => policy.RequireAssertion(ctx =>
+    bool IsSuperAdmin(System.Security.Claims.ClaimsPrincipal user)
     {
-        if (ctx.User.IsInRole(UserRoles.Admin)) return true;
-        var email = ctx.User.FindFirst(ClaimTypes.Email)?.Value ?? ctx.User.FindFirst("email")?.Value;
+        if (user.IsInRole(UserRoles.Admin)) return true;
+        var email = user.FindFirst(ClaimTypes.Email)?.Value ?? user.FindFirst("email")?.Value ?? user.FindFirst(ClaimTypes.Name)?.Value;
         if (!string.IsNullOrEmpty(email) && superAdminList.Any(a => a.Equals(email.Trim(), StringComparison.OrdinalIgnoreCase))) return true;
+        var envAdmins = Environment.GetEnvironmentVariable("SUPER_ADMIN_EMAILS");
+        if (!string.IsNullOrEmpty(envAdmins) && !string.IsNullOrEmpty(email))
+        {
+            if (envAdmins.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Any(a => a.Equals(email.Trim(), StringComparison.OrdinalIgnoreCase))) return true;
+        }
         return false;
-    }));
+    }
 
-    options.AddPolicy("AdminOnly", policy => policy.RequireAssertion(ctx =>
-    {
-        if (ctx.User.IsInRole(UserRoles.Admin)) return true;
-        var email = ctx.User.FindFirst(ClaimTypes.Email)?.Value ?? ctx.User.FindFirst("email")?.Value;
-        if (!string.IsNullOrEmpty(email) && superAdminList.Any(a => a.Equals(email.Trim(), StringComparison.OrdinalIgnoreCase))) return true;
-        return false;
-    }));
-
+    options.AddPolicy("AdminPolicy", policy => policy.RequireAssertion(ctx => IsSuperAdmin(ctx.User)));
+    options.AddPolicy("AdminOnly", policy => policy.RequireAssertion(ctx => IsSuperAdmin(ctx.User)));
     options.AddPolicy("VendorPolicy", policy => policy.RequireAssertion(ctx =>
-    {
-        if (ctx.User.IsInRole(UserRoles.Vendor) || ctx.User.IsInRole(UserRoles.Admin) || ctx.User.IsInRole("ShopOwner")) return true;
-        var email = ctx.User.FindFirst(ClaimTypes.Email)?.Value ?? ctx.User.FindFirst("email")?.Value;
-        if (!string.IsNullOrEmpty(email) && superAdminList.Any(a => a.Equals(email.Trim(), StringComparison.OrdinalIgnoreCase))) return true;
-        return false;
-    }));
+        ctx.User.IsInRole(UserRoles.Vendor) || ctx.User.IsInRole(UserRoles.Admin) || ctx.User.IsInRole("ShopOwner") || IsSuperAdmin(ctx.User)
+    ));
 
     options.AddPolicy("CustomerPolicy", policy => policy.RequireRole(UserRoles.Customer, UserRoles.Vendor, UserRoles.Admin));
     options.AddPolicy("ShopOwnerOnly", policy => policy.RequireRole(UserRoles.Vendor, UserRoles.Admin));
 });
+
 
 // 6. Configure CORS with strict explicit allowlist (no wildcards)
 var configOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
