@@ -20,7 +20,8 @@ import {
   CheckCircle2,
   Loader2,
   PackageOpen,
-  Shield
+  Shield,
+  Store
 } from 'lucide-react';
 import { 
   fetchCategories, 
@@ -213,9 +214,10 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
   currentLocation,
   onOpenLocationModal,
   onNavigateToHome,
+  onNavigateToVendor,
   onNavigateToAdmin,
   onOpenSignIn,
-  onOpenRetailerModal: _onOpenRetailerModal,
+  onOpenRetailerModal,
   onOpenExperienceSwitcher,
   isMultiRole,
 }) => {
@@ -658,14 +660,14 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                     className="w-9 h-9 rounded-full bg-white text-gray-800 flex items-center justify-center shadow-md hover:bg-gray-100 transition cursor-pointer"
                     aria-label="Bookmark"
                   >
-                    <Bookmark className={`w-4 h-4 ${bookmarkedIds[selectedStore.id] ? 'fill-[#7C5CFF] text-[#7C5CFF]' : ''}`} />
+                    <Bookmark className={`w-4 h-4 ${bookmarkedIds[selectedStore.id] ? 'fill-[#007AFF] text-[#007AFF]' : ''}`} />
                   </button>
                 </div>
               </div>
 
               {/* Title on Banner */}
               <div className="relative z-10 text-white">
-                <h1 className="text-2xl font-bold tracking-tight drop-shadow-sm">{selectedStore.name}</h1>
+                <h1 className="text-2xl font-bold tracking-tight drop-shadow-sm font-apple">{selectedStore.name}</h1>
               </div>
             </div>
 
@@ -677,9 +679,9 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                     {selectedStore.name.charAt(0)}
                   </div>
                   <div>
-                    <h2 className="text-base font-bold text-gray-950 flex items-center gap-1.5">
+                    <h2 className="text-base font-bold text-gray-950 flex items-center gap-1.5 font-apple">
                       <span>{selectedStore.name}</span>
-                      <CheckCircle2 className="w-4 h-4 text-[#20D99A]" />
+                      <CheckCircle2 className="w-4 h-4 text-[#34C759]" />
                     </h2>
                     <p className="text-xs text-gray-500 mt-0.5 truncate max-w-[220px]">
                       {selectedStore.address || 'Verified physical retailer'}
@@ -689,13 +691,13 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
 
                 <div className="text-right">
                   {selectedStore.distanceKm !== undefined && (
-                    <div className="flex items-center justify-end gap-1 text-xs text-[#7C5CFF] font-medium">
-                      <MapPin className="w-3 h-3 text-[#7C5CFF]" />
+                    <div className="flex items-center justify-end gap-1 text-xs text-[#007AFF] font-medium">
+                      <MapPin className="w-3 h-3 text-[#007AFF]" />
                       {formatDistance(selectedStore.distanceKm)}
                     </div>
                   )}
                   <div className="text-xs text-gray-500 mt-0.5">
-                    <span className="text-[#20D99A] font-semibold">Open Now</span>
+                    <span className="text-[#34C759] font-semibold">Open Now</span>
                   </div>
                 </div>
               </div>
@@ -706,9 +708,9 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
               <button
                 type="button"
                 onClick={() => setStoreActiveTab('products')}
-                className={`py-3 px-4 text-xs font-semibold capitalize border-b-2 transition cursor-pointer ${
+                className={`py-3 px-4 text-xs font-semibold capitalize border-b-2 transition-all cursor-pointer ${
                   storeActiveTab === 'products'
-                    ? 'border-[#7C5CFF] text-gray-950'
+                    ? 'border-[#007AFF] text-[#007AFF]'
                     : 'border-transparent text-gray-400 hover:text-gray-700'
                 }`}
               >
@@ -717,9 +719,9 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
               <button
                 type="button"
                 onClick={() => setStoreActiveTab('about')}
-                className={`py-3 px-4 text-xs font-semibold capitalize border-b-2 transition cursor-pointer ${
+                className={`py-3 px-4 text-xs font-semibold capitalize border-b-2 transition-all cursor-pointer ${
                   storeActiveTab === 'about'
-                    ? 'border-[#7C5CFF] text-gray-950'
+                    ? 'border-[#007AFF] text-[#007AFF]'
                     : 'border-transparent text-gray-400 hover:text-gray-700'
                 }`}
               >
@@ -740,7 +742,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                     return (
                       <div
                         key={item.id}
-                        className="p-3 bg-white rounded-2xl border border-gray-100 shadow-xs flex items-center justify-between gap-3 hover:border-gray-200 transition"
+                        className="p-3.5 bg-white rounded-2xl border border-gray-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex items-center justify-between gap-3 hover:border-gray-300 transition"
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           {item.imageUrl ? (
@@ -763,7 +765,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                             </div>
                             <span className={`inline-block text-[10px] font-medium px-2 py-0.5 rounded-full mt-1 ${
                               inStock
-                                ? (stock <= 2 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-[#20D99A] font-semibold')
+                                ? (stock <= 2 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-[#34C759] font-semibold')
                                 : 'bg-gray-100 text-gray-500'
                             }`}>
                               {inStock ? (stock <= 2 ? `Low stock (${stock} left)` : 'In stock') : 'Out of stock'}
@@ -775,7 +777,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                           type="button"
                           disabled={!inStock || isReservingHold}
                           onClick={() => handleReserveProduct(item, storeInv)}
-                          className="shrink-0 bg-[#7C5CFF] hover:bg-[#6842FF] disabled:bg-gray-200 disabled:text-gray-400 text-white px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer shadow-xs flex items-center gap-1.5"
+                          className="shrink-0 bg-[#007AFF] hover:bg-[#0071E3] active:scale-[0.98] disabled:bg-gray-200 disabled:text-gray-400 text-white px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer shadow-xs flex items-center gap-1.5"
                         >
                           {isReservingHold ? (
                             <>
@@ -800,7 +802,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                         setSelectedStore(null);
                         setActiveTab('live-ask');
                       }}
-                      className="mt-2 text-xs font-semibold text-[#7C5CFF] hover:underline"
+                      className="mt-2 text-xs font-semibold text-[#007AFF] hover:underline"
                     >
                       Ask store for a product →
                     </button>
@@ -851,8 +853,9 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                   placeholder="Search products or stores..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-10 pr-9 text-xs text-gray-900 placeholder-gray-400 focus:border-[#7C5CFF] focus:ring-1 focus:ring-[#7C5CFF] outline-hidden shadow-xs"
+                  className="w-full bg-gray-100/80 border-0 rounded-2xl py-3 pl-10 pr-9 text-xs text-gray-900 placeholder-gray-400 focus:bg-white focus:ring-2 focus:ring-[#007AFF] outline-hidden transition-all"
                 />
+
                 {searchQuery && (
                   <button
                     type="button"
@@ -1045,10 +1048,10 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
             <div className="flex items-center justify-between">
               <div 
                 onClick={onNavigateToHome}
-                className="font-bold text-2xl tracking-tight text-gray-950 select-none cursor-pointer"
+                className="font-bold text-2xl tracking-tight text-gray-950 select-none cursor-pointer font-apple"
                 title="Zooner Home"
               >
-                zooner<span className="text-[#7C5CFF]">.</span>
+                zooner<span className="text-[#007AFF]">.</span>
               </div>
 
               <div className="flex items-center gap-2">
@@ -1060,7 +1063,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                   onClick={onOpenLocationModal}
                   className="flex items-center gap-1.5 text-xs font-semibold text-gray-800 hover:text-gray-950 transition cursor-pointer bg-gray-50 border border-gray-100 rounded-full px-2.5 py-1"
                 >
-                  <MapPin className="w-3.5 h-3.5 text-[#7C5CFF]" />
+                  <MapPin className="w-3.5 h-3.5 text-[#007AFF]" />
                   <span>{currentLocation.city || 'Coimbatore'}</span>
                   <ChevronDown className="w-3 h-3 text-gray-400" />
                 </button>
@@ -1069,7 +1072,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
 
             {/* Headline Section */}
             <div>
-              <h2 className="text-3xl font-extrabold text-gray-950 tracking-tight leading-tight">
+              <h2 className="text-3xl font-extrabold text-gray-950 tracking-tight leading-tight font-apple">
                 Find it nearby.
               </h2>
               <p className="text-xs text-gray-500 mt-1">
@@ -1085,7 +1088,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                 placeholder="Search for products (e.g., iPhone, milk, shoe...)"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-white border border-gray-200 rounded-xl py-3 pl-10 pr-9 text-xs text-gray-900 placeholder-gray-400 focus:border-[#7C5CFF] focus:ring-1 focus:ring-[#7C5CFF] outline-hidden transition"
+                className="w-full bg-gray-100/80 border-0 rounded-2xl py-3 pl-10 pr-9 text-xs text-gray-900 placeholder-gray-400 focus:bg-white focus:ring-2 focus:ring-[#007AFF] outline-hidden transition-all"
               />
               {searchQuery && (
                 <button
@@ -1106,9 +1109,9 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                     key={rad}
                     type="button"
                     onClick={() => setRadiusFilter(rad)}
-                    className={`px-4 py-1.5 rounded-full text-xs font-semibold transition cursor-pointer ${
+                    className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
                       radiusFilter === rad
-                        ? 'bg-[#7C5CFF] text-white shadow-xs'
+                        ? 'bg-[#007AFF] text-white shadow-xs'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
@@ -1122,12 +1125,12 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
             {!searchQuery && (
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-bold text-gray-900">Browse by category</h3>
+                <h3 className="text-sm font-bold text-gray-900 font-apple">Browse by category</h3>
                 {selectedCategory !== 'all' && (
                   <button
                     type="button"
                     onClick={() => setSelectedCategory('all')}
-                    className="text-xs font-semibold text-[#7C5CFF] hover:underline cursor-pointer"
+                    className="text-xs font-semibold text-[#007AFF] hover:underline cursor-pointer"
                   >
                     Show all
                   </button>
@@ -1145,10 +1148,10 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                         onClick={() => {
                           setSelectedCategory(isSelected ? 'all' : cat.slug || cat.name);
                         }}
-                        className={`rounded-2xl p-2.5 flex flex-col items-center justify-center gap-1.5 transition cursor-pointer border ${
+                        className={`rounded-2xl p-2.5 flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer border ${
                           isSelected
-                            ? 'bg-purple-50 border-[#7C5CFF] text-[#7C5CFF] shadow-xs ring-1 ring-[#7C5CFF]'
-                            : 'bg-gray-50/80 hover:bg-gray-100 border-transparent hover:border-gray-200 text-gray-700'
+                            ? 'bg-blue-50 border-[#007AFF] text-[#007AFF] shadow-xs ring-1 ring-[#007AFF]'
+                            : 'bg-white hover:bg-gray-50 border-gray-200/80 hover:border-gray-300 text-gray-700 shadow-[0_1px_2px_rgba(0,0,0,0.03)]'
                         }`}
                       >
                         <div className="w-8 h-8 flex items-center justify-center text-lg">
@@ -1169,33 +1172,56 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
             </div>
             )}
 
+            {/* Merchant Onboarding Prompt Banner */}
+            {!searchQuery && (
+              <div 
+                onClick={() => {
+                  if (onOpenRetailerModal) onOpenRetailerModal();
+                  else if (onNavigateToVendor) onNavigateToVendor();
+                }}
+                className="bg-white rounded-2xl border border-gray-200/80 p-3.5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex items-center justify-between gap-3 cursor-pointer hover:border-blue-300 transition-all group"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-blue-50 text-[#007AFF] flex items-center justify-center shrink-0 group-hover:bg-[#007AFF] group-hover:text-white transition-colors">
+                    <Store className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="text-xs font-bold text-gray-950 font-apple">Are you a physical store owner?</h4>
+                    <p className="text-[11px] text-gray-500 truncate">List your shelves on Zooner for 0% commission</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-[#007AFF] group-hover:translate-x-0.5 transition-all shrink-0" />
+              </div>
+            )}
+
             {/* Nearby Verified Products Section (Task 2 & 8: Real backend data or clean empty state) */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-bold text-gray-900">{searchQuery ? 'Search Results' : 'Nearby Products'}</h3>
+                <h3 className="text-sm font-bold text-gray-900 font-apple">{searchQuery ? 'Search Results' : 'Nearby Products'}</h3>
                 <span className="text-xs text-gray-400">{radiusFilter} radius</span>
               </div>
 
               {isLoadingCatalog ? (
-                <div className="py-10 text-center text-gray-400 space-y-2">
-                  <Loader2 className="w-6 h-6 mx-auto animate-spin text-[#7C5CFF]" />
-                  <p className="text-xs">{searchQuery ? 'Searching nearby inventory...' : 'Loading nearby inventory...'}</p>
+                <div className="py-12 text-center space-y-2">
+                  <Loader2 className="w-6 h-6 mx-auto animate-spin text-[#007AFF]" />
+                  <p className="text-xs text-gray-400">Loading catalog...</p>
                 </div>
               ) : dbProducts.length > 0 ? (
                 <div className="space-y-3">
-                  {(searchQuery ? dbProducts : dbProducts.slice(0, 5)).map((prod) => {
-                    const store = prod.carryingStores && prod.carryingStores.length > 0 ? prod.carryingStores[0] : null;
-                    const price = prod.minPrice || (store ? store.price : 0);
-                    const stock = prod.totalAvailableQuantity ?? (store ? store.availableQuantity : 0);
+                  {dbProducts.map((prod) => {
+                    const price = prod.minPrice || 0;
+                    const stock = prod.totalAvailableQuantity ?? 1;
                     const inStock = stock > 0;
-                    const distStr = store?.distanceKm ? formatDistance(store.distanceKm) : '';
+                    const firstStore = prod.carryingStores?.[0];
+                    const distanceText = firstStore?.distanceKm ? formatDistance(firstStore.distanceKm) : '';
 
                     return (
                       <div
                         key={prod.id}
-                        className="bg-white rounded-2xl border border-gray-100 p-3 shadow-xs flex gap-3.5 items-center relative hover:border-gray-200 transition"
+                        className="bg-white rounded-2xl border border-gray-200/80 p-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex gap-3.5 items-center relative hover:border-gray-300 transition"
                       >
-                        <div className="w-16 h-16 rounded-xl bg-gray-50 shrink-0 flex items-center justify-center overflow-hidden p-1 border border-gray-100">
+                        {/* Thumbnail */}
+                        <div className="w-20 h-20 rounded-xl bg-gray-50 shrink-0 flex items-center justify-center overflow-hidden p-1.5 border border-gray-100">
                           {prod.imageUrl ? (
                             <img
                               src={prod.imageUrl}
@@ -1203,54 +1229,75 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                               className="w-full h-full object-contain"
                             />
                           ) : (
-                            <PackageOpen className="w-6 h-6 text-gray-300" />
+                            <PackageOpen className="w-7 h-7 text-gray-300" />
                           )}
                         </div>
 
-                        <div className="flex-1 min-w-0 pr-2">
-                          <h4 className="text-xs font-semibold text-gray-900 truncate">{prod.name}</h4>
-                          <div className="text-sm font-bold text-gray-950 mt-0.5">
+                        {/* Details */}
+                        <div className="flex-1 min-w-0 pr-6">
+                          <h4 className="text-xs font-semibold text-gray-900 truncate">
+                            {prod.name}
+                          </h4>
+
+                          {/* Bookmark */}
+                          <button
+                            type="button"
+                            onClick={() => toggleBookmark(prod.id)}
+                            className="absolute top-3 right-3 text-gray-400 hover:text-gray-700 cursor-pointer"
+                          >
+                            <Bookmark className={`w-4 h-4 ${bookmarkedIds[prod.id] ? 'fill-[#007AFF] text-[#007AFF]' : ''}`} />
+                          </button>
+
+                          <div className="text-sm font-bold text-gray-950 mt-1">
                             {price > 0 ? `₹ ${price.toLocaleString('en-IN')}` : 'Price at counter'}
                           </div>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
+
+                          <div className="mt-1">
+                            <span className={`inline-block text-[10px] font-medium px-2 py-0.5 rounded-full ${
                               inStock
-                                ? (stock <= 2 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-[#20D99A] font-semibold')
+                                ? (stock <= 2 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-[#34C759] font-semibold')
                                 : 'bg-gray-100 text-gray-500'
                             }`}>
                               {inStock ? (stock <= 2 ? `Low stock (${stock} left)` : 'In stock') : 'Out of stock'}
                             </span>
-                            {distStr && (
-                              <span className="text-[10px] text-gray-400 truncate">
-                                {distStr}
-                              </span>
-                            )}
+                          </div>
+
+                          {firstStore && (
+                            <div className="flex items-center justify-between mt-2 text-[11px] text-gray-500 truncate">
+                              <span>{distanceText ? `${distanceText} • ` : ''}{firstStore.storeName}</span>
+                            </div>
+                          )}
+
+                          <div className="flex items-center justify-between mt-2">
+                            <span className="text-[10px] text-gray-400">
+                              {prod.carryingStores?.length ? `${prod.carryingStores.length} store${prod.carryingStores.length > 1 ? 's' : ''}` : 'Direct store'}
+                            </span>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (firstStore) {
+                                  setSelectedStore({
+                                    id: firstStore.storeId,
+                                    name: firstStore.storeName,
+                                    phone: firstStore.storePhone || '',
+                                    address: firstStore.storeAddress || '',
+                                    latitude: firstStore.latitude || 0,
+                                    longitude: firstStore.longitude || 0,
+                                    isLiveEnabled: true,
+                                    isOpen: true,
+                                    distanceKm: firstStore.distanceKm
+                                  });
+                                } else {
+                                  handleReserveProduct(prod);
+                                }
+                              }}
+                              className="bg-[#007AFF] hover:bg-[#0071E3] active:scale-[0.98] text-white px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer shadow-xs transition"
+                            >
+                              Reserve Hold
+                            </button>
                           </div>
                         </div>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (store) {
-                              setSelectedStore({
-                                id: store.storeId,
-                                name: store.storeName,
-                                phone: store.storePhone || '',
-                                address: store.storeAddress || '',
-                                latitude: store.latitude || 0,
-                                longitude: store.longitude || 0,
-                                isLiveEnabled: true,
-                                isOpen: true,
-                                distanceKm: store.distanceKm
-                              });
-                            } else {
-                              handleReserveProduct(prod);
-                            }
-                          }}
-                          className="shrink-0 bg-[#7C5CFF] hover:bg-[#6842FF] text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer shadow-xs"
-                        >
-                          View Store
-                        </button>
                       </div>
                     );
                   })}
@@ -1276,7 +1323,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                     <button
                       type="button"
                       onClick={() => setActiveTab('live-ask')}
-                      className="text-xs font-semibold px-3.5 py-1.5 bg-[#7C5CFF] text-white rounded-lg hover:bg-[#6842FF]"
+                      className="text-xs font-semibold px-3.5 py-1.5 bg-[#007AFF] text-white rounded-lg hover:bg-[#0071E3]"
                     >
                       Ask nearby stores
                     </button>
@@ -1289,7 +1336,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
             {!searchQuery && (
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-bold text-gray-900">Nearby Local Stores</h3>
+                <h3 className="text-sm font-bold text-gray-900 font-apple">Nearby Local Stores</h3>
                 <span className="text-xs text-gray-400">{dbShops.length} online</span>
               </div>
 
@@ -1303,7 +1350,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                     <div
                       key={shop.id}
                       onClick={() => setSelectedStore(shop)}
-                      className="p-3 bg-white rounded-2xl border border-gray-100 shadow-xs flex items-center justify-between hover:border-gray-200 transition cursor-pointer"
+                      className="p-3.5 bg-white rounded-2xl border border-gray-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex items-center justify-between hover:border-gray-300 transition cursor-pointer"
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="w-10 h-10 rounded-full bg-gray-900 text-white font-bold text-sm flex items-center justify-center shrink-0">
@@ -1312,7 +1359,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                         <div className="min-w-0">
                           <h4 className="text-xs font-bold text-gray-900 truncate flex items-center gap-1">
                             <span>{shop.name}</span>
-                            <CheckCircle2 className="w-3.5 h-3.5 text-[#20D99A]" />
+                            <CheckCircle2 className="w-3.5 h-3.5 text-[#34C759]" />
                           </h4>
                           <p className="text-[11px] text-gray-500 truncate mt-0.5">
                             {shop.address || 'Local Shop'}
@@ -1322,11 +1369,11 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
 
                       <div className="text-right shrink-0">
                         {shop.distanceKm !== undefined && (
-                          <div className="text-xs font-semibold text-[#7C5CFF]">
+                          <div className="text-xs font-semibold text-[#007AFF]">
                             {formatDistance(shop.distanceKm)}
                           </div>
                         )}
-                        <span className="text-[10px] text-[#20D99A] font-semibold">Open</span>
+                        <span className="text-[10px] text-[#34C759] font-semibold">Open</span>
                       </div>
                     </div>
                   ))}
@@ -1336,32 +1383,6 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                   No verified stores are currently online within {radiusFilter}.
                 </div>
               )}
-            </div>
-            )}
-
-            {/* Support local stores banner */}
-            {!searchQuery && (
-            <div className="rounded-2xl bg-[#FFF8EE] border border-amber-100/80 p-4 flex items-center justify-between overflow-hidden relative shadow-xs">
-              <div className="space-y-0.5 max-w-[200px]">
-                <h4 className="text-xs font-bold text-gray-950">Support local stores</h4>
-                <p className="text-[11px] text-gray-500">Shop nearby. Stronger communities.</p>
-              </div>
-
-              <div className="relative w-20 h-16 shrink-0 flex items-center justify-center">
-                <div className="w-16 h-12 bg-white rounded-lg border border-amber-200 shadow-sm relative flex flex-col overflow-hidden">
-                  <div className="h-3 w-full flex">
-                    <div className="flex-1 bg-red-400" />
-                    <div className="flex-1 bg-white" />
-                    <div className="flex-1 bg-red-400" />
-                    <div className="flex-1 bg-white" />
-                    <div className="flex-1 bg-red-400" />
-                  </div>
-                  <div className="flex-1 flex items-center justify-center gap-1 p-1">
-                    <div className="w-4 h-5 bg-sky-100 border border-sky-200 rounded-2xs" />
-                    <div className="w-3 h-6 bg-amber-800 rounded-t-xs" />
-                  </div>
-                </div>
-              </div>
             </div>
             )}
           </div>
@@ -1375,10 +1396,10 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
             <div className="flex items-center justify-between">
               <div 
                 onClick={onNavigateToHome}
-                className="font-bold text-2xl tracking-tight text-gray-950 select-none cursor-pointer"
+                className="font-bold text-2xl tracking-tight text-gray-950 select-none cursor-pointer font-apple"
                 title="Zooner Home"
               >
-                zooner<span className="text-[#7C5CFF]">.</span>
+                zooner<span className="text-[#007AFF]">.</span>
               </div>
 
               <div className="flex items-center gap-2">
@@ -1390,12 +1411,13 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                   onClick={onOpenLocationModal}
                   className="flex items-center gap-1 text-xs font-semibold text-gray-800 hover:text-gray-950 transition cursor-pointer bg-gray-50 border border-gray-100 rounded-full px-2.5 py-1"
                 >
-                  <MapPin className="w-3.5 h-3.5 text-[#7C5CFF]" />
+                  <MapPin className="w-3.5 h-3.5 text-[#007AFF]" />
                   <span>{currentLocation.city || 'Coimbatore'}</span>
                   <ChevronDown className="w-3 h-3 text-gray-400" />
                 </button>
               </div>
             </div>
+
 
             {/* Headline */}
             <div>
@@ -1661,36 +1683,36 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
 
             {/* Profile Card */}
             {userProfile && !userProfile.email?.includes('@guest.zooner.app') ? (
-              <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-xs flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-full bg-purple-100 text-purple-700 font-bold text-lg flex items-center justify-center shrink-0">
+              <div className="bg-white rounded-2xl border border-gray-200/80 p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-full bg-gray-100 text-gray-900 font-bold text-lg flex items-center justify-center shrink-0">
                   {userProfile.name ? userProfile.name.charAt(0).toUpperCase() : 'U'}
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-base font-bold text-gray-900 truncate">
+                  <h3 className="text-base font-bold text-gray-950 truncate font-apple">
                     {userProfile.name || 'Account'}
                   </h3>
                   {userProfile.email && (
-                    <p className="text-xs text-gray-500 truncate">
+                    <p className="text-xs text-gray-500 truncate mt-0.5">
                       {userProfile.email}
                     </p>
                   )}
-                  <span className="inline-block mt-1 font-medium text-[10px] px-2 py-0.5 rounded-full bg-purple-50 text-[#7C5CFF] font-semibold">
-                    Shopper Profile
+                  <span className="inline-block mt-1 font-medium text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-semibold">
+                    {userProfile.role?.toLowerCase() === 'admin' || isSuperAdminEmail(userProfile.email) ? 'Platform Administrator' : userProfile.isVendor || (userProfile.shops && userProfile.shops.length > 0) ? 'Store Owner' : 'Shopper Profile'}
                   </span>
                 </div>
               </div>
             ) : (
-              <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-xs flex items-center justify-between gap-3.5">
+              <div className="bg-white rounded-2xl border border-gray-200/80 p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] flex items-center justify-between gap-3.5">
                 <div className="flex items-center gap-3.5 min-w-0">
                   <div className="w-12 h-12 rounded-full bg-gray-100 text-gray-400 font-bold text-lg flex items-center justify-center shrink-0">
                     <User className="w-6 h-6 text-gray-400" />
                   </div>
                   <div className="min-w-0">
-                    <h3 className="text-base font-bold text-gray-900 truncate">
+                    <h3 className="text-base font-bold text-gray-950 truncate font-apple">
                       Guest Shopper
                     </h3>
-                    <p className="text-xs text-gray-500 truncate">
+                    <p className="text-xs text-gray-500 truncate mt-0.5">
                       Browse stores, check stock & holds freely
                     </p>
                   </div>
@@ -1698,15 +1720,73 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                 <button
                   type="button"
                   onClick={() => onOpenSignIn('C')}
-                  className="bg-[#7C5CFF] hover:bg-[#6842FF] text-white font-semibold text-xs px-3.5 py-2 rounded-xl transition cursor-pointer shrink-0 shadow-xs"
+                  className="bg-[#007AFF] hover:bg-[#0071E3] text-white font-semibold text-xs px-3.5 py-2 rounded-xl transition-all active:scale-[0.98] cursor-pointer shrink-0 shadow-xs"
                 >
-                  Sign In (Optional)
+                  Sign In
                 </button>
               </div>
             )}
 
+            {/* ── STORE OWNER & MERCHANT SECTION ── */}
+            {userProfile?.isVendor || (userProfile?.shops && userProfile.shops.length > 0) ? (
+              <div className="bg-white rounded-2xl border border-gray-200/80 p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+                <div className="flex items-start gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#34C759] flex items-center justify-center shrink-0">
+                    <Store className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <h4 className="text-sm font-bold text-gray-950 font-apple">Merchant Portal</h4>
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-[#34C759] border border-emerald-100">
+                        {userProfile?.shops?.[0]?.name || 'Store Active'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                      Manage live customer broadcasts, shelf stock, and scan QR collection passes.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={onNavigateToVendor}
+                      className="mt-3 w-full py-2.5 px-4 rounded-xl bg-gray-950 hover:bg-black text-white text-xs font-semibold flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer shadow-xs"
+                    >
+                      <Store className="w-4 h-4" />
+                      <span>Open Merchant OS →</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl border border-gray-200/80 p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+                <div className="flex items-start gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#007AFF] flex items-center justify-center shrink-0">
+                    <Store className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-sm font-bold text-gray-950 font-apple">Own a Physical Store?</h4>
+                    <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                      List your physical shelves on Zooner to turn nearby local search into instant footfall. 0% commission.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onOpenRetailerModal) {
+                          onOpenRetailerModal();
+                        } else if (onNavigateToVendor) {
+                          onNavigateToVendor();
+                        }
+                      }}
+                      className="mt-3 w-full py-2.5 px-4 rounded-xl bg-[#007AFF] hover:bg-[#0071E3] text-white text-xs font-semibold flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer shadow-xs"
+                    >
+                      <Store className="w-4 h-4" />
+                      <span>Register Physical Storefront →</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Menu List */}
-            <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-100 overflow-hidden shadow-xs">
+            <div className="bg-white rounded-2xl border border-gray-200/80 divide-y divide-gray-100 overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
               <button
                 type="button"
                 onClick={() => onOpenSignIn('C')}
@@ -1782,24 +1862,25 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                   setUserProfile(null);
                   window.dispatchEvent(new Event('storage'));
                 }}
-                className="w-full flex items-center gap-2.5 text-xs font-semibold text-red-500 hover:text-red-600 px-4 py-3 transition cursor-pointer"
+                className="w-full flex items-center justify-center gap-2 text-xs font-semibold text-[#FF3B30] hover:text-red-700 py-3 transition-all active:opacity-70 cursor-pointer"
               >
-                <LogOut className="w-4 h-4 text-red-500" />
+                <LogOut className="w-4 h-4 text-[#FF3B30]" />
                 <span>Sign Out</span>
               </button>
             ) : (
               <button
                 type="button"
                 onClick={() => onOpenSignIn('C')}
-                className="w-full flex items-center justify-center gap-2 text-xs font-semibold text-[#7C5CFF] hover:text-[#6842FF] px-4 py-3 transition cursor-pointer bg-white rounded-2xl border border-gray-100 shadow-xs"
+                className="w-full flex items-center justify-center gap-2 text-xs font-semibold text-[#007AFF] hover:text-[#0071E3] px-4 py-3 transition-all active:scale-[0.98] cursor-pointer bg-white rounded-2xl border border-gray-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
               >
-                <User className="w-4 h-4 text-[#7C5CFF]" />
-                <span>Sign In / Create Account (Optional)</span>
+                <User className="w-4 h-4 text-[#007AFF]" />
+                <span>Sign In / Create Account</span>
               </button>
             )}
           </div>
         )}
       </div>
+
 
       {/* ══════════════════════════════════════════════════════════════════
           BOTTOM NAVIGATION BAR (EXPLORE, LIVE ASK, HOLDS, [ADMIN], ACCOUNT)
