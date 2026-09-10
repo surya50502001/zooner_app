@@ -11,6 +11,7 @@ import { SignInModal } from './components/SignInModal';
 import { ExperienceSwitcherModal, getUserCapabilities } from './components/ExperienceSwitcher';
 import { Capacitor } from '@capacitor/core';
 import type { LocationArea } from './types';
+import { detectUserLocation } from './services/locationService';
 
 const DEFAULT_LOCATION: LocationArea = {
   id: 'loc-live',
@@ -29,8 +30,10 @@ export function AppContent() {
     if (Capacitor.isNativePlatform()) return 'customer';
     const hash = window.location.hash.toLowerCase();
     const path = window.location.pathname.toLowerCase();
-    if (hash.includes('admin') || path.includes('/admin')) return 'admin';
-    if (hash.includes('vendor') || hash.includes('merchant') || path.includes('/vendor') || path.includes('/merchant')) return 'vendor';
+    if (hash.includes('admin') || path.includes('/admin')) {
+      return 'admin';
+    }
+    if (hash.includes('vendor') || path.includes('/vendor')) return 'vendor';
     if (hash.includes('marketing') || path.includes('/marketing')) return 'marketing';
     return 'customer';
   });
@@ -67,25 +70,28 @@ export function AppContent() {
 
   const caps = getUserCapabilities(userProfile);
 
-  // Auto-detect real-time browser GPS location on startup
+  // Auto-detect real-time location with multi-tier fallback on startup
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setCurrentLocation(prev => ({
-            ...prev,
-            id: 'live-gps',
-            name: 'Current Location (GPS)',
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          }));
-        },
-        () => {
-          // Silent fallback to default Coimbatore location
-        },
-        { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
-      );
-    }
+    let isMounted = true;
+    detectUserLocation({ enableReverseGeocode: true })
+      .then((loc) => {
+        if (!isMounted) return;
+        setCurrentLocation({
+          id: loc.isEstimated ? 'ip-location' : 'live-gps',
+          name: loc.displayName || loc.area || 'Current Location',
+          city: loc.city || 'Coimbatore',
+          storesCount: 0,
+          activeRequests: 0,
+          lat: loc.lat,
+          lng: loc.lng
+        });
+      })
+      .catch(() => {
+        // Keeps default location
+      });
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Sync with browser hash changes for back/forward navigation

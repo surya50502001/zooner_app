@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Store, CheckCircle, ArrowRight, ShieldCheck, Upload, MapPin, Loader2, AlertCircle, LogIn, Navigation } from 'lucide-react';
 import { createShop, fetchCategories, becomeVendor } from '../services/api';
+import { detectUserLocation, formatGeolocationError } from '../services/locationService';
 
 interface RetailerModalProps {
   isOpen: boolean;
@@ -46,85 +47,28 @@ export const RetailerModal: React.FC<RetailerModalProps> = ({ isOpen, onClose, o
     }
   }, [isOpen]);
 
-  const handleDetectLocation = () => {
-    if (!navigator.geolocation) {
-      setErrorMessage('Geolocation is not supported by your browser. Please type your address manually.');
-      return;
-    }
-
+  const handleDetectLocation = async () => {
     setIsDetectingLocation(true);
     setErrorMessage(null);
     setLocationFeedback(null);
 
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        const accuracy = position.coords.accuracy ? Math.round(position.coords.accuracy) : null;
-        setLatitude(lat);
-        setLongitude(lng);
+    try {
+      const loc = await detectUserLocation({ enableReverseGeocode: true });
+      setLatitude(loc.lat);
+      setLongitude(loc.lng);
 
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 6000);
-          const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
-            {
-              headers: { 'Accept-Language': 'en' },
-              signal: controller.signal
-            }
-          );
-          clearTimeout(timeoutId);
+      if (loc.area) setArea(loc.area);
+      if (loc.formattedAddress) setAddress(loc.formattedAddress);
 
-          if (response.ok) {
-            const data = await response.json();
-            const addr = data.address || {};
-
-            const neighborhood = addr.suburb || addr.neighbourhood || addr.residential || addr.commercial || addr.quarter || addr.city_district || '';
-            const city = addr.city || addr.town || addr.municipality || addr.village || addr.county || addr.state_district || '';
-            const state = addr.state || '';
-            const postcode = addr.postcode || '';
-
-            const areaParts = [neighborhood, city].filter(Boolean);
-            const detectedArea = areaParts.length > 0 ? areaParts.join(', ') : (city || state || '');
-
-            const streetParts = [
-              addr.house_number,
-              addr.building,
-              addr.road || addr.pedestrian || addr.footway || addr.path,
-              postcode ? `PIN: ${postcode}` : ''
-            ].filter(Boolean);
-
-            const detectedAddress = streetParts.length > 0
-              ? streetParts.join(', ')
-              : (data.display_name ? data.display_name.split(',').slice(0, 3).join(', ') : '');
-
-            if (detectedArea) setArea(detectedArea);
-            if (detectedAddress) setAddress(detectedAddress);
-
-            setLocationFeedback(
-              `📍 Location pinned: ${detectedArea || 'Current GPS'} (${lat.toFixed(4)}°, ${lng.toFixed(4)}°${accuracy ? ` · ±${accuracy}m` : ''})`
-            );
-          } else {
-            setLocationFeedback(`📍 Location pinned: (${lat.toFixed(4)}°, ${lng.toFixed(4)}°)`);
-          }
-        } catch (geoErr) {
-          console.warn('Reverse geocoding error or timeout:', geoErr);
-          setLocationFeedback(`📍 Location pinned: (${lat.toFixed(4)}°, ${lng.toFixed(4)}°)`);
-        } finally {
-          setIsDetectingLocation(false);
-        }
-      },
-      (error) => {
-        setIsDetectingLocation(false);
-        let msg = 'Unable to detect location.';
-        if (error.code === 1) msg = 'Location access denied. Please enable GPS permissions or enter your address manually.';
-        else if (error.code === 2) msg = 'Location unavailable. Please enter your address manually.';
-        else if (error.code === 3) msg = 'Location request timed out. Please enter your address manually.';
-        setErrorMessage(msg);
-      },
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
-    );
+      const sourceLabel = loc.source === 'gps-high' ? 'High Precision GPS' : loc.source === 'gps-network' ? 'Network GPS' : 'IP Geolocation';
+      setLocationFeedback(
+        `📍 Location pinned: ${loc.displayName} (${loc.lat.toFixed(4)}°, ${loc.lng.toFixed(4)}° · ${sourceLabel})`
+      );
+    } catch (err: any) {
+      setErrorMessage('Unable to auto-detect location. Please enter your address manually.');
+    } finally {
+      setIsDetectingLocation(false);
+    }
   };
 
   if (!isOpen) return null;

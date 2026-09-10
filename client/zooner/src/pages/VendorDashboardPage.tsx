@@ -60,6 +60,7 @@ import {
   type ShopProfileDto,
   type ValidateHoldQrResponseDto
 } from '../services/api';
+import { detectUserLocation } from '../services/locationService';
 import type { StoreInventoryItem, ProductSearchResult, CategoryDto, LiveRequestSummary, ProductVariantDto } from '../types';
 import { ExperienceHeaderPill } from '../components/ExperienceSwitcher';
 
@@ -445,54 +446,23 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
   };
 
   // Detect GPS Location for Store Setup Gate
-  const handleDetectSetupLocation = () => {
-    if (!navigator.geolocation) {
-      setSetupError('Geolocation is not supported by your browser.');
-      return;
-    }
+  const handleDetectSetupLocation = async () => {
     setIsDetectingSetupGps(true);
     setSetupGpsFeedback(null);
     setSetupError('');
 
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        setSetupLat(lat);
-        setSetupLng(lng);
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 6000);
-          const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
-            { headers: { 'Accept-Language': 'en' }, signal: controller.signal }
-          );
-          clearTimeout(timeoutId);
-          if (response.ok) {
-            const data = await response.json();
-            const addr = data.address || {};
-            const neighborhood = addr.suburb || addr.neighbourhood || addr.residential || addr.commercial || addr.city_district || '';
-            const city = addr.city || addr.town || addr.municipality || addr.village || addr.county || '';
-            const postcode = addr.postcode || '';
-            const streetParts = [addr.house_number, addr.building, addr.road || addr.pedestrian || addr.footway, neighborhood, city, postcode ? `PIN: ${postcode}` : ''].filter(Boolean);
-            const detectedAddress = streetParts.length > 0 ? streetParts.join(', ') : (data.display_name ? data.display_name.split(',').slice(0, 3).join(', ') : '');
-            if (detectedAddress) setSetupAddress(detectedAddress);
-            setSetupGpsFeedback(`📍 Location Pinned: ${city || neighborhood || 'GPS'} (${lat.toFixed(4)}°, ${lng.toFixed(4)}°)`);
-          } else {
-            setSetupGpsFeedback(`📍 GPS Coordinates Pinned: (${lat.toFixed(4)}°, ${lng.toFixed(4)}°)`);
-          }
-        } catch {
-          setSetupGpsFeedback(`📍 GPS Coordinates Pinned: (${lat.toFixed(4)}°, ${lng.toFixed(4)}°)`);
-        } finally {
-          setIsDetectingSetupGps(false);
-        }
-      },
-      (err) => {
-        setIsDetectingSetupGps(false);
-        setSetupError(`Location error: ${err.message || 'Unable to retrieve GPS.'}`);
-      },
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
-    );
+    try {
+      const loc = await detectUserLocation({ enableReverseGeocode: true });
+      setSetupLat(loc.lat);
+      setSetupLng(loc.lng);
+      if (loc.formattedAddress) setSetupAddress(loc.formattedAddress);
+      const sourceLabel = loc.source === 'gps-high' ? 'High Precision GPS' : loc.source === 'gps-network' ? 'Network GPS' : 'IP Geolocation';
+      setSetupGpsFeedback(`📍 Location Pinned: ${loc.displayName} (${loc.lat.toFixed(4)}°, ${loc.lng.toFixed(4)}° · ${sourceLabel})`);
+    } catch (err: any) {
+      setSetupError(`Location error: ${err.message || 'Unable to retrieve location. Please type your address manually.'}`);
+    } finally {
+      setIsDetectingSetupGps(false);
+    }
   };
 
   // Create store for authenticated user who has no store yet
@@ -666,79 +636,25 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
   };
 
   // Detect store GPS location & reverse-geocode address
-  const handleDetectStoreLocation = () => {
-    if (!navigator.geolocation) {
-      showToast('Geolocation is not supported by your browser.', true);
-      return;
-    }
-
+  const handleDetectStoreLocation = async () => {
     setIsDetectingStoreGps(true);
     setStoreGpsFeedback(null);
 
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        const accuracy = position.coords.accuracy ? Math.round(position.coords.accuracy) : null;
-        setStoreLat(lat);
-        setStoreLng(lng);
-
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 6000);
-          const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
-            {
-              headers: { 'Accept-Language': 'en' },
-              signal: controller.signal
-            }
-          );
-          clearTimeout(timeoutId);
-
-          if (response.ok) {
-            const data = await response.json();
-            const addr = data.address || {};
-
-            const neighborhood = addr.suburb || addr.neighbourhood || addr.residential || addr.commercial || addr.quarter || addr.city_district || '';
-            const city = addr.city || addr.town || addr.municipality || addr.village || addr.county || addr.state_district || '';
-            const postcode = addr.postcode || '';
-
-            const streetParts = [
-              addr.house_number,
-              addr.building,
-              addr.road || addr.pedestrian || addr.footway || addr.path,
-              neighborhood,
-              city,
-              postcode ? `PIN: ${postcode}` : ''
-            ].filter(Boolean);
-
-            const detectedAddress = streetParts.length > 0
-              ? streetParts.join(', ')
-              : (data.display_name ? data.display_name.split(',').slice(0, 3).join(', ') : '');
-
-            if (detectedAddress) setStoreAddress(detectedAddress);
-
-            setStoreGpsFeedback(
-              `📍 Detected: ${city || neighborhood || 'Current GPS'} (${lat.toFixed(4)}°, ${lng.toFixed(4)}°${accuracy ? ` · ±${accuracy}m` : ''})`
-            );
-            showToast('Store GPS coordinates and address auto-detected!', false);
-          } else {
-            setStoreGpsFeedback(`📍 Location Pinned: (${lat.toFixed(4)}°, ${lng.toFixed(4)}°)`);
-            showToast('Store GPS coordinates pinned!', false);
-          }
-        } catch (geoErr) {
-          console.warn('Reverse geocode error or timeout:', geoErr);
-          setStoreGpsFeedback(`📍 Location Pinned: (${lat.toFixed(4)}°, ${lng.toFixed(4)}°)`);
-        } finally {
-          setIsDetectingStoreGps(false);
-        }
-      },
-      (error) => {
-        setIsDetectingStoreGps(false);
-        showToast(`Location error: ${error.message || 'Unable to retrieve GPS coordinates.'}`, true);
-      },
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
-    );
+    try {
+      const loc = await detectUserLocation({ enableReverseGeocode: true });
+      setStoreLat(loc.lat);
+      setStoreLng(loc.lng);
+      if (loc.formattedAddress) setStoreAddress(loc.formattedAddress);
+      const sourceLabel = loc.source === 'gps-high' ? 'High Precision GPS' : loc.source === 'gps-network' ? 'Network GPS' : 'IP Geolocation';
+      setStoreGpsFeedback(
+        `📍 Detected: ${loc.displayName} (${loc.lat.toFixed(4)}°, ${loc.lng.toFixed(4)}° · ${sourceLabel})`
+      );
+      showToast('Store location & address auto-detected!', false);
+    } catch (error: any) {
+      showToast(`Location error: ${error.message || 'Unable to retrieve coordinates.'}`, true);
+    } finally {
+      setIsDetectingStoreGps(false);
+    }
   };
 
   // Save Store Settings
