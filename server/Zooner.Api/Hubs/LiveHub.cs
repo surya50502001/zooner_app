@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Zooner.Api.Data;
+using Zooner.Api.Models;
 
 namespace Zooner.Api.Hubs;
 
@@ -23,6 +24,14 @@ public class LiveHub : Hub
         var userId = GetUserId();
         if (userId != null)
         {
+            var user = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId.Value);
+            if (user == null || !user.IsActive)
+            {
+                _logger.LogWarning("Inactive user {UserId} connected to LiveHub; aborting group registrations.", userId);
+                Context.Abort();
+                return;
+            }
+
             // Add user to their personal notification group
             await Groups.AddToGroupAsync(Context.ConnectionId, $"user_{userId}");
 
@@ -55,12 +64,61 @@ public class LiveHub : Hub
 
     public async Task JoinLiveRequestGroup(string requestId)
     {
+        var userId = GetUserId();
+        if (userId == null)
+        {
+            _logger.LogWarning("Anonymous or unauthenticated SignalR client attempted to join request group {RequestId}", requestId);
+            return;
+        }
+
+        if (!Guid.TryParse(requestId, out var parsedRequestId))
+        {
+            _logger.LogWarning("Invalid request ID format in SignalR group join: {RequestId}", requestId);
+            return;
+        }
+
+        // Verify user is active
+        var user = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId.Value);
+        if (user == null || !user.IsActive)
+        {
+            _logger.LogWarning("Inactive or nonexistent user {UserId} attempted to join request group {RequestId}", userId, requestId);
+            return;
+        }
+
+        // Authorization checks: Admin OR Request Owner OR Participating Vendor
+        var isAdmin = user.Role.Equals(UserRoles.Admin, StringComparison.OrdinalIgnoreCase);
+
+        if (!isAdmin)
+        {
+            var isCustomerOwner = await _context.LiveRequests
+                .AsNoTracking()
+                .AnyAsync(r => r.Id == parsedRequestId && r.CustomerId == userId.Value);
+
+            var isParticipatingVendor = false;
+            if (!isCustomerOwner)
+            {
+                isParticipatingVendor = await _context.ShopResponses
+                    .AsNoTracking()
+                    .AnyAsync(r => r.LiveRequestId == parsedRequestId && r.Shop != null && r.Shop.OwnerId == userId.Value && r.Shop.IsActive);
+            }
+
+            if (!isCustomerOwner && !isParticipatingVendor)
+            {
+                _logger.LogWarning("IDOR Prevention: User {UserId} denied joining request group request_{RequestId}", userId, requestId);
+                return;
+            }
+        }
+
         await Groups.AddToGroupAsync(Context.ConnectionId, $"request_{requestId}");
+        _logger.LogInformation("User {UserId} authorized and joined request group request_{RequestId}", userId, requestId);
     }
 
     public async Task LeaveLiveRequestGroup(string requestId)
     {
-        await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"request_{requestId}");
+        if (Guid.TryParse(requestId, out _))
+        {
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"request_{requestId}");
+        }
     }
 
     private Guid? GetUserId()

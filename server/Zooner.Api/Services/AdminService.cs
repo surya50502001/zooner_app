@@ -286,6 +286,20 @@ public class AdminService : IAdminService
         user.IsActive = request.IsActive;
         user.UpdatedAtUtc = DateTime.UtcNow;
 
+        if (!request.IsActive)
+        {
+            // Revoke all active refresh tokens for the deactivated user
+            var activeTokens = await _context.RefreshTokens
+                .Where(rt => rt.UserId == targetUserId && rt.RevokedAtUtc == null)
+                .ToListAsync();
+
+            foreach (var token in activeTokens)
+            {
+                token.RevokedAtUtc = DateTime.UtcNow;
+                token.RevokedByIp = "Admin-Deactivation";
+            }
+        }
+
         _context.AdminActions.Add(new AdminAction
         {
             Id = Guid.NewGuid(),

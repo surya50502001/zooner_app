@@ -16,12 +16,14 @@ public class AuthController : ControllerBase
     private readonly IAuthService _authService;
     private readonly ILogger<AuthController> _logger;
     private readonly IWebHostEnvironment _environment;
+    private readonly IConfiguration _configuration;
 
-    public AuthController(IAuthService authService, ILogger<AuthController> logger, IWebHostEnvironment environment)
+    public AuthController(IAuthService authService, ILogger<AuthController> logger, IWebHostEnvironment environment, IConfiguration configuration)
     {
         _authService = authService;
         _logger = logger;
         _environment = environment;
+        _configuration = configuration;
     }
 
     /// <summary>
@@ -120,6 +122,12 @@ public class AuthController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> Logout([FromBody] RevokeTokenRequest? request = null)
     {
+        if (!IsOriginTrusted())
+        {
+            _logger.LogWarning("Rejected logout from untrusted origin");
+            return StatusCode(StatusCodes.Status403Forbidden, ApiResponse.Fail("Untrusted request origin."));
+        }
+
         // Token can be sent in request body or retrieved from HttpOnly cookie
         var token = request?.RefreshToken ?? Request.Cookies["refreshToken"];
 
@@ -148,8 +156,15 @@ public class AuthController : ControllerBase
     [HttpPost("refresh-token")]
     [ProducesResponseType(typeof(ApiResponse<AuthResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<AuthResponse>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest? request = null)
     {
+        if (!IsOriginTrusted())
+        {
+            _logger.LogWarning("Rejected refresh-token from untrusted origin");
+            return StatusCode(StatusCodes.Status403Forbidden, ApiResponse<AuthResponse>.Fail("Untrusted request origin."));
+        }
+
         var token = request?.RefreshToken ?? Request.Cookies["refreshToken"];
 
         if (string.IsNullOrEmpty(token))
@@ -265,5 +280,29 @@ public class AuthController : ControllerBase
             return forwardedFor.FirstOrDefault()?.Split(',')[0].Trim();
         }
         return HttpContext.Connection.RemoteIpAddress?.ToString();
+    }
+
+    private bool IsOriginTrusted()
+    {
+        if (!Request.Headers.TryGetValue("Origin", out var originHeader) || string.IsNullOrEmpty(originHeader))
+        {
+            return true; // Native clients or requests without Origin header
+        }
+
+        var origin = originHeader.ToString().TrimEnd('/');
+        var isDev = _environment.IsDevelopment();
+        if (isDev && (origin.StartsWith("http://localhost:") || origin.StartsWith("https://localhost:")))
+        {
+            return true;
+        }
+
+        var configuredOrigins = _configuration["Cors:AllowedOrigins"] 
+            ?? Environment.GetEnvironmentVariable("CORS_ORIGINS") 
+            ?? "https://zooner.app,https://www.zooner.app";
+
+        var allowedList = configuredOrigins.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(o => o.Trim().TrimEnd('/'));
+
+        return allowedList.Contains(origin, StringComparer.OrdinalIgnoreCase);
     }
 }

@@ -88,7 +88,7 @@ builder.Services.AddSignalR();
 // 5. Configure JWT Authentication (Supporting HTTP Bearer and SignalR WebSockets)
 var jwtKey = builder.Configuration["Jwt:Key"];
 
-// In Production, fail fast if secure secrets are missing
+// In Production, fail fast if secure secrets or production database configurations are missing
 if (!builder.Environment.IsDevelopment())
 {
     if (string.IsNullOrWhiteSpace(jwtKey) || jwtKey.Length < 32 || jwtKey.StartsWith("Development", StringComparison.OrdinalIgnoreCase))
@@ -96,9 +96,14 @@ if (!builder.Environment.IsDevelopment())
         throw new InvalidOperationException("Production startup failed: A secure, production JWT Key of at least 32 characters must be configured via the 'JWT__KEY' environment variable.");
     }
 
-    if (string.IsNullOrWhiteSpace(connectionString) || connectionString.Contains("zooner_dev.db"))
+    if (dbProvider.Equals("Sqlite", StringComparison.OrdinalIgnoreCase) || 
+        string.IsNullOrWhiteSpace(connectionString) || 
+        connectionString.StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase) || 
+        connectionString.EndsWith(".db", StringComparison.OrdinalIgnoreCase) || 
+        connectionString.Contains("locallive.db") || 
+        connectionString.Contains("zooner_dev.db"))
     {
-        throw new InvalidOperationException("Production startup failed: A valid production database connection string must be configured via 'DATABASE_URL' or 'ConnectionStrings__PostgreSql'.");
+        throw new InvalidOperationException("Production startup failed: SQLite/Local database is not permitted in production. A valid PostgreSQL or SQL Server database connection string must be configured via 'DATABASE_URL' or 'ConnectionStrings:PostgreSql'.");
     }
 }
 else
@@ -337,4 +342,6 @@ app.MapControllers();
 app.MapHub<LiveHub>("/hubs/live");
 
 app.Run();
+
+public partial class Program { }
 

@@ -79,7 +79,9 @@ public class ChatService : IChatService
         }
 
         // Authorization check
-        var isAuthorized = conversation.CustomerId == userId || conversation.Shop?.OwnerId == userId;
+        var user = await _context.Users.FindAsync(userId);
+        var isAdmin = user != null && user.Role.Equals(UserRoles.Admin, StringComparison.OrdinalIgnoreCase);
+        var isAuthorized = conversation.CustomerId == userId || conversation.Shop?.OwnerId == userId || isAdmin;
         if (!isAuthorized)
         {
             return ApiResponse<List<ChatMessageDto>>.Fail("You are not a participant in this conversation.");
@@ -200,6 +202,23 @@ public class ChatService : IChatService
         if (shop == null)
         {
             return ApiResponse<ConversationDto>.Fail("Shop not found.");
+        }
+
+        if (!shop.IsActive)
+        {
+            return ApiResponse<ConversationDto>.Fail("Shop is not currently active.");
+        }
+
+        if (shop.OwnerId == customerId)
+        {
+            return ApiResponse<ConversationDto>.Fail("Customer cannot start conversation with their own shop.");
+        }
+
+        // Verify shop legitimately participated / responded to this live request
+        var hasResponded = liveRequest.Responses.Any(r => r.ShopId == request.ShopId);
+        if (!hasResponded)
+        {
+            return ApiResponse<ConversationDto>.Fail("Shop has not responded to this live request.");
         }
 
         var existing = await _context.Conversations

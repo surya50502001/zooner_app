@@ -345,7 +345,7 @@ public class GoogleAuthTests
         var mockEnv = new Mock<Microsoft.AspNetCore.Hosting.IWebHostEnvironment>();
         mockEnv.Setup(e => e.EnvironmentName).Returns("Development");
 
-        var controller = new AuthController(authService, NullLogger<AuthController>.Instance, mockEnv.Object);
+        var controller = new AuthController(authService, NullLogger<AuthController>.Instance, mockEnv.Object, new ConfigurationBuilder().Build());
         var httpContext = new DefaultHttpContext();
         controller.ControllerContext = new ControllerContext
         {
@@ -367,4 +367,7 @@ public class GoogleAuthTests
         Assert.Contains("httponly", cookies, StringComparison.OrdinalIgnoreCase);
     }
 }
+
+
+
 

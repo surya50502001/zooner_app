@@ -107,6 +107,11 @@ public class AuthService : IAuthService
                 return ApiResponse<AuthResponse>.Fail("Invalid email or password.");
             }
 
+            if (!user.IsActive)
+            {
+                return ApiResponse<AuthResponse>.Fail("This account has been deactivated. Please contact support.");
+            }
+
             var accessToken = _tokenService.GenerateAccessToken(user);
             var refreshToken = _tokenService.GenerateRefreshToken(user.Id, ipAddress);
             var plainRefreshToken = refreshToken.Token;
@@ -233,19 +238,37 @@ public class AuthService : IAuthService
 
         if (refreshToken.IsRevoked)
         {
-            _logger.LogWarning("Revoked refresh token reuse detected for User ID {UserId}", refreshToken.UserId);
-            var activeTokens = await _context.RefreshTokens
-                .Where(rt => rt.UserId == refreshToken.UserId && rt.RevokedAtUtc == null)
-                .ToListAsync();
+            // If the token was revoked more than 3 seconds ago, treat as potential theft/reuse and terminate all sessions.
+            // If within 3 seconds, it is a concurrent/duplicated client refresh request during rotation.
+            var isRecentRotation = refreshToken.RevokedAtUtc.HasValue && 
+                                   (DateTime.UtcNow - refreshToken.RevokedAtUtc.Value).TotalSeconds < 3;
 
-            foreach (var t in activeTokens)
+            if (!isRecentRotation)
             {
-                t.RevokedAtUtc = DateTime.UtcNow;
-                t.RevokedByIp = ipAddress;
-            }
-            await _context.SaveChangesAsync();
+                _logger.LogWarning("Revoked refresh token reuse detected for User ID {UserId}", refreshToken.UserId);
+                var activeTokens = await _context.RefreshTokens
+                    .Where(rt => rt.UserId == refreshToken.UserId && rt.RevokedAtUtc == null)
+                    .ToListAsync();
 
-            return ApiResponse<AuthResponse>.Fail("Invalid refresh token. Session terminated for security.");
+                foreach (var t in activeTokens)
+                {
+                    t.RevokedAtUtc = DateTime.UtcNow;
+                    t.RevokedByIp = ipAddress;
+                }
+                try
+                {
+                    await _context.SaveChangesAsync();
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    // Concurrency collision safe to ignore
+                }
+
+                return ApiResponse<AuthResponse>.Fail("Invalid refresh token. Session terminated for security.");
+            }
+
+            _logger.LogInformation("Concurrent refresh token request received for recently rotated token of User ID {UserId}", refreshToken.UserId);
+            return ApiResponse<AuthResponse>.Fail("Refresh token has already been used or rotated.");
         }
 
         if (refreshToken.IsExpired)
@@ -259,6 +282,11 @@ public class AuthService : IAuthService
             return ApiResponse<AuthResponse>.Fail("Associated user not found.");
         }
 
+        if (!user.IsActive)
+        {
+            return ApiResponse<AuthResponse>.Fail("This account has been deactivated.");
+        }
+
         // Token rotation: revoke current token and create replacement
         var newRefreshToken = _tokenService.GenerateRefreshToken(user.Id, ipAddress);
         var plainNewRefreshToken = newRefreshToken.Token;
@@ -269,7 +297,16 @@ public class AuthService : IAuthService
         refreshToken.ReplacedByToken = newRefreshToken.Token;
 
         _context.RefreshTokens.Add(newRefreshToken);
-        await _context.SaveChangesAsync();
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            _logger.LogWarning(ex, "Concurrency collision detected while rotating refresh token for user {UserId}. Possible concurrent reuse.", user.Id);
+            return ApiResponse<AuthResponse>.Fail("Refresh token has already been used or rotated.");
+        }
 
         var newAccessToken = _tokenService.GenerateAccessToken(user);
 
@@ -301,7 +338,15 @@ public class AuthService : IAuthService
         refreshToken.RevokedAtUtc = DateTime.UtcNow;
         refreshToken.RevokedByIp = ipAddress;
 
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Already revoked concurrently
+        }
+
         return ApiResponse.Ok("Token revoked successfully.");
     }
 
@@ -313,6 +358,11 @@ public class AuthService : IAuthService
             return ApiResponse<UserDto>.Fail("User not found.");
         }
 
+        if (!user.IsActive)
+        {
+            return ApiResponse<UserDto>.Fail("This account has been deactivated.");
+        }
+
         return ApiResponse<UserDto>.Ok(MapToUserDto(user));
     }
 
@@ -322,6 +372,11 @@ public class AuthService : IAuthService
         if (user == null)
         {
             return ApiResponse<AuthResponse>.Fail("User not found.");
+        }
+
+        if (!user.IsActive)
+        {
+            return ApiResponse<AuthResponse>.Fail("This account has been deactivated.");
         }
 
         if (!user.HasVendorCapability)

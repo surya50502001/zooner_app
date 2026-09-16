@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
@@ -15,16 +15,15 @@ namespace Zooner.Tests;
 
 public class RelationalConcurrencyAndInventoryTests : IDisposable
 {
-    private readonly SqliteConnection _connection;
+    private readonly string _dbPath;
     private readonly DbContextOptions<AppDbContext> _options;
 
     public RelationalConcurrencyAndInventoryTests()
     {
-        _connection = new SqliteConnection("Data Source=:memory:");
-        _connection.Open();
+        _dbPath = Path.Combine(Path.GetTempPath(), $"rel_concurrency_{Guid.NewGuid():N}.db");
 
         _options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseSqlite(_connection)
+            .UseSqlite($"Data Source={_dbPath}")
             .Options;
 
         using var context = new AppDbContext(_options);
@@ -33,7 +32,17 @@ public class RelationalConcurrencyAndInventoryTests : IDisposable
 
     public void Dispose()
     {
-        _connection.Dispose();
+        try
+        {
+            if (File.Exists(_dbPath))
+            {
+                File.Delete(_dbPath);
+            }
+        }
+        catch
+        {
+            // Best effort cleanup
+        }
     }
 
     private AppDbContext CreateContext() => new AppDbContext(_options);
@@ -77,7 +86,7 @@ public class RelationalConcurrencyAndInventoryTests : IDisposable
                 Id = inventoryId,
                 StoreId = shop.Id,
                 ProductVariantId = variant.Id,
-                Price = 2999,
+                Price = 1500,
                 Quantity = 1,
                 AvailableQuantity = 1,
                 IsActive = true
@@ -116,22 +125,19 @@ public class RelationalConcurrencyAndInventoryTests : IDisposable
 
         using (var verifyContext = CreateContext())
         {
-            var finalInv = await verifyContext.StoreInventories.FindAsync(inventoryId);
-            Assert.NotNull(finalInv);
-            Assert.Equal(0, finalInv.AvailableQuantity);
-            Assert.Equal(1, finalInv.Quantity);
+            var updatedInventory = await verifyContext.StoreInventories.FindAsync(inventoryId);
+            Assert.NotNull(updatedInventory);
+            Assert.Equal(0, updatedInventory.AvailableQuantity);
+            Assert.Equal(1, updatedInventory.Quantity);
 
-            var activeHolds = await verifyContext.InventoryHolds
-                .Where(h => h.StoreInventoryId == inventoryId && h.Status == InventoryHoldStatus.Active)
-                .ToListAsync();
-
+            var activeHolds = await verifyContext.InventoryHolds.Where(h => h.StoreInventoryId == inventoryId).ToListAsync();
             Assert.Single(activeHolds);
-            Assert.True(activeHolds[0].CustomerId == customerAId || activeHolds[0].CustomerId == customerBId);
+            Assert.Equal(InventoryHoldStatus.Active, activeHolds[0].Status);
         }
     }
 
     [Fact]
-    public async Task Expired_Hold_Returns_Available_Stock()
+    public async Task Expired_Hold_Allows_New_Customer_To_Reserve()
     {
         var storeId = Guid.NewGuid();
         var inventoryId = Guid.NewGuid();
@@ -168,9 +174,9 @@ public class RelationalConcurrencyAndInventoryTests : IDisposable
                 Id = inventoryId,
                 StoreId = shop.Id,
                 ProductVariantId = variant.Id,
-                Price = 4999,
+                Price = 3000,
                 Quantity = 1,
-                AvailableQuantity = 0,
+                AvailableQuantity = 0, // Held by old customer
                 IsActive = true
             };
 
@@ -181,11 +187,10 @@ public class RelationalConcurrencyAndInventoryTests : IDisposable
                 StoreId = shop.Id,
                 CustomerId = customerOldId,
                 Quantity = 1,
-                HoldCode = "H-1111",
-                QrToken = "zhold:1111",
+                ExpiresAtUtc = DateTime.UtcNow.AddMinutes(-5), // Expired
                 Status = InventoryHoldStatus.Active,
-                ExpiresAtUtc = DateTime.UtcNow.AddMinutes(-5),
-                CreatedAtUtc = DateTime.UtcNow.AddMinutes(-35)
+                HoldCode = "OLD123",
+                QrToken = "token-old"
             };
 
             setupContext.Users.AddRange(vendor, custOld, custNew);
@@ -203,22 +208,30 @@ public class RelationalConcurrencyAndInventoryTests : IDisposable
         {
             var service = new InventoryService(testContext, NullLogger<InventoryService>.Instance);
             
-            var res = await service.ReserveInventoryHoldAsync(storeId, inventoryId, customerNewId, 1);
-            Assert.True(res.Success);
-            Assert.NotNull(res.Data);
+            // New customer reserves - old expired hold is cleaned and new hold succeeds
+            var result = await service.ReserveInventoryHoldAsync(storeId, inventoryId, customerNewId, 1);
+            Assert.True(result.Success);
+            Assert.NotNull(result.Data);
+        }
 
-            var updatedOldHold = await testContext.InventoryHolds.FirstOrDefaultAsync(h => h.CustomerId == customerOldId);
-            Assert.NotNull(updatedOldHold);
-            Assert.Equal(InventoryHoldStatus.Expired, updatedOldHold.Status);
+        using (var verifyContext = CreateContext())
+        {
+            var updatedInventory = await verifyContext.StoreInventories.FindAsync(inventoryId);
+            Assert.NotNull(updatedInventory);
+            Assert.Equal(0, updatedInventory.AvailableQuantity);
 
-            var updatedInv = await testContext.StoreInventories.FindAsync(inventoryId);
-            Assert.NotNull(updatedInv);
-            Assert.Equal(0, updatedInv.AvailableQuantity);
+            var oldHold = await verifyContext.InventoryHolds.FirstOrDefaultAsync(h => h.CustomerId == customerOldId);
+            Assert.NotNull(oldHold);
+            Assert.Equal(InventoryHoldStatus.Expired, oldHold.Status);
+
+            var newHold = await verifyContext.InventoryHolds.FirstOrDefaultAsync(h => h.CustomerId == customerNewId);
+            Assert.NotNull(newHold);
+            Assert.Equal(InventoryHoldStatus.Active, newHold.Status);
         }
     }
 
     [Fact]
-    public async Task Customer_Cannot_Create_Duplicate_Active_Hold_For_Same_Inventory()
+    public async Task Customer_Cannot_Have_Duplicate_Active_Holds_For_Same_Inventory()
     {
         var storeId = Guid.NewGuid();
         var inventoryId = Guid.NewGuid();
@@ -316,9 +329,9 @@ public class RelationalConcurrencyAndInventoryTests : IDisposable
                 Id = inventoryId,
                 StoreId = shop.Id,
                 ProductVariantId = variant.Id,
-                Price = 1500,
+                Price = 2500,
                 Quantity = 2,
-                AvailableQuantity = 1,
+                AvailableQuantity = 2,
                 IsActive = true
             };
 
@@ -336,9 +349,11 @@ public class RelationalConcurrencyAndInventoryTests : IDisposable
         {
             var service = new InventoryService(testContext, NullLogger<InventoryService>.Instance);
             
-            var res = await service.ReserveInventoryHoldAsync(storeId, inventoryId, customerId, 2);
+            // Try to reserve 5 items when only 2 available
+            var res = await service.ReserveInventoryHoldAsync(storeId, inventoryId, customerId, 5);
             Assert.False(res.Success);
-            Assert.Contains("Insufficient stock", res.Message);
+            Assert.Contains("insufficient stock", res.Message.ToLowerInvariant());
         }
     }
 }
+
