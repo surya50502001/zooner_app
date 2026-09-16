@@ -33,9 +33,9 @@ export function AppContent() {
     if (hash.includes('admin') || path.includes('/admin')) {
       return 'admin';
     }
-    if (hash.includes('vendor') || path.includes('/vendor')) return 'vendor';
-    if (hash.includes('marketing') || path.includes('/marketing')) return 'marketing';
-    return 'customer';
+    if (hash.includes('vendor') || hash.includes('merchant') || path.includes('/vendor') || path.includes('/merchant')) return 'vendor';
+    if (hash.includes('app') || hash.includes('customer') || path.includes('/app')) return 'customer';
+    return 'marketing';
   });
 
   const [currentLocation, setCurrentLocation] = useState<LocationArea>(DEFAULT_LOCATION);
@@ -107,10 +107,10 @@ export function AppContent() {
         setIsSignInModalOpen(true);
       } else if (hash.includes('vendor') || hash.includes('merchant') || path.includes('/vendor') || path.includes('/merchant')) {
         setCurrentRoute('vendor');
-      } else if (hash.includes('marketing') || path.includes('/marketing')) {
-        setCurrentRoute('marketing');
-      } else {
+      } else if (hash.includes('app') || hash.includes('customer') || path.includes('/app')) {
         setCurrentRoute('customer');
+      } else {
+        setCurrentRoute('marketing');
       }
     };
     window.addEventListener('hashchange', handleHashChange);
@@ -124,7 +124,7 @@ export function AppContent() {
     } else if (route === 'vendor') {
       window.location.hash = '#merchant';
     } else if (route === 'marketing') {
-      window.location.hash = '#marketing';
+      window.location.hash = '#home';
     } else {
       window.location.hash = '#app';
     }

@@ -37,7 +37,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           : 'bg-white/60 backdrop-blur-md border-b border-transparent'
       }`}
     >
-      <div className="max-w-6xl mx-auto px-6 sm:px-8">
+      <div className="max-w-7xl mx-auto px-6 sm:px-8">
         <div className="flex h-16 sm:h-20 items-center justify-between">
           
           {/* Left: Brand Logo & Location */}
