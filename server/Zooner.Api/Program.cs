@@ -354,11 +354,14 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// 10. HTTP Pipeline
-app.UseForwardedHeaders(new ForwardedHeadersOptions
+// 10. HTTP Pipeline (Configure forwarded headers for reverse proxies / load balancers)
+var forwardedHeadersOptions = new ForwardedHeadersOptions
 {
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
-});
+};
+forwardedHeadersOptions.KnownNetworks.Clear();
+forwardedHeadersOptions.KnownProxies.Clear();
+app.UseForwardedHeaders(forwardedHeadersOptions);
 
 if (app.Environment.IsDevelopment())
 {
