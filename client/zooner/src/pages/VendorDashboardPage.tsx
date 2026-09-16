@@ -151,7 +151,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
       const stored = localStorage.getItem('zooner_user_profile');
       if (!stored) return false;
       const parsed = JSON.parse(stored);
-      return ['lpycho3@gmail.com', 'admin@zooner.app'].includes(parsed?.email?.toLowerCase() || '') || parsed?.role?.toLowerCase() === 'admin';
+      return parsed?.role?.toLowerCase() === 'admin';
     } catch {
       return false;
     }
@@ -250,12 +250,9 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
       return;
     }
 
-    // If shop is pending and user is Super Admin, auto-verify first
-    if (storeVerificationStatus !== 'Approved' && isSuperAdminUser) {
-      const ok = await verifyOwnerShop(currentStoreId);
-      if (ok) {
-        setStoreVerificationStatus('Approved');
-      }
+    if (storeVerificationStatus !== 'Approved') {
+      showToast('Storefront is pending verification and cannot respond to customer requests yet.', true);
+      return;
     }
 
     const res = await respondToLiveRequest(id, currentStoreId);

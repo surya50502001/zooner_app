@@ -16,20 +16,22 @@ interface ExperienceSwitcherProps {
   } | null;
 }
 
-export function isSuperAdminEmail(email?: string): boolean {
-  if (!email) return false;
-  return ['lpycho3@gmail.com', 'admin@zooner.app'].includes(email.toLowerCase().trim());
-}
-
 export function getUserCapabilities(profile: any) {
-  const isSuper = isSuperAdminEmail(profile?.email) || profile?.role?.toLowerCase() === 'admin';
-  const hasVendorRole = profile?.isVendor || 
-    ['shopowner', 'vendor', 'admin', 'vc', 'both'].includes(profile?.role?.toLowerCase() || '') || 
-    (profile?.shops && profile.shops.length > 0) || 
-    isSuper;
+  const role = (profile?.role || '').toLowerCase();
+  const hasAdminRole = role === 'admin';
+  const hasVendorRole = hasAdminRole || 
+    role === 'vendor' || 
+    role === 'shopowner' || 
+    role === 'both' || 
+    role === 'vc' || 
+    Boolean(profile?.isVendor) || 
+    (Array.isArray(profile?.shops) && profile.shops.length > 0);
   
-  const hasAdminRole = isSuper || profile?.role?.toLowerCase() === 'admin';
-  const isMultiRole = (hasAdminRole && (hasVendorRole || true)) || (hasVendorRole && !profile?.email?.includes('@guest.zooner.app'));
+  const isGuest = Boolean(profile?.isGuest || profile?.email?.includes('@guest.zooner.app'));
+  const isMultiRole = !isGuest && (
+    (hasAdminRole && hasVendorRole) ||
+    hasVendorRole
+  );
 
   return {
     canAccessCustomer: true,

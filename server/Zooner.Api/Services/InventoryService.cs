@@ -347,10 +347,10 @@ public class InventoryService : IInventoryService
             return ApiResponse<InventoryHoldDto>.ErrorResponse("Quantity to hold must be between 1 and 5 items.");
         }
 
-        var store = await _context.Shops.FirstOrDefaultAsync(s => s.Id == storeId && s.IsActive);
+        var store = await _context.Shops.FirstOrDefaultAsync(s => s.Id == storeId && s.IsActive && s.IsLiveEnabled && s.VerificationStatus == ShopVerificationStatus.Approved);
         if (store == null)
         {
-            return ApiResponse<InventoryHoldDto>.ErrorResponse("Store not found or inactive.");
+            return ApiResponse<InventoryHoldDto>.ErrorResponse("Store is not active, verified, or live-enabled for reservations.");
         }
 
         var inventory = await _context.StoreInventories

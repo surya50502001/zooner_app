@@ -18,8 +18,11 @@ public class AdminService : IAdminService
 
     public bool IsSuperAdminEmail(string email)
     {
-        if (string.IsNullOrWhiteSpace(email)) return false;
         var normalized = email.Trim().ToLowerInvariant();
+
+        var superAdmins = _configuration?.GetSection("AdminConfig:SuperAdminEmails").Get<List<string>>()
+            ?? new List<string>();
+        if (superAdmins.Any(a => a.Trim().ToLowerInvariant() == normalized)) return true;
 
         var superAdminEnv = Environment.GetEnvironmentVariable("SUPER_ADMIN_EMAILS");
         if (!string.IsNullOrWhiteSpace(superAdminEnv))
@@ -29,17 +32,10 @@ public class AdminService : IAdminService
             if (adminList.Contains(normalized)) return true;
         }
 
-        var configAdmins = _configuration?.GetSection("AdminConfig:SuperAdminEmails").Get<string[]>();
-        if (configAdmins != null && configAdmins.Select(e => e.Trim().ToLowerInvariant()).Contains(normalized))
-        {
-            return true;
-        }
-
         var defaultAdmin = _configuration?["ADMIN_EMAIL"] ?? _configuration?["AdminConfig:DefaultAdminEmail"] ?? Environment.GetEnvironmentVariable("ADMIN_EMAIL");
         if (!string.IsNullOrWhiteSpace(defaultAdmin) && normalized == defaultAdmin.Trim().ToLowerInvariant()) return true;
 
-        var fallbackAdmins = new[] { "lpycho3@gmail.com", "admin@zooner.app" };
-        return fallbackAdmins.Contains(normalized);
+        return false;
     }
 
     public async Task<bool> IsAdminUserAsync(Guid userId)

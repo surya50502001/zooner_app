@@ -17,6 +17,7 @@ export interface DetectedLocation {
   postcode?: string;
   source: 'gps-high' | 'gps-network' | 'ip' | 'default';
   isEstimated?: boolean;
+  isUnavailable?: boolean;
 }
 
 const DEFAULT_FALLBACK_LOCATION: DetectedLocation = {
@@ -85,7 +86,7 @@ export async function reverseGeocode(lat: number, lng: number): Promise<{
         };
       }
     }
-  } catch (err) {
+  } catch {
     // Fall through to Provider 2
   }
 
@@ -134,7 +135,7 @@ export async function reverseGeocode(lat: number, lng: number): Promise<{
         postcode
       };
     }
-  } catch (err) {
+  } catch {
     // Silent ignore
   }
 
@@ -233,6 +234,7 @@ export async function detectUserLocation(options?: {
   forceIpFallback?: boolean;
   highAccuracyTimeout?: number;
   networkTimeout?: number;
+  allowDefaultFallback?: boolean;
 }): Promise<DetectedLocation> {
   const shouldReverseGeocode = options?.enableReverseGeocode !== false;
   const highTimeout = options?.highAccuracyTimeout ?? 6000;
@@ -244,7 +246,10 @@ export async function detectUserLocation(options?: {
     if (ipResult) {
       return ipResult;
     }
-    return DEFAULT_FALLBACK_LOCATION;
+    if (options?.allowDefaultFallback || (typeof import.meta !== 'undefined' && import.meta.env?.DEV)) {
+      return { ...DEFAULT_FALLBACK_LOCATION, isUnavailable: true };
+    }
+    throw new Error('IP location detection unavailable.');
   }
 
   // 1. Try Browser Geolocation API if available
@@ -335,15 +340,22 @@ export async function detectUserLocation(options?: {
 
   }
 
-
   // 2. Browser GPS failed / permission denied / desktop browser without GPS -> Fallback to IP Geolocation
   const ipResult = await getIpLocation();
   if (ipResult) {
     return ipResult;
   }
 
-  // 3. Complete fallback to default Coimbatore coordinates
-  return DEFAULT_FALLBACK_LOCATION;
+  // 3. Fallback handling: Signal location unavailable instead of silent Coimbatore fallback
+  const isDevOrExplicit = Boolean(options?.allowDefaultFallback || (typeof import.meta !== 'undefined' && import.meta.env?.DEV));
+  if (isDevOrExplicit) {
+    return {
+      ...DEFAULT_FALLBACK_LOCATION,
+      isUnavailable: true
+    };
+  }
+
+  throw new Error('Location unavailable. Please select your location or enter an address manually.');
 }
 
 /**

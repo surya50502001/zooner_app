@@ -131,7 +131,7 @@ public class ProductionReadinessTests
         var inventoryService = new InventoryService(context, NullLogger<InventoryService>.Instance);
 
         var customer = new User { Id = Guid.NewGuid(), FullName = "Shopper", Email = "shopper@test.com", PasswordHash = "h" };
-        var shop = new Shop { Id = Guid.NewGuid(), OwnerId = Guid.NewGuid(), Name = "Electronics Corner", Phone = "123", Address = "Mall", IsActive = true, VerificationStatus = ShopVerificationStatus.Approved };
+        var shop = new Shop { Id = Guid.NewGuid(), OwnerId = Guid.NewGuid(), Name = "Electronics Corner", Phone = "123", Address = "Mall", IsActive = true, IsLiveEnabled = true, VerificationStatus = ShopVerificationStatus.Approved };
         var product = new Product { Id = Guid.NewGuid(), Name = "Noise Cancelling Headphones", NormalizedName = "noise cancelling headphones", IsActive = true };
         var variant = new ProductVariant { Id = Guid.NewGuid(), ProductId = product.Id, VariantName = "Black", IsActive = true };
         var inv = new StoreInventory { Id = Guid.NewGuid(), StoreId = shop.Id, ProductVariantId = variant.Id, Price = 14999m, Quantity = 2, AvailableQuantity = 2, IsActive = true };
@@ -174,7 +174,7 @@ public class ProductionReadinessTests
         var customer = new User { Id = Guid.NewGuid(), FullName = "Customer", Email = "customer@test.com", PasswordHash = "h" };
         var intruder = new User { Id = Guid.NewGuid(), FullName = "Intruder", Email = "intruder@test.com", PasswordHash = "h" };
 
-        var shop = new Shop { Id = Guid.NewGuid(), OwnerId = owner.Id, Name = "Shoe Store", Phone = "123", Address = "St", IsActive = true, VerificationStatus = ShopVerificationStatus.Approved };
+        var shop = new Shop { Id = Guid.NewGuid(), OwnerId = owner.Id, Name = "Shoe Store", Phone = "123", Address = "St", IsActive = true, IsLiveEnabled = true, VerificationStatus = ShopVerificationStatus.Approved };
         var product = new Product { Id = Guid.NewGuid(), Name = "Running Shoes", NormalizedName = "running shoes", IsActive = true };
         var variant = new ProductVariant { Id = Guid.NewGuid(), ProductId = product.Id, VariantName = "UK 9", IsActive = true };
         var inv = new StoreInventory { Id = Guid.NewGuid(), StoreId = shop.Id, ProductVariantId = variant.Id, Price = 4999m, Quantity = 5, AvailableQuantity = 5, IsActive = true };
@@ -364,7 +364,7 @@ public class ProductionReadinessTests
         using var context = TestDbContextFactory.Create(nameof(InventoryHold_Concurrency_Rejects_Simultaneous_OverAllocation));
         var invService = new InventoryService(context, NullLogger<InventoryService>.Instance);
 
-        var shop = new Shop { Id = Guid.NewGuid(), Name = "Shop", OwnerId = Guid.NewGuid(), Phone = "1", Address = "A", VerificationStatus = ShopVerificationStatus.Approved, IsActive = true };
+        var shop = new Shop { Id = Guid.NewGuid(), Name = "Shop", OwnerId = Guid.NewGuid(), Phone = "1", Address = "A", VerificationStatus = ShopVerificationStatus.Approved, IsActive = true, IsLiveEnabled = true };
         var product = new Product { Id = Guid.NewGuid(), Name = "Phone", CategoryId = Guid.NewGuid(), BrandId = Guid.NewGuid() };
         var variant = new ProductVariant { Id = Guid.NewGuid(), ProductId = product.Id, VariantName = "V1", IsActive = true };
         var inventory = new StoreInventory

@@ -149,10 +149,8 @@ builder.Services.AddAuthentication(options =>
 // Centralized Authorization Policies
 builder.Services.AddAuthorization(options =>
 {
-    var configAdmins = builder.Configuration.GetSection("AdminConfig:SuperAdminEmails").Get<List<string>>();
-    var superAdminList = (configAdmins != null && configAdmins.Count > 0)
-        ? configAdmins
-        : new List<string> { "lpycho3@gmail.com", "admin@zooner.app" };
+    var superAdminList = builder.Configuration.GetSection("AdminConfig:SuperAdminEmails").Get<List<string>>() 
+        ?? new List<string>();
 
     bool IsSuperAdmin(System.Security.Claims.ClaimsPrincipal user)
     {
@@ -352,7 +350,7 @@ using (var scope = app.Services.CreateScope())
         }
 
         // Seed essential initial business settings and master categories if tables are empty
-        await DbSeeder.SeedAsync(dbContext, logger, app.Configuration);
+        await DbSeeder.SeedAsync(dbContext, logger, app.Configuration, app.Environment.IsDevelopment());
     }
     catch (Exception ex)
     {

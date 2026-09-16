@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import QRCode from 'qrcode';
 import { 
   Search, 
   MapPin, 
@@ -35,7 +36,7 @@ import {
   ensureCustomerSession,
   type ShopProfileDto 
 } from '../services/api';
-import { ExperienceHeaderPill, isSuperAdminEmail } from '../components/ExperienceSwitcher';
+import { ExperienceHeaderPill } from '../components/ExperienceSwitcher';
 import type { LocationArea, ProductSearchResult, StoreInventoryItem, CategoryDto } from '../types';
 
 interface CustomerAppPageProps {
@@ -77,66 +78,43 @@ function formatDistance(distKm?: number | null): string {
   return `${distKm.toFixed(1)} km`;
 }
 
-// ── Deterministic QR Code Generator Component ──
-const MiniQRCode: React.FC<{ value: string; size?: number }> = ({ value, size = 130 }) => {
-  const matrix = useMemo(() => {
-    const dim = 21;
-    const grid: boolean[][] = Array.from({ length: dim }, () => Array(dim).fill(false));
+// ── Standard-Compliant QR Code Generator Component ──
+const StandardQRCode: React.FC<{ value: string; size?: number; className?: string }> = ({
+  value,
+  size = 140,
+  className = ''
+}) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-    // Finder patterns (top-left, top-right, bottom-left)
-    const addFinder = (startR: number, startC: number) => {
-      for (let r = 0; r < 7; r++) {
-        for (let c = 0; c < 7; c++) {
-          if (
-            r === 0 || r === 6 || c === 0 || c === 6 ||
-            (r >= 2 && r <= 4 && c >= 2 && c <= 4)
-          ) {
-            grid[startR + r][startC + c] = true;
+  useEffect(() => {
+    if (canvasRef.current && value) {
+      QRCode.toCanvas(
+        canvasRef.current,
+        value,
+        {
+          width: size,
+          margin: 1,
+          color: {
+            dark: '#111827',
+            light: '#ffffff'
+          }
+        },
+        (err) => {
+          if (err) {
+            console.error('Error generating standard QR code:', err);
           }
         }
-      }
-    };
-
-    addFinder(0, 0);
-    addFinder(0, 14);
-    addFinder(14, 0);
-
-    let hash = 0;
-    for (let i = 0; i < value.length; i++) {
-      hash = (hash << 5) - hash + value.charCodeAt(i);
-      hash |= 0;
+      );
     }
-
-    for (let r = 0; r < dim; r++) {
-      for (let c = 0; c < dim; c++) {
-        if ((r < 7 && c < 7) || (r < 7 && c >= 14) || (r >= 14 && c < 7)) continue;
-        const bit = Math.abs(Math.sin(hash + r * 23 + c * 37)) > 0.46;
-        grid[r][c] = bit;
-      }
-    }
-    return grid;
-  }, [value]);
-
-  const cellSize = size / 21;
+  }, [value, size]);
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="rounded-lg">
-      <rect width={size} height={size} fill="#ffffff" />
-      {matrix.map((row, r) =>
-        row.map((active, c) =>
-          active ? (
-            <rect
-              key={`${r}-${c}`}
-              x={c * cellSize}
-              y={r * cellSize}
-              width={cellSize}
-              height={cellSize}
-              fill="#111827"
-            />
-          ) : null
-        )
-      )}
-    </svg>
+    <canvas
+      ref={canvasRef}
+      width={size}
+      height={size}
+      className={`rounded-lg shadow-sm ${className}`}
+    />
   );
 };
 
@@ -1608,7 +1586,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
 
                 {/* Server QR Code */}
                 <div className="p-4 bg-gray-50 rounded-2xl flex flex-col items-center justify-center space-y-2 border border-gray-100">
-                  <MiniQRCode value={activeHold.qrCode} size={140} />
+                  <StandardQRCode value={activeHold.qrCode} size={140} />
                   <p className="text-[10px] text-gray-400 font-mono">Counter Token: {activeHold.holdId}</p>
                 </div>
 
@@ -1698,7 +1676,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                     </p>
                   )}
                   <span className="inline-block mt-1 font-medium text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-semibold">
-                    {userProfile.role?.toLowerCase() === 'admin' || isSuperAdminEmail(userProfile.email) ? 'Platform Administrator' : userProfile.isVendor || (userProfile.shops && userProfile.shops.length > 0) ? 'Store Owner' : 'Shopper Profile'}
+                    {userProfile.role?.toLowerCase() === 'admin' ? 'Platform Administrator' : userProfile.isVendor || (userProfile.shops && userProfile.shops.length > 0) ? 'Store Owner' : 'Shopper Profile'}
                   </span>
                 </div>
               </div>
@@ -1913,8 +1891,8 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
           )}
         </button>
 
-        {/* Admin shortcut — only visible to super-admin accounts */}
-        {(isSuperAdminEmail(userProfile?.email) || userProfile?.role?.toLowerCase() === 'admin') && onNavigateToAdmin && (
+        {/* Admin shortcut — only visible to admin accounts */}
+        {userProfile?.role?.toLowerCase() === 'admin' && onNavigateToAdmin && (
           <button
             type="button"
             onClick={onNavigateToAdmin}

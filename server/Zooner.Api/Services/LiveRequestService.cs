@@ -125,10 +125,55 @@ public class LiveRequestService : ILiveRequestService
 
     public async Task<ApiResponse<LiveRequestDto>> GetRequestByIdAsync(Guid requestId, Guid userId)
     {
+        var request = await _context.LiveRequests
+            .Include(r => r.Responses)
+            .FirstOrDefaultAsync(r => r.Id == requestId);
+
+        if (request == null)
+        {
+            return ApiResponse<LiveRequestDto>.Fail("Live request not found.");
+        }
+
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null)
+        {
+            return ApiResponse<LiveRequestDto>.Fail("Unauthorized access.");
+        }
+
+        bool isCustomerOwner = request.CustomerId == userId;
+        bool isAdmin = user.Role == UserRoles.Admin || user.IsAdmin;
+
+        var userShopIds = new List<Guid>();
+        bool isParticipatingVendor = false;
+
+        if (!isCustomerOwner && !isAdmin)
+        {
+            userShopIds = await _context.Shops
+                .Where(s => s.OwnerId == userId)
+                .Select(s => s.Id)
+                .ToListAsync();
+
+            if (userShopIds.Any())
+            {
+                isParticipatingVendor = request.Responses.Any(resp => userShopIds.Contains(resp.ShopId));
+            }
+        }
+
+        if (!isCustomerOwner && !isAdmin && !isParticipatingVendor)
+        {
+            return ApiResponse<LiveRequestDto>.Fail("Access denied. You do not have permission to view this live request.");
+        }
+
         var dto = await LoadRequestDtoAsync(requestId);
         if (dto == null)
         {
             return ApiResponse<LiveRequestDto>.Fail("Live request not found.");
+        }
+
+        // Vendor privacy: Participating vendors only see their own shop's responses, not competitors'
+        if (isParticipatingVendor && !isCustomerOwner && !isAdmin)
+        {
+            dto.Responses = dto.Responses.Where(r => userShopIds.Contains(r.ShopId)).ToList();
         }
 
         return ApiResponse<LiveRequestDto>.Ok(dto);

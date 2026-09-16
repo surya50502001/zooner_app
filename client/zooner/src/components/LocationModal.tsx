@@ -30,6 +30,11 @@ export const LocationModal: React.FC<LocationModalProps> = ({
 
     try {
       const loc = await detectUserLocation({ enableReverseGeocode: true });
+      if (loc.isUnavailable || loc.source === 'default') {
+        setGpsError('Could not detect your location. Please select an area or search below.');
+        return;
+      }
+
       const locationName = loc.displayName || loc.area || loc.city || 'Current Location';
       const cityName = loc.city || 'Current Location';
 

@@ -189,24 +189,18 @@ public class ShopsController : ControllerBase
     }
 
     /// <summary>
-    /// Instant verification for Super-Admin shop owners
+    /// Administrator-only verification for store approval
     /// </summary>
-    [Authorize]
+    [Authorize(Policy = "AdminPolicy")]
     [HttpPost("{id:guid}/verify-owner")]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> VerifyOwnerShop(Guid id)
     {
         var userId = GetCurrentUserId();
-        var userEmail = User.FindFirstValue(ClaimTypes.Email)
-                     ?? User.FindFirstValue("email")
-                     ?? User.FindFirstValue("preferred_username")
-                     ?? string.Empty;
+        var isAdmin = User.IsInRole("Admin");
 
-        // Check JWT role claim first, then super-admin email list
-        var isAdmin = User.IsInRole("Admin") || _adminService.IsSuperAdminEmail(userEmail);
-
-        // Fallback: if email claim is missing, check the database role directly
+        // Fallback: check database role directly
         if (!isAdmin && userId != Guid.Empty)
         {
             isAdmin = await _adminService.IsAdminUserAsync(userId);
@@ -221,7 +215,7 @@ public class ShopsController : ControllerBase
 
         if (!isAdmin && !isOwner)
         {
-            return StatusCode(403, new { success = false, message = "Verification failed. Check admin privileges." });
+            return StatusCode(403, new ApiResponse { Success = false, Message = "Verification failed. Check admin privileges." });
         }
 
         var response = await _adminService.VerifyShopAsync(userId, id, new VerifyShopRequest 

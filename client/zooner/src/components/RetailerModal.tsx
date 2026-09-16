@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Store, CheckCircle, ArrowRight, ShieldCheck, Upload, MapPin, Loader2, AlertCircle, LogIn, Navigation } from 'lucide-react';
 import { createShop, fetchCategories, becomeVendor } from '../services/api';
-import { detectUserLocation } from '../services/locationService';
+import { detectUserLocation, formatGeolocationError } from '../services/locationService';
 
 interface RetailerModalProps {
   isOpen: boolean;
@@ -54,6 +54,10 @@ export const RetailerModal: React.FC<RetailerModalProps> = ({ isOpen, onClose, o
 
     try {
       const loc = await detectUserLocation({ enableReverseGeocode: true });
+      if (loc.isUnavailable || loc.source === 'default') {
+        setErrorMessage('Unable to auto-detect location. Please enter your store address manually.');
+        return;
+      }
       setLatitude(loc.lat);
       setLongitude(loc.lng);
 
@@ -65,7 +69,8 @@ export const RetailerModal: React.FC<RetailerModalProps> = ({ isOpen, onClose, o
         `📍 Location pinned: ${loc.displayName} (${loc.lat.toFixed(4)}°, ${loc.lng.toFixed(4)}° · ${sourceLabel})`
       );
     } catch (err: any) {
-      setErrorMessage('Unable to auto-detect location. Please enter your address manually.');
+      const msg = err?.code !== undefined ? formatGeolocationError(err) : (err?.message || 'Unable to auto-detect location. Please enter your address manually.');
+      setErrorMessage(msg);
     } finally {
       setIsDetectingLocation(false);
     }

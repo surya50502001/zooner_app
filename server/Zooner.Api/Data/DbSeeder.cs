@@ -5,7 +5,7 @@ namespace Zooner.Api.Data;
 
 public static class DbSeeder
 {
-    public static async Task SeedAsync(AppDbContext context, ILogger logger, IConfiguration? configuration = null)
+    public static async Task SeedAsync(AppDbContext context, ILogger logger, IConfiguration? configuration = null, bool isDevelopment = false)
     {
         try
         {
@@ -25,14 +25,29 @@ public static class DbSeeder
 
             // 2. Seed Default Admin User if not existing
             var defaultAdminEmail = configuration?["ADMIN_EMAIL"] ?? configuration?["AdminConfig:DefaultAdminEmail"] ?? "admin@zooner.app";
-            var defaultAdminPassword = configuration?["ADMIN_PASSWORD"] ?? configuration?["AdminConfig:DefaultAdminPassword"] ?? "Admin@123";
+            var configuredAdminPassword = configuration?["ADMIN_PASSWORD"] ?? configuration?["AdminConfig:DefaultAdminPassword"];
+
+            string defaultAdminPassword;
+            if (isDevelopment)
+            {
+                defaultAdminPassword = !string.IsNullOrWhiteSpace(configuredAdminPassword) ? configuredAdminPassword : "Admin@123";
+            }
+            else
+            {
+                if (string.IsNullOrWhiteSpace(configuredAdminPassword) || configuredAdminPassword == "Admin@123")
+                {
+                    throw new InvalidOperationException(
+                        "Production startup failed: A secure administrator password must be configured in environment/configuration (ADMIN_PASSWORD). The default demo password 'Admin@123' is forbidden in production.");
+                }
+                defaultAdminPassword = configuredAdminPassword;
+            }
 
             if (!await context.Users.AnyAsync(u => u.Email == defaultAdminEmail))
             {
                 var admin = new User
                 {
                     Id = Guid.NewGuid(),
-                    FullName = "Zooner Super Administrator",
+                    FullName = "Zooner Administrator",
                     Email = defaultAdminEmail,
                     PasswordHash = BCrypt.Net.BCrypt.HashPassword(defaultAdminPassword),
                     Role = UserRoles.Admin,
@@ -61,8 +76,6 @@ public static class DbSeeder
                 if (!string.IsNullOrWhiteSpace(item)) adminList.Add(item.Trim());
             }
             adminList.Add(defaultAdminEmail);
-            adminList.Add("lpycho3@gmail.com");
-            adminList.Add("admin@zooner.app");
 
             var usersToPromote = await context.Users
                 .Where(u => adminList.Contains(u.Email) && u.Role != UserRoles.Admin)
@@ -175,212 +188,218 @@ public static class DbSeeder
                 logger.LogInformation("Seeded initial categories and subcategories.");
             }
 
-            // 4. Seed Sample Stores if database has no shops
-            if (!await context.Shops.AnyAsync())
+            // 4. Seed Demo Data (Sample stores, global catalog, and timed deal)
+            // Isolated strictly to Development or explicit SeedDemoData opt-in
+            bool shouldSeedDemoData = isDevelopment || (configuration?.GetValue<bool>("SeedDemoData", false) ?? false);
+            if (shouldSeedDemoData)
             {
-                var adminUser = await context.Users.FirstOrDefaultAsync(u => u.Role == "Admin") ?? await context.Users.FirstAsync();
-
-                var croma = new Shop
-                {
-                    Id = Guid.NewGuid(),
-                    OwnerId = adminUser.Id,
-                    Name = "Croma Electronics",
-                    Description = "Authorized Electronics Store with live shelf stock",
-                    Phone = "+91 422 254 8890",
-                    Address = "142 DB Road, RS Puram, Coimbatore",
-                    Latitude = 11.0118,
-                    Longitude = 76.9525,
-                    VerificationStatus = ShopVerificationStatus.Approved,
-                    IsActive = true,
-                    IsLiveEnabled = true,
-                    CreatedAtUtc = DateTime.UtcNow
-                };
-
-                var reliance = new Shop
-                {
-                    Id = Guid.NewGuid(),
-                    OwnerId = adminUser.Id,
-                    Name = "Reliance Digital",
-                    Description = "Digital electronics and mobile store",
-                    Phone = "+91 422 439 1234",
-                    Address = "88 DB Road, RS Puram, Coimbatore",
-                    Latitude = 11.0145,
-                    Longitude = 76.9540,
-                    VerificationStatus = ShopVerificationStatus.Approved,
-                    IsActive = true,
-                    IsLiveEnabled = true,
-                    CreatedAtUtc = DateTime.UtcNow
-                };
-
-                var nikeStore = new Shop
-                {
-                    Id = Guid.NewGuid(),
-                    OwnerId = adminUser.Id,
-                    Name = "Nike Flagship Store",
-                    Description = "Official Nike footwear & sports apparel",
-                    Phone = "+91 422 255 9900",
-                    Address = "210 DB Road, RS Puram, Coimbatore",
-                    Latitude = 11.0180,
-                    Longitude = 76.9570,
-                    VerificationStatus = ShopVerificationStatus.Approved,
-                    IsActive = true,
-                    IsLiveEnabled = true,
-                    CreatedAtUtc = DateTime.UtcNow
-                };
-
-                context.Shops.AddRange(croma, reliance, nikeStore);
-                await context.SaveChangesAsync();
-                logger.LogInformation("Seeded initial sample stores.");
-            }
-
-            // 5. Seed Global Brands, Products, Variants, and Store Inventories if none exist
-            if (!await context.Products.AnyAsync())
-            {
-                var electronicsCategory = await context.Categories.FirstOrDefaultAsync(c => c.Slug == "electronics-gadgets") ?? await context.Categories.FirstAsync();
-                var footwearCategory = await context.Categories.FirstOrDefaultAsync(c => c.Slug == "footwear-sports") ?? await context.Categories.FirstAsync();
-
-                // Brands
-                var sonyBrand = new Brand { Id = Guid.NewGuid(), Name = "Sony", NormalizedName = "SONY", CreatedAtUtc = DateTime.UtcNow };
-                var appleBrand = new Brand { Id = Guid.NewGuid(), Name = "Apple", NormalizedName = "APPLE", CreatedAtUtc = DateTime.UtcNow };
-                var samsungBrand = new Brand { Id = Guid.NewGuid(), Name = "Samsung", NormalizedName = "SAMSUNG", CreatedAtUtc = DateTime.UtcNow };
-                var nikeBrand = new Brand { Id = Guid.NewGuid(), Name = "Nike", NormalizedName = "NIKE", CreatedAtUtc = DateTime.UtcNow };
-                var logitechBrand = new Brand { Id = Guid.NewGuid(), Name = "Logitech", NormalizedName = "LOGITECH", CreatedAtUtc = DateTime.UtcNow };
-
-                context.Brands.AddRange(sonyBrand, appleBrand, samsungBrand, nikeBrand, logitechBrand);
-                await context.SaveChangesAsync();
-
-                // Products
-                var sonyXm5 = new Product
-                {
-                    Id = Guid.NewGuid(),
-                    BrandId = sonyBrand.Id,
-                    CategoryId = electronicsCategory.Id,
-                    Name = "Sony WH-1000XM5 Wireless Headphones",
-                    NormalizedName = "SONY WH 1000XM5 WIRELESS HEADPHONES WH1000XM5 XM5",
-                    Description = "Industry-leading noise canceling headphones with two processors and 8 microphones.",
-                    ModelNumber = "WH-1000XM5",
-                    GTIN = "4548736132580",
-                    MPN = "WH1000XM5/B",
-                    ImageUrl = "https://images.unsplash.com/photo-1546435770-a3e426bf472b?auto=format&fit=crop&w=600&q=80",
-                    IsActive = true,
-                    CreatedAtUtc = DateTime.UtcNow
-                };
-
-                var iphone15 = new Product
-                {
-                    Id = Guid.NewGuid(),
-                    BrandId = appleBrand.Id,
-                    CategoryId = electronicsCategory.Id,
-                    Name = "Apple iPhone 15 (128GB)",
-                    NormalizedName = "APPLE IPHONE 15 128GB IPHONE15 A3090",
-                    Description = "Dynamic Island, 48MP Main camera, and USB-C in a durable color-infused glass design.",
-                    ModelNumber = "A3090",
-                    GTIN = "195949036507",
-                    MPN = "MTP03HN/A",
-                    ImageUrl = "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?auto=format&fit=crop&w=600&q=80",
-                    IsActive = true,
-                    CreatedAtUtc = DateTime.UtcNow
-                };
-
-                var nikeAirMax = new Product
-                {
-                    Id = Guid.NewGuid(),
-                    BrandId = nikeBrand.Id,
-                    CategoryId = footwearCategory.Id,
-                    Name = "Nike Air Max 270 Sneakers",
-                    NormalizedName = "NIKE AIR MAX 270 SNEAKERS AIRMAX270",
-                    Description = "Boasts Nike's biggest heel Air unit yet for a super-soft ride that feels as impossible as it looks.",
-                    ModelNumber = "AH8050",
-                    GTIN = "0886737036495",
-                    MPN = "AH8050-002",
-                    ImageUrl = "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=600&q=80",
-                    IsActive = true,
-                    CreatedAtUtc = DateTime.UtcNow
-                };
-
-                var mxMaster = new Product
-                {
-                    Id = Guid.NewGuid(),
-                    BrandId = logitechBrand.Id,
-                    CategoryId = electronicsCategory.Id,
-                    Name = "Logitech MX Master 3S Wireless Mouse",
-                    NormalizedName = "LOGITECH MX MASTER 3S WIRELESS MOUSE MXM3S",
-                    Description = "An iconic mouse remastered for ultimate feel, precision, and performance.",
-                    ModelNumber = "MXM3S",
-                    GTIN = "097855173783",
-                    MPN = "910-006557",
-                    ImageUrl = "https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?auto=format&fit=crop&w=600&q=80",
-                    IsActive = true,
-                    CreatedAtUtc = DateTime.UtcNow
-                };
-
-                context.Products.AddRange(sonyXm5, iphone15, nikeAirMax, mxMaster);
-
-                // Variants
-                var xm5VariantBlack = new ProductVariant { Id = Guid.NewGuid(), ProductId = sonyXm5.Id, VariantName = "Black", Color = "Black", GTIN = "4548736132580", SKU = "SNY-XM5-BLK" };
-                var iphoneVariantBlack = new ProductVariant { Id = Guid.NewGuid(), ProductId = iphone15.Id, VariantName = "Black 128GB", Color = "Black", Storage = "128GB", GTIN = "195949036507", SKU = "APL-IP15-128-BLK" };
-                var airMaxVariant9 = new ProductVariant { Id = Guid.NewGuid(), ProductId = nikeAirMax.Id, VariantName = "UK 9 / Black Red", Color = "Black/Red", Size = "UK 9", GTIN = "0886737036495", SKU = "NKE-AM270-UK9" };
-                var mxMasterVariantGraphite = new ProductVariant { Id = Guid.NewGuid(), ProductId = mxMaster.Id, VariantName = "Graphite", Color = "Graphite", GTIN = "097855173783", SKU = "LOG-MX3S-GRP" };
-
-                context.ProductVariants.AddRange(xm5VariantBlack, iphoneVariantBlack, airMaxVariant9, mxMasterVariantGraphite);
-                await context.SaveChangesAsync();
-
-                // Store Inventories
-                var stores = await context.Shops.ToListAsync();
-                var cromaStore = stores.FirstOrDefault(s => s.Name.Contains("Croma")) ?? stores.First();
-                var relianceStore = stores.FirstOrDefault(s => s.Name.Contains("Reliance")) ?? stores.Last();
-                var nikePhysicalStore = stores.FirstOrDefault(s => s.Name.Contains("Nike")) ?? stores.First();
-
-                var inventories = new List<StoreInventory>
-                {
-                    // Sony XM5 in Croma & Reliance
-                    new StoreInventory { Id = Guid.NewGuid(), StoreId = cromaStore.Id, ProductVariantId = xm5VariantBlack.Id, Price = 26990m, Quantity = 3, AvailableQuantity = 3, ShelfLocation = "Headphones A12", SKU = "CRO-XM5-01", IsActive = true, UpdatedAtUtc = DateTime.UtcNow },
-                    new StoreInventory { Id = Guid.NewGuid(), StoreId = relianceStore.Id, ProductVariantId = xm5VariantBlack.Id, Price = 27490m, Quantity = 2, AvailableQuantity = 2, ShelfLocation = "Audio-Shelf-4", SKU = "REL-XM5-02", IsActive = true, UpdatedAtUtc = DateTime.UtcNow },
-
-                    // iPhone 15 in Croma & Reliance
-                    new StoreInventory { Id = Guid.NewGuid(), StoreId = cromaStore.Id, ProductVariantId = iphoneVariantBlack.Id, Price = 69900m, Quantity = 5, AvailableQuantity = 5, ShelfLocation = "Mobile Counter 1", SKU = "CRO-IP15-128", IsActive = true, UpdatedAtUtc = DateTime.UtcNow },
-                    new StoreInventory { Id = Guid.NewGuid(), StoreId = relianceStore.Id, ProductVariantId = iphoneVariantBlack.Id, Price = 68990m, Quantity = 4, AvailableQuantity = 4, ShelfLocation = "Apple Bay 2", SKU = "REL-IP15-128", IsActive = true, UpdatedAtUtc = DateTime.UtcNow },
-
-                    // Nike Air Max in Nike Store
-                    new StoreInventory { Id = Guid.NewGuid(), StoreId = nikePhysicalStore.Id, ProductVariantId = airMaxVariant9.Id, Price = 13495m, Quantity = 4, AvailableQuantity = 4, ShelfLocation = "Footwear Rack 07", SKU = "NKE-AM270-01", IsActive = true, UpdatedAtUtc = DateTime.UtcNow },
-
-                    // MX Master 3S in Croma
-                    new StoreInventory { Id = Guid.NewGuid(), StoreId = cromaStore.Id, ProductVariantId = mxMasterVariantGraphite.Id, Price = 9495m, Quantity = 6, AvailableQuantity = 6, ShelfLocation = "Accessories B03", SKU = "CRO-MX3S-01", IsActive = true, UpdatedAtUtc = DateTime.UtcNow }
-                };
-
-                context.StoreInventories.AddRange(inventories);
-                await context.SaveChangesAsync();
-                logger.LogInformation("Seeded canonical global products, variants, and store inventory records.");
-            }
-
-            // 6. Seed Timed Geo-Targeted Premium Advertisement if none exists
-            if (!await context.PremiumAdvertisements.AnyAsync())
-            {
-                var sampleShop = await context.Shops.FirstOrDefaultAsync();
-                if (sampleShop != null)
-                {
-                    context.PremiumAdvertisements.Add(new PremiumAdvertisement
-                    {
-                        Id = Guid.NewGuid(),
-                        ShopId = sampleShop.Id,
-                        Title = "Exclusive RS Puram Flash Sale: 25% Off In-Store",
-                        Description = "Special timed walk-in offer for Zooner shoppers near RS Puram & Race Course.",
-                        TargetCategory = "running-shoes",
-                        TargetRadiusKm = 10.0,
-                        StartTimeUtc = DateTime.UtcNow.AddMinutes(-30),
-                        EndTimeUtc = DateTime.UtcNow.AddHours(3), // 3-hour timed deal
-                        OfferTag = "PREMIUM 25% OFF",
-                        IsActive = true,
-                        IsPremiumMerchantOnly = true
-                    });
-                    await context.SaveChangesAsync();
-                    logger.LogInformation("Seeded initial targeted timed premium advertisement.");
-                }
+                await SeedDemoDataAsync(context, logger);
             }
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error occurred during initial data seeding.");
+            throw;
+        }
+    }
+
+    private static async Task SeedDemoDataAsync(AppDbContext context, ILogger logger)
+    {
+        // 1. Seed Sample Stores if database has no shops
+        if (!await context.Shops.AnyAsync())
+        {
+            var adminUser = await context.Users.FirstOrDefaultAsync(u => u.Role == "Admin") ?? await context.Users.FirstAsync();
+
+            var croma = new Shop
+            {
+                Id = Guid.NewGuid(),
+                OwnerId = adminUser.Id,
+                Name = "Croma Electronics",
+                Description = "Authorized Electronics Store with live shelf stock",
+                Phone = "+91 422 254 8890",
+                Address = "142 DB Road, RS Puram, Coimbatore",
+                Latitude = 11.0118,
+                Longitude = 76.9525,
+                VerificationStatus = ShopVerificationStatus.Approved,
+                IsActive = true,
+                IsLiveEnabled = true,
+                CreatedAtUtc = DateTime.UtcNow
+            };
+
+            var reliance = new Shop
+            {
+                Id = Guid.NewGuid(),
+                OwnerId = adminUser.Id,
+                Name = "Reliance Digital",
+                Description = "Digital electronics and mobile store",
+                Phone = "+91 422 439 1234",
+                Address = "88 DB Road, RS Puram, Coimbatore",
+                Latitude = 11.0145,
+                Longitude = 76.9540,
+                VerificationStatus = ShopVerificationStatus.Approved,
+                IsActive = true,
+                IsLiveEnabled = true,
+                CreatedAtUtc = DateTime.UtcNow
+            };
+
+            var nikeStore = new Shop
+            {
+                Id = Guid.NewGuid(),
+                OwnerId = adminUser.Id,
+                Name = "Nike Flagship Store",
+                Description = "Official Nike footwear & sports apparel",
+                Phone = "+91 422 255 9900",
+                Address = "210 DB Road, RS Puram, Coimbatore",
+                Latitude = 11.0180,
+                Longitude = 76.9570,
+                VerificationStatus = ShopVerificationStatus.Approved,
+                IsActive = true,
+                IsLiveEnabled = true,
+                CreatedAtUtc = DateTime.UtcNow
+            };
+
+            context.Shops.AddRange(croma, reliance, nikeStore);
+            await context.SaveChangesAsync();
+            logger.LogInformation("Seeded initial sample stores.");
+        }
+
+        // 2. Seed Global Brands, Products, Variants, and Store Inventories if none exist
+        if (!await context.Products.AnyAsync())
+        {
+            var electronicsCategory = await context.Categories.FirstOrDefaultAsync(c => c.Slug == "electronics-gadgets") ?? await context.Categories.FirstAsync();
+            var footwearCategory = await context.Categories.FirstOrDefaultAsync(c => c.Slug == "footwear-sports") ?? await context.Categories.FirstAsync();
+
+            // Brands
+            var sonyBrand = new Brand { Id = Guid.NewGuid(), Name = "Sony", NormalizedName = "SONY", CreatedAtUtc = DateTime.UtcNow };
+            var appleBrand = new Brand { Id = Guid.NewGuid(), Name = "Apple", NormalizedName = "APPLE", CreatedAtUtc = DateTime.UtcNow };
+            var samsungBrand = new Brand { Id = Guid.NewGuid(), Name = "Samsung", NormalizedName = "SAMSUNG", CreatedAtUtc = DateTime.UtcNow };
+            var nikeBrand = new Brand { Id = Guid.NewGuid(), Name = "Nike", NormalizedName = "NIKE", CreatedAtUtc = DateTime.UtcNow };
+            var logitechBrand = new Brand { Id = Guid.NewGuid(), Name = "Logitech", NormalizedName = "LOGITECH", CreatedAtUtc = DateTime.UtcNow };
+
+            context.Brands.AddRange(sonyBrand, appleBrand, samsungBrand, nikeBrand, logitechBrand);
+            await context.SaveChangesAsync();
+
+            // Products
+            var sonyXm5 = new Product
+            {
+                Id = Guid.NewGuid(),
+                BrandId = sonyBrand.Id,
+                CategoryId = electronicsCategory.Id,
+                Name = "Sony WH-1000XM5 Wireless Headphones",
+                NormalizedName = "SONY WH 1000XM5 WIRELESS HEADPHONES WH1000XM5 XM5",
+                Description = "Industry-leading noise canceling headphones with two processors and 8 microphones.",
+                ModelNumber = "WH-1000XM5",
+                GTIN = "4548736132580",
+                MPN = "WH1000XM5/B",
+                ImageUrl = "https://images.unsplash.com/photo-1546435770-a3e426bf472b?auto=format&fit=crop&w=600&q=80",
+                IsActive = true,
+                CreatedAtUtc = DateTime.UtcNow
+            };
+
+            var iphone15 = new Product
+            {
+                Id = Guid.NewGuid(),
+                BrandId = appleBrand.Id,
+                CategoryId = electronicsCategory.Id,
+                Name = "Apple iPhone 15 (128GB)",
+                NormalizedName = "APPLE IPHONE 15 128GB IPHONE15 A3090",
+                Description = "Dynamic Island, 48MP Main camera, and USB-C in a durable color-infused glass design.",
+                ModelNumber = "A3090",
+                GTIN = "195949036507",
+                MPN = "MTP03HN/A",
+                ImageUrl = "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?auto=format&fit=crop&w=600&q=80",
+                IsActive = true,
+                CreatedAtUtc = DateTime.UtcNow
+            };
+
+            var nikeAirMax = new Product
+            {
+                Id = Guid.NewGuid(),
+                BrandId = nikeBrand.Id,
+                CategoryId = footwearCategory.Id,
+                Name = "Nike Air Max 270 Sneakers",
+                NormalizedName = "NIKE AIR MAX 270 SNEAKERS AIRMAX270",
+                Description = "Boasts Nike's biggest heel Air unit yet for a super-soft ride that feels as impossible as it looks.",
+                ModelNumber = "AH8050",
+                GTIN = "0886737036495",
+                MPN = "AH8050-002",
+                ImageUrl = "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=600&q=80",
+                IsActive = true,
+                CreatedAtUtc = DateTime.UtcNow
+            };
+
+            var mxMaster = new Product
+            {
+                Id = Guid.NewGuid(),
+                BrandId = logitechBrand.Id,
+                CategoryId = electronicsCategory.Id,
+                Name = "Logitech MX Master 3S Wireless Mouse",
+                NormalizedName = "LOGITECH MX MASTER 3S WIRELESS MOUSE MXM3S",
+                Description = "An iconic mouse remastered for ultimate feel, precision, and performance.",
+                ModelNumber = "MXM3S",
+                GTIN = "097855173783",
+                MPN = "910-006557",
+                ImageUrl = "https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?auto=format&fit=crop&w=600&q=80",
+                IsActive = true,
+                CreatedAtUtc = DateTime.UtcNow
+            };
+
+            context.Products.AddRange(sonyXm5, iphone15, nikeAirMax, mxMaster);
+            await context.SaveChangesAsync();
+
+            // Product Variants
+            var xm5VariantBlack = new ProductVariant { Id = Guid.NewGuid(), ProductId = sonyXm5.Id, VariantName = "Black", SKU = "SNY-XM5-BLK", GTIN = "4548736132580", CreatedAtUtc = DateTime.UtcNow };
+            var iphoneVariantBlack = new ProductVariant { Id = Guid.NewGuid(), ProductId = iphone15.Id, VariantName = "128GB Black", SKU = "APL-IP15-128-BLK", GTIN = "195949036507", CreatedAtUtc = DateTime.UtcNow };
+            var airMaxVariant9 = new ProductVariant { Id = Guid.NewGuid(), ProductId = nikeAirMax.Id, VariantName = "UK 9 / White Red", SKU = "NKE-AM270-WHTRED-9", GTIN = "0886737036495", CreatedAtUtc = DateTime.UtcNow };
+            var mxMasterVariantGraphite = new ProductVariant { Id = Guid.NewGuid(), ProductId = mxMaster.Id, VariantName = "Graphite", SKU = "LOG-MX3S-GRP", GTIN = "097855173783", CreatedAtUtc = DateTime.UtcNow };
+
+            context.ProductVariants.AddRange(xm5VariantBlack, iphoneVariantBlack, airMaxVariant9, mxMasterVariantGraphite);
+            await context.SaveChangesAsync();
+
+            // Store Inventories
+            var stores = await context.Shops.ToListAsync();
+            var cromaStore = stores.FirstOrDefault(s => s.Name.Contains("Croma")) ?? stores.First();
+            var relianceStore = stores.FirstOrDefault(s => s.Name.Contains("Reliance")) ?? stores.Last();
+            var nikePhysicalStore = stores.FirstOrDefault(s => s.Name.Contains("Nike")) ?? stores.First();
+
+            var inventories = new List<StoreInventory>
+            {
+                new StoreInventory { Id = Guid.NewGuid(), StoreId = cromaStore.Id, ProductVariantId = xm5VariantBlack.Id, Price = 26990m, Quantity = 3, AvailableQuantity = 3, IsActive = true, UpdatedAtUtc = DateTime.UtcNow },
+                new StoreInventory { Id = Guid.NewGuid(), StoreId = relianceStore.Id, ProductVariantId = xm5VariantBlack.Id, Price = 27490m, Quantity = 2, AvailableQuantity = 2, IsActive = true, UpdatedAtUtc = DateTime.UtcNow },
+                new StoreInventory { Id = Guid.NewGuid(), StoreId = cromaStore.Id, ProductVariantId = iphoneVariantBlack.Id, Price = 69900m, Quantity = 5, AvailableQuantity = 5, IsActive = true, UpdatedAtUtc = DateTime.UtcNow },
+                new StoreInventory { Id = Guid.NewGuid(), StoreId = relianceStore.Id, ProductVariantId = iphoneVariantBlack.Id, Price = 68990m, Quantity = 4, AvailableQuantity = 4, IsActive = true, UpdatedAtUtc = DateTime.UtcNow },
+                new StoreInventory { Id = Guid.NewGuid(), StoreId = nikePhysicalStore.Id, ProductVariantId = airMaxVariant9.Id, Price = 13495m, Quantity = 4, AvailableQuantity = 4, IsActive = true, UpdatedAtUtc = DateTime.UtcNow },
+                new StoreInventory { Id = Guid.NewGuid(), StoreId = cromaStore.Id, ProductVariantId = mxMasterVariantGraphite.Id, Price = 9495m, Quantity = 6, AvailableQuantity = 6, IsActive = true, UpdatedAtUtc = DateTime.UtcNow }
+            };
+
+            context.StoreInventories.AddRange(inventories);
+            await context.SaveChangesAsync();
+            logger.LogInformation("Seeded canonical global products, variants, and store inventory records.");
+        }
+
+        // 3. Seed Timed Geo-Targeted Premium Advertisement if none exists
+        if (!await context.PremiumAdvertisements.AnyAsync())
+        {
+            var sampleShop = await context.Shops.FirstOrDefaultAsync();
+            if (sampleShop != null)
+            {
+                context.PremiumAdvertisements.Add(new PremiumAdvertisement
+                {
+                    Id = Guid.NewGuid(),
+                    ShopId = sampleShop.Id,
+                    Title = "Exclusive RS Puram Flash Sale: 25% Off In-Store",
+                    Description = "Special timed walk-in offer for Zooner shoppers near RS Puram & Race Course.",
+                    TargetCategory = "running-shoes",
+                    TargetRadiusKm = 10.0,
+                    StartTimeUtc = DateTime.UtcNow.AddMinutes(-30),
+                    EndTimeUtc = DateTime.UtcNow.AddHours(3), // 3-hour timed deal
+                    OfferTag = "PREMIUM 25% OFF",
+                    IsActive = true,
+                    IsPremiumMerchantOnly = true
+                });
+                await context.SaveChangesAsync();
+                logger.LogInformation("Seeded initial targeted timed premium advertisement.");
+            }
         }
     }
 

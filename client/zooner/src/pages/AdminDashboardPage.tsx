@@ -65,8 +65,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
       const stored = localStorage.getItem('zooner_user_profile');
       if (!stored) return false;
       const parsed = JSON.parse(stored);
-      const isSuperAdmin = ['lpycho3@gmail.com', 'admin@zooner.app'].includes(parsed?.email?.toLowerCase() || '') || parsed?.role?.toLowerCase() === 'admin';
-      return Boolean(isSuperAdmin);
+      return parsed?.role?.toLowerCase() === 'admin';
     } catch {
       return false;
     }
@@ -149,8 +148,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
         const token = localStorage.getItem('zooner_token');
         if (!token) return;
         const profile = await syncUserProfile();
-        const isSuperAdmin = ['lpycho3@gmail.com', 'admin@zooner.app'].includes(profile?.email?.toLowerCase() || '') || profile?.role?.toLowerCase() === 'admin';
-        if (isMounted && isSuperAdmin) {
+        const isAdmin = profile?.role?.toLowerCase() === 'admin';
+        if (isMounted && isAdmin) {
           setIsAdminAuthenticated(true);
         }
       } catch {}
@@ -185,10 +184,9 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
       const authRes = await googleLogin(response.credential);
       if (authRes.success && authRes.data) {
         const profile = await syncUserProfile();
-        const email = (profile?.email || authRes.data.user.email || '').toLowerCase();
         const role = profile?.role || authRes.data.user.role;
-        const isSuperAdmin = ['lpycho3@gmail.com', 'admin@zooner.app'].includes(email) || role?.toLowerCase() === 'admin';
-        if (isSuperAdmin) {
+        const isAdmin = role?.toLowerCase() === 'admin';
+        if (isAdmin) {
           setIsAdminAuthenticated(true);
           showToast('Administrator authenticated successfully.');
         } else {
@@ -239,10 +237,9 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
       const res = await loginUser(adminLoginEmail.trim(), adminLoginPassword);
       if (res.success && res.data) {
         const profile = await syncUserProfile();
-        const email = (profile?.email || res.data.user.email || '').toLowerCase();
         const role = profile?.role || res.data.user.role;
-        const isSuperAdmin = ['lpycho3@gmail.com', 'admin@zooner.app'].includes(email) || role?.toLowerCase() === 'admin';
-        if (isSuperAdmin) {
+        const isAdmin = role?.toLowerCase() === 'admin';
+        if (isAdmin) {
           setIsAdminAuthenticated(true);
           showToast('Administrator authenticated successfully.');
         } else {

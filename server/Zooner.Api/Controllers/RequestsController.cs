@@ -37,12 +37,25 @@ public class RequestsController : ControllerBase
     [Authorize]
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(ApiResponse<LiveRequestDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<LiveRequestDto>), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ApiResponse<LiveRequestDto>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetRequestById(Guid id)
     {
         var userId = GetCurrentUserId();
         var response = await _liveRequestService.GetRequestByIdAsync(id, userId);
-        return response.Success ? Ok(response) : NotFound(response);
+        if (!response.Success)
+        {
+            if (response.Message == "Live request not found.")
+            {
+                return NotFound(response);
+            }
+            if (response.Message.Contains("Access denied") || response.Message.Contains("Unauthorized"))
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, response);
+            }
+            return BadRequest(response);
+        }
+        return Ok(response);
     }
 
     /// <summary>
