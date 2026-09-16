@@ -130,6 +130,6 @@ public class RequestsController : ControllerBase
     private Guid GetCurrentUserId()
     {
         var claim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
-        return Guid.Parse(claim!);
+        return Guid.TryParse(claim, out var id) ? id : Guid.Empty;
     }
 }

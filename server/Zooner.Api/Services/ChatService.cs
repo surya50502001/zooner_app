@@ -146,6 +146,11 @@ public class ChatService : IChatService
             return ApiResponse<ChatMessageDto>.Fail("You are not authorized to send messages in this conversation.");
         }
 
+        if (conversation.Shop == null || !conversation.Shop.IsActive || conversation.Shop.VerificationStatus != ShopVerificationStatus.Approved)
+        {
+            return ApiResponse<ChatMessageDto>.Fail("Cannot send messages for an inactive or unverified shop.");
+        }
+
         var sender = await _context.Users.FindAsync(senderId);
 
         var message = new ChatMessage
@@ -204,14 +209,14 @@ public class ChatService : IChatService
             return ApiResponse<ConversationDto>.Fail("Shop not found.");
         }
 
-        if (!shop.IsActive)
-        {
-            return ApiResponse<ConversationDto>.Fail("Shop is not currently active.");
-        }
-
         if (shop.OwnerId == customerId)
         {
             return ApiResponse<ConversationDto>.Fail("Customer cannot start conversation with their own shop.");
+        }
+
+        if (!shop.IsActive || shop.VerificationStatus != ShopVerificationStatus.Approved)
+        {
+            return ApiResponse<ConversationDto>.Fail("Shop is not currently active or verified.");
         }
 
         // Verify shop legitimately participated / responded to this live request

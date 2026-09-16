@@ -33,7 +33,8 @@ public class TokenService : ITokenService
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new(ClaimTypes.Name, user.FullName),
-            new(ClaimTypes.Email, user.Email)
+            new(ClaimTypes.Email, user.Email),
+            new("security_stamp", user.SecurityStamp ?? string.Empty)
         };
 
         if (user.HasCustomerCapability)

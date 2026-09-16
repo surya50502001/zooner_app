@@ -226,128 +226,140 @@ public class AuthService : IAuthService
 
     public async Task<ApiResponse<AuthResponse>> RefreshTokenAsync(string token, string? ipAddress = null)
     {
-        var hashedToken = HashToken(token);
-        var refreshToken = await _context.RefreshTokens
-            .Include(rt => rt.User)
-            .FirstOrDefaultAsync(rt => rt.Token == hashedToken);
-
-        if (refreshToken == null)
+        if (string.IsNullOrWhiteSpace(token))
         {
             return ApiResponse<AuthResponse>.Fail("Invalid refresh token.");
         }
 
-        if (refreshToken.IsRevoked)
+        var hashedToken = HashToken(token);
+        var now = DateTime.UtcNow;
+
+        // 1. Generate replacement credentials upfront
+        var expiryDays = int.TryParse(_configuration?["Jwt:RefreshTokenExpiryDays"], out var days) ? days : 7;
+        var newExpiresAtUtc = now.AddDays(expiryDays);
+
+        var randomBytes = new byte[64];
+        using (var rng = System.Security.Cryptography.RandomNumberGenerator.Create())
         {
-            // If the token was revoked more than 3 seconds ago, treat as potential theft/reuse and terminate all sessions.
-            // If within 3 seconds, it is a concurrent/duplicated client refresh request during rotation.
-            var isRecentRotation = refreshToken.RevokedAtUtc.HasValue && 
-                                   (DateTime.UtcNow - refreshToken.RevokedAtUtc.Value).TotalSeconds < 3;
+            rng.GetBytes(randomBytes);
+        }
+        var plainNewRefreshToken = Convert.ToBase64String(randomBytes);
+        var hashedNewRefreshToken = HashToken(plainNewRefreshToken);
 
-            if (!isRecentRotation)
+        // 2. Perform atomic conditional transition: exactly one request can transition the active unrevoked token
+        var rowsAffected = await _context.RefreshTokens
+            .Where(rt => rt.Token == hashedToken && rt.RevokedAtUtc == null && rt.ExpiresAtUtc > now)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(rt => rt.RevokedAtUtc, now)
+                .SetProperty(rt => rt.RevokedByIp, ipAddress)
+                .SetProperty(rt => rt.ReplacedByToken, hashedNewRefreshToken));
+
+        if (rowsAffected == 1)
+        {
+            // Winner of the rotation: load consumed token to obtain UserId and verify User is active
+            var consumedToken = await _context.RefreshTokens
+                .Include(rt => rt.User)
+                .FirstOrDefaultAsync(rt => rt.Token == hashedToken);
+
+            if (consumedToken == null || consumedToken.User == null)
             {
-                _logger.LogWarning("Revoked refresh token reuse detected for User ID {UserId}", refreshToken.UserId);
-                var activeTokens = await _context.RefreshTokens
-                    .Where(rt => rt.UserId == refreshToken.UserId && rt.RevokedAtUtc == null)
-                    .ToListAsync();
-
-                foreach (var t in activeTokens)
-                {
-                    t.RevokedAtUtc = DateTime.UtcNow;
-                    t.RevokedByIp = ipAddress;
-                }
-                try
-                {
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    // Concurrency collision safe to ignore
-                }
-
-                return ApiResponse<AuthResponse>.Fail("Invalid refresh token. Session terminated for security.");
+                return ApiResponse<AuthResponse>.Fail("Associated user not found.");
             }
 
-            _logger.LogInformation("Concurrent refresh token request received for recently rotated token of User ID {UserId}", refreshToken.UserId);
-            return ApiResponse<AuthResponse>.Fail("Refresh token has already been used or rotated.");
+            var user = consumedToken.User;
+            if (!user.IsActive)
+            {
+                return ApiResponse<AuthResponse>.Fail("This account has been deactivated.");
+            }
+
+            var newRefreshTokenEntity = new RefreshToken
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                Token = hashedNewRefreshToken,
+                ExpiresAtUtc = newExpiresAtUtc,
+                CreatedAtUtc = now,
+                CreatedByIp = ipAddress
+            };
+
+            _context.RefreshTokens.Add(newRefreshTokenEntity);
+            await _context.SaveChangesAsync();
+
+            var newAccessToken = _tokenService.GenerateAccessToken(user);
+
+            return ApiResponse<AuthResponse>.Ok(new AuthResponse
+            {
+                AccessToken = newAccessToken,
+                RefreshToken = plainNewRefreshToken,
+                ExpiresInMinutes = _tokenService.GetAccessTokenExpiryMinutes(),
+                User = MapToUserDto(user)
+            }, "Token refreshed successfully.");
         }
 
-        if (refreshToken.IsExpired)
+        // rowsAffected == 0: Token does not exist, expired, or was already consumed/revoked
+        var existingToken = await _context.RefreshTokens
+            .FirstOrDefaultAsync(rt => rt.Token == hashedToken);
+
+        if (existingToken == null)
+        {
+            return ApiResponse<AuthResponse>.Fail("Invalid refresh token.");
+        }
+
+        if (existingToken.IsRevoked)
+        {
+            if (!string.IsNullOrEmpty(existingToken.ReplacedByToken))
+            {
+                // Token was already rotated/consumed by another request
+                return ApiResponse<AuthResponse>.Fail("Refresh token has already been used or rotated.");
+            }
+
+            // Explicitly revoked token reuse detected -> invalidate all active tokens for this user
+            _logger.LogWarning("Revoked refresh token reuse detected for User ID {UserId}", existingToken.UserId);
+            await _context.RefreshTokens
+                .Where(rt => rt.UserId == existingToken.UserId && rt.RevokedAtUtc == null)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(t => t.RevokedAtUtc, now)
+                    .SetProperty(t => t.RevokedByIp, ipAddress));
+
+            return ApiResponse<AuthResponse>.Fail("Invalid refresh token. Session terminated for security.");
+        }
+
+        if (existingToken.ExpiresAtUtc <= now)
         {
             return ApiResponse<AuthResponse>.Fail("Refresh token has expired. Please sign in again.");
         }
 
-        var user = refreshToken.User;
-        if (user == null)
-        {
-            return ApiResponse<AuthResponse>.Fail("Associated user not found.");
-        }
-
-        if (!user.IsActive)
-        {
-            return ApiResponse<AuthResponse>.Fail("This account has been deactivated.");
-        }
-
-        // Token rotation: revoke current token and create replacement
-        var newRefreshToken = _tokenService.GenerateRefreshToken(user.Id, ipAddress);
-        var plainNewRefreshToken = newRefreshToken.Token;
-        newRefreshToken.Token = HashToken(plainNewRefreshToken);
-        
-        refreshToken.RevokedAtUtc = DateTime.UtcNow;
-        refreshToken.RevokedByIp = ipAddress;
-        refreshToken.ReplacedByToken = newRefreshToken.Token;
-
-        _context.RefreshTokens.Add(newRefreshToken);
-
-        try
-        {
-            await _context.SaveChangesAsync();
-        }
-        catch (DbUpdateConcurrencyException ex)
-        {
-            _logger.LogWarning(ex, "Concurrency collision detected while rotating refresh token for user {UserId}. Possible concurrent reuse.", user.Id);
-            return ApiResponse<AuthResponse>.Fail("Refresh token has already been used or rotated.");
-        }
-
-        var newAccessToken = _tokenService.GenerateAccessToken(user);
-
-        return ApiResponse<AuthResponse>.Ok(new AuthResponse
-        {
-            AccessToken = newAccessToken,
-            RefreshToken = plainNewRefreshToken,
-            ExpiresInMinutes = _tokenService.GetAccessTokenExpiryMinutes(),
-            User = MapToUserDto(user)
-        }, "Token refreshed successfully.");
+        return ApiResponse<AuthResponse>.Fail("Refresh token has already been used or rotated.");
     }
 
     public async Task<ApiResponse> RevokeTokenAsync(string token, string? ipAddress = null)
     {
-        var hashedToken = HashToken(token);
-        var refreshToken = await _context.RefreshTokens
-            .FirstOrDefaultAsync(rt => rt.Token == hashedToken);
-
-        if (refreshToken == null)
+        if (string.IsNullOrWhiteSpace(token))
         {
             return ApiResponse.Fail("Token not found.");
         }
 
-        if (!refreshToken.IsActive)
+        var hashedToken = HashToken(token);
+        var now = DateTime.UtcNow;
+
+        var rowsAffected = await _context.RefreshTokens
+            .Where(rt => rt.Token == hashedToken && rt.RevokedAtUtc == null)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(rt => rt.RevokedAtUtc, now)
+                .SetProperty(rt => rt.RevokedByIp, ipAddress));
+
+        if (rowsAffected > 0)
         {
-            return ApiResponse.Fail("Token is already inactive or revoked.");
+            return ApiResponse.Ok("Token revoked successfully.");
         }
 
-        refreshToken.RevokedAtUtc = DateTime.UtcNow;
-        refreshToken.RevokedByIp = ipAddress;
-
-        try
+        var existing = await _context.RefreshTokens.FirstOrDefaultAsync(rt => rt.Token == hashedToken);
+        if (existing == null)
         {
-            await _context.SaveChangesAsync();
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            // Already revoked concurrently
+            return ApiResponse.Fail("Token not found.");
         }
 
-        return ApiResponse.Ok("Token revoked successfully.");
+        return ApiResponse.Fail("Token is already inactive or revoked.");
     }
 
     public async Task<ApiResponse<UserDto>> GetCurrentUserAsync(Guid userId)

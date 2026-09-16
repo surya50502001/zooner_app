@@ -44,6 +44,9 @@ public class User
 
     public bool IsActive { get; set; } = true;
 
+    [MaxLength(64)]
+    public string SecurityStamp { get; set; } = Guid.NewGuid().ToString();
+
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
     public DateTime? UpdatedAtUtc { get; set; }

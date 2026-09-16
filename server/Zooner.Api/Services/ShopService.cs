@@ -205,6 +205,11 @@ public class ShopService : IShopService
             return ApiResponse.Fail("You do not own this shop.");
         }
 
+        if (isLiveEnabled && (!shop.IsActive || shop.VerificationStatus != ShopVerificationStatus.Approved))
+        {
+            return ApiResponse.Fail("Cannot enable LIVE mode: Shop is not active or verified.");
+        }
+
         shop.IsLiveEnabled = isLiveEnabled;
         shop.UpdatedAtUtc = DateTime.UtcNow;
         await _context.SaveChangesAsync();

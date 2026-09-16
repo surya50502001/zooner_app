@@ -214,6 +214,10 @@ public class LiveRequestService : ILiveRequestService
 
         if (shop == null) return ApiResponse<List<LiveRequestSummaryDto>>.Fail("Shop not found.");
         if (shop.OwnerId != ownerId) return ApiResponse<List<LiveRequestSummaryDto>>.Fail("Unauthorized.");
+        if (!shop.IsActive || shop.VerificationStatus != ShopVerificationStatus.Approved)
+        {
+            return ApiResponse<List<LiveRequestSummaryDto>>.Fail("Shop is not active or verified.");
+        }
 
         var categoryIds = shop.ShopCategories.Select(sc => sc.CategoryId).ToList();
         var now = DateTime.UtcNow;

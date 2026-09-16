@@ -20,7 +20,7 @@ public class ChatAndReportTests
         var shopOwner = new User { Id = Guid.NewGuid(), FullName = "Owner", Email = "o@test.com", PasswordHash = "h" };
         var eavesdropper = new User { Id = Guid.NewGuid(), FullName = "Eavesdropper", Email = "e@test.com", PasswordHash = "h" };
 
-        var shop = new Shop { Id = Guid.NewGuid(), OwnerId = shopOwner.Id, Name = "Shop", Phone = "1", Address = "A" };
+        var shop = new Shop { Id = Guid.NewGuid(), OwnerId = shopOwner.Id, Name = "Shop", Phone = "1", Address = "A", IsActive = true, VerificationStatus = ShopVerificationStatus.Approved };
         var liveRequest = new LiveRequest { Id = Guid.NewGuid(), CustomerId = customer.Id, CategoryId = Guid.NewGuid(), RequestText = "Item" };
 
         var conversation = new Conversation

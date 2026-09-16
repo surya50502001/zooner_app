@@ -30,7 +30,7 @@ public class ChatAuthorizationTests
 
         var customer = new User { Id = Guid.NewGuid(), Email = "c1@test.com", Role = UserRoles.Customer };
         var vendor = new User { Id = Guid.NewGuid(), Email = "v1@test.com", Role = UserRoles.Vendor };
-        var shop = new Shop { Id = Guid.NewGuid(), OwnerId = vendor.Id, Name = "Mega Electronics", Phone = "123", Address = "Road", IsActive = true };
+        var shop = new Shop { Id = Guid.NewGuid(), OwnerId = vendor.Id, Name = "Mega Electronics", Phone = "123", Address = "Road", IsActive = true, VerificationStatus = ShopVerificationStatus.Approved };
 
         var liveRequest = new LiveRequest
         {
@@ -73,7 +73,7 @@ public class ChatAuthorizationTests
 
         var customer = new User { Id = Guid.NewGuid(), Email = "c2@test.com", Role = UserRoles.Customer };
         var vendor = new User { Id = Guid.NewGuid(), Email = "v2@test.com", Role = UserRoles.Vendor };
-        var shop = new Shop { Id = Guid.NewGuid(), OwnerId = vendor.Id, Name = "Unrelated Shop", Phone = "123", Address = "Road", IsActive = true };
+        var shop = new Shop { Id = Guid.NewGuid(), OwnerId = vendor.Id, Name = "Unrelated Shop", Phone = "123", Address = "Road", IsActive = true, VerificationStatus = ShopVerificationStatus.Approved };
 
         var liveRequest = new LiveRequest
         {
@@ -107,7 +107,7 @@ public class ChatAuthorizationTests
         var customerA = new User { Id = Guid.NewGuid(), Email = "ca@test.com", Role = UserRoles.Customer };
         var customerB = new User { Id = Guid.NewGuid(), Email = "cb@test.com", Role = UserRoles.Customer };
         var vendor = new User { Id = Guid.NewGuid(), Email = "v3@test.com", Role = UserRoles.Vendor };
-        var shop = new Shop { Id = Guid.NewGuid(), OwnerId = vendor.Id, Name = "Shop 3", Phone = "123", Address = "Road", IsActive = true };
+        var shop = new Shop { Id = Guid.NewGuid(), OwnerId = vendor.Id, Name = "Shop 3", Phone = "123", Address = "Road", IsActive = true, VerificationStatus = ShopVerificationStatus.Approved };
 
         var liveRequest = new LiveRequest
         {
@@ -148,7 +148,7 @@ public class ChatAuthorizationTests
         var (service, context) = CreateChatService(nameof(Customer_Cannot_Start_Conversation_With_Own_Shop));
 
         var vendor = new User { Id = Guid.NewGuid(), Email = "vendor_cust@test.com", Role = UserRoles.Vendor };
-        var shop = new Shop { Id = Guid.NewGuid(), OwnerId = vendor.Id, Name = "My Own Shop", Phone = "123", Address = "Road", IsActive = true };
+        var shop = new Shop { Id = Guid.NewGuid(), OwnerId = vendor.Id, Name = "My Own Shop", Phone = "123", Address = "Road", IsActive = true, VerificationStatus = ShopVerificationStatus.Approved };
 
         var liveRequest = new LiveRequest
         {

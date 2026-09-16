@@ -89,7 +89,8 @@ public class SignalRGroupAuthorizationTests
             Name = "Audio Mart",
             Phone = "123",
             Address = "Road",
-            IsActive = true
+            IsActive = true,
+            VerificationStatus = ShopVerificationStatus.Approved
         };
 
         var liveRequest = new LiveRequest
@@ -116,6 +117,94 @@ public class SignalRGroupAuthorizationTests
         await hub.JoinLiveRequestGroup(liveRequest.Id.ToString());
 
         groupMock.Verify(g => g.AddToGroupAsync("conn-xyz", $"request_{liveRequest.Id}", default), Times.Once);
+    }
+
+    [Fact]
+    public async Task Unapproved_Vendor_Shop_Is_Denied_Joining_Request_Group()
+    {
+        var vendorId = Guid.NewGuid();
+        var customerId = Guid.NewGuid();
+        var (hub, groupMock, context) = CreateHub(nameof(Unapproved_Vendor_Shop_Is_Denied_Joining_Request_Group), vendorId, UserRoles.Vendor);
+
+        var shop = new Shop
+        {
+            Id = Guid.NewGuid(),
+            OwnerId = vendorId,
+            Name = "Pending Audio Mart",
+            Phone = "123",
+            Address = "Road",
+            IsActive = true,
+            VerificationStatus = ShopVerificationStatus.Pending // Unapproved
+        };
+
+        var liveRequest = new LiveRequest
+        {
+            Id = Guid.NewGuid(),
+            CustomerId = customerId,
+            RequestText = "Need headphones",
+            CategoryId = Guid.NewGuid()
+        };
+
+        var response = new ShopResponse
+        {
+            Id = Guid.NewGuid(),
+            LiveRequestId = liveRequest.Id,
+            ShopId = shop.Id,
+            Status = ShopResponseStatus.Available
+        };
+
+        context.Shops.Add(shop);
+        context.LiveRequests.Add(liveRequest);
+        context.ShopResponses.Add(response);
+        await context.SaveChangesAsync();
+
+        await hub.JoinLiveRequestGroup(liveRequest.Id.ToString());
+
+        groupMock.Verify(g => g.AddToGroupAsync("conn-xyz", It.IsAny<string>(), default), Times.Never);
+    }
+
+    [Fact]
+    public async Task Inactive_Vendor_Shop_Is_Denied_Joining_Request_Group()
+    {
+        var vendorId = Guid.NewGuid();
+        var customerId = Guid.NewGuid();
+        var (hub, groupMock, context) = CreateHub(nameof(Inactive_Vendor_Shop_Is_Denied_Joining_Request_Group), vendorId, UserRoles.Vendor);
+
+        var shop = new Shop
+        {
+            Id = Guid.NewGuid(),
+            OwnerId = vendorId,
+            Name = "Suspended Audio Mart",
+            Phone = "123",
+            Address = "Road",
+            IsActive = false, // Suspended / Inactive
+            VerificationStatus = ShopVerificationStatus.Approved
+        };
+
+        var liveRequest = new LiveRequest
+        {
+            Id = Guid.NewGuid(),
+            CustomerId = customerId,
+            RequestText = "Need headphones",
+            CategoryId = Guid.NewGuid()
+        };
+
+        var response = new ShopResponse
+        {
+            Id = Guid.NewGuid(),
+            LiveRequestId = liveRequest.Id,
+            ShopId = shop.Id,
+            Status = ShopResponseStatus.Available
+        };
+
+        context.Shops.Add(shop);
+        context.LiveRequests.Add(liveRequest);
+        context.ShopResponses.Add(response);
+        await context.SaveChangesAsync();
+
+        await hub.JoinLiveRequestGroup(liveRequest.Id.ToString());
+
+        groupMock.Verify(g => g.AddToGroupAsync("conn-xyz", It.IsAny<string>(), default), Times.Never);
     }
 
     [Fact]

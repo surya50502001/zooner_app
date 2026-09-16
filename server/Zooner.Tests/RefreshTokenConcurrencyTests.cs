@@ -132,5 +132,108 @@ public class RefreshTokenConcurrencyTests : IDisposable
             Assert.Single(activeTokens);
         }
     }
+
+    [Fact]
+    public async Task Successful_Rotation_Followed_By_Reusing_Old_Token_Fails_Without_Nuking_Winner_Session()
+    {
+        var userId = Guid.NewGuid();
+        var initialRawToken = "initial-concurrency-token";
+        string newlyIssuedToken = string.Empty;
+
+        using (var setupContext = CreateContext())
+        {
+            var user = new User
+            {
+                Id = userId,
+                FullName = "Concurrency Test User",
+                Email = "concurrency2@test.com",
+                Role = UserRoles.Customer,
+                IsActive = true
+            };
+
+            var refreshToken = new RefreshToken
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                Token = AuthService.HashToken(initialRawToken),
+                ExpiresAtUtc = DateTime.UtcNow.AddDays(7),
+                CreatedAtUtc = DateTime.UtcNow
+            };
+
+            setupContext.Users.Add(user);
+            setupContext.RefreshTokens.Add(refreshToken);
+            await setupContext.SaveChangesAsync();
+        }
+
+        // 1. First legitimate rotation succeeds
+        using (var ctx1 = CreateContext())
+        {
+            var authService1 = new AuthService(ctx1, _tokenService, NullLogger<AuthService>.Instance);
+            var rotateRes = await authService1.RefreshTokenAsync(initialRawToken, "127.0.0.1");
+            Assert.True(rotateRes.Success);
+            Assert.NotNull(rotateRes.Data);
+            Assert.NotEmpty(rotateRes.Data.RefreshToken);
+            newlyIssuedToken = rotateRes.Data.RefreshToken;
+        }
+
+        // 2. Attacker/Stale client attempts to use the initial rotated token again
+        using (var ctx2 = CreateContext())
+        {
+            var authService2 = new AuthService(ctx2, _tokenService, NullLogger<AuthService>.Instance);
+            var replayRes = await authService2.RefreshTokenAsync(initialRawToken, "192.168.1.50");
+            Assert.False(replayRes.Success);
+            Assert.Contains("already been used or rotated", replayRes.Message);
+        }
+
+        // 3. Verify the newly issued winner token is STILL active and NOT revoked
+        using (var verifyCtx = CreateContext())
+        {
+            var activeTokens = await verifyCtx.RefreshTokens
+                .Where(rt => rt.UserId == userId && rt.RevokedAtUtc == null)
+                .ToListAsync();
+            Assert.Single(activeTokens);
+            Assert.Equal(AuthService.HashToken(newlyIssuedToken), activeTokens[0].Token);
+        }
+    }
+
+    [Fact]
+    public async Task Revoked_Token_Refresh_Attempt_Fails()
+    {
+        var userId = Guid.NewGuid();
+        var revokedRawToken = "already-revoked-token";
+
+        using (var setupContext = CreateContext())
+        {
+            var user = new User
+            {
+                Id = userId,
+                FullName = "Revocation Test User",
+                Email = "revoked@test.com",
+                Role = UserRoles.Customer,
+                IsActive = true
+            };
+
+            var refreshToken = new RefreshToken
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                Token = AuthService.HashToken(revokedRawToken),
+                ExpiresAtUtc = DateTime.UtcNow.AddDays(7),
+                CreatedAtUtc = DateTime.UtcNow.AddDays(-1),
+                RevokedAtUtc = DateTime.UtcNow.AddHours(-2)
+            };
+
+            setupContext.Users.Add(user);
+            setupContext.RefreshTokens.Add(refreshToken);
+            await setupContext.SaveChangesAsync();
+        }
+
+        using var ctx = CreateContext();
+        var authService = new AuthService(ctx, _tokenService, NullLogger<AuthService>.Instance);
+        var res = await authService.RefreshTokenAsync(revokedRawToken);
+
+        Assert.False(res.Success);
+        Assert.Contains("Session terminated", res.Message);
+    }
 }
 

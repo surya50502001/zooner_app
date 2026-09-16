@@ -99,7 +99,7 @@ public class RefreshTokenSecurityTests
         Assert.Contains("Session terminated", res.Message);
 
         // Security check: all user tokens must now be revoked due to reuse detection
-        var remainingTokens = await context.RefreshTokens.Where(rt => rt.UserId == user.Id).ToListAsync();
+        var remainingTokens = await context.RefreshTokens.AsNoTracking().Where(rt => rt.UserId == user.Id).ToListAsync();
         Assert.All(remainingTokens, t => Assert.NotNull(t.RevokedAtUtc));
     }
 
@@ -132,12 +132,12 @@ public class RefreshTokenSecurityTests
         Assert.NotEqual(rawToken, res.Data.RefreshToken);
 
         // Verify old token in DB is revoked with replacement pointer
-        var oldDbToken = await context.RefreshTokens.FindAsync(refreshToken.Id);
+        var oldDbToken = await context.RefreshTokens.AsNoTracking().FirstOrDefaultAsync(rt => rt.Id == refreshToken.Id);
         Assert.NotNull(oldDbToken!.RevokedAtUtc);
         Assert.NotNull(oldDbToken.ReplacedByToken);
 
         // Verify new token in DB is active
-        var newDbToken = await context.RefreshTokens.FirstOrDefaultAsync(rt => rt.Token == AuthService.HashToken(res.Data.RefreshToken));
+        var newDbToken = await context.RefreshTokens.AsNoTracking().FirstOrDefaultAsync(rt => rt.Token == AuthService.HashToken(res.Data.RefreshToken));
         Assert.NotNull(newDbToken);
         Assert.Null(newDbToken.RevokedAtUtc);
         Assert.True(newDbToken.IsActive);
@@ -167,7 +167,7 @@ public class RefreshTokenSecurityTests
         var res = await authService.RevokeTokenAsync(rawToken, "127.0.0.1");
         Assert.True(res.Success);
 
-        var dbToken = await context.RefreshTokens.FindAsync(refreshToken.Id);
+        var dbToken = await context.RefreshTokens.AsNoTracking().FirstOrDefaultAsync(rt => rt.Id == refreshToken.Id);
         Assert.NotNull(dbToken!.RevokedAtUtc);
         Assert.False(dbToken.IsActive);
     }

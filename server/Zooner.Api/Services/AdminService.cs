@@ -98,10 +98,12 @@ public class AdminService : IAdminService
         report.AdminNotes = request.AdminNotes?.Trim();
         report.ResolvedAtUtc = DateTime.UtcNow;
 
+        var adminExists = adminId != Guid.Empty && await _context.Users.AnyAsync(u => u.Id == adminId);
+
         _context.AdminActions.Add(new AdminAction
         {
             Id = Guid.NewGuid(),
-            AdminUserId = adminId,
+            AdminUserId = adminExists ? adminId : null,
             Action = "ResolveReport",
             TargetEntity = "Report",
             TargetId = reportId.ToString(),
@@ -208,10 +210,12 @@ public class AdminService : IAdminService
         }
         shop.UpdatedAtUtc = DateTime.UtcNow;
 
+        var verifyAdminExists = adminId != Guid.Empty && await _context.Users.AnyAsync(u => u.Id == adminId);
+
         _context.AdminActions.Add(new AdminAction
         {
             Id = Guid.NewGuid(),
-            AdminUserId = adminId != Guid.Empty ? adminId : null,
+            AdminUserId = verifyAdminExists ? adminId : null,
             Action = "VerifyShop",
             TargetEntity = "Shop",
             TargetId = shopId.ToString(),
@@ -243,10 +247,12 @@ public class AdminService : IAdminService
         shop.IsActive = isActive;
         shop.UpdatedAtUtc = DateTime.UtcNow;
 
+        var toggleAdminExists = adminId != Guid.Empty && await _context.Users.AnyAsync(u => u.Id == adminId);
+
         _context.AdminActions.Add(new AdminAction
         {
             Id = Guid.NewGuid(),
-            AdminUserId = adminId,
+            AdminUserId = toggleAdminExists ? adminId : null,
             Action = "ToggleShopStatus",
             TargetEntity = "Shop",
             TargetId = shopId.ToString(),
@@ -284,6 +290,7 @@ public class AdminService : IAdminService
         if (user == null) return ApiResponse.Fail("User not found.");
 
         user.IsActive = request.IsActive;
+        user.SecurityStamp = Guid.NewGuid().ToString();
         user.UpdatedAtUtc = DateTime.UtcNow;
 
         if (!request.IsActive)
@@ -300,10 +307,12 @@ public class AdminService : IAdminService
             }
         }
 
+        var updateAdminExists = adminId != Guid.Empty && await _context.Users.AnyAsync(u => u.Id == adminId);
+
         _context.AdminActions.Add(new AdminAction
         {
             Id = Guid.NewGuid(),
-            AdminUserId = adminId,
+            AdminUserId = updateAdminExists ? adminId : null,
             Action = "UpdateUserStatus",
             TargetEntity = "User",
             TargetId = targetUserId.ToString(),

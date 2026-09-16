@@ -35,9 +35,9 @@ public class LiveHub : Hub
             // Add user to their personal notification group
             await Groups.AddToGroupAsync(Context.ConnectionId, $"user_{userId}");
 
-            // If user owns shops, add them to their shop groups automatically
+            // If user owns active & approved shops, add them to their shop groups automatically
             var shopIds = await _context.Shops
-                .Where(s => s.OwnerId == userId.Value && s.IsActive)
+                .Where(s => s.OwnerId == userId.Value && s.IsActive && s.VerificationStatus == ShopVerificationStatus.Approved)
                 .Select(s => s.Id)
                 .ToListAsync();
 
@@ -85,7 +85,7 @@ public class LiveHub : Hub
             return;
         }
 
-        // Authorization checks: Admin OR Request Owner OR Participating Vendor
+        // Authorization checks: Admin OR Request Owner OR Currently Eligible Participating Vendor
         var isAdmin = user.Role.Equals(UserRoles.Admin, StringComparison.OrdinalIgnoreCase);
 
         if (!isAdmin)
@@ -99,7 +99,11 @@ public class LiveHub : Hub
             {
                 isParticipatingVendor = await _context.ShopResponses
                     .AsNoTracking()
-                    .AnyAsync(r => r.LiveRequestId == parsedRequestId && r.Shop != null && r.Shop.OwnerId == userId.Value && r.Shop.IsActive);
+                    .AnyAsync(r => r.LiveRequestId == parsedRequestId && 
+                                   r.Shop != null && 
+                                   r.Shop.OwnerId == userId.Value && 
+                                   r.Shop.IsActive && 
+                                   r.Shop.VerificationStatus == ShopVerificationStatus.Approved);
             }
 
             if (!isCustomerOwner && !isParticipatingVendor)

@@ -105,7 +105,7 @@ public class InventoryService : IInventoryService
             return ApiResponse<StoreInventoryDetailDto>.ErrorResponse("Store not found.");
         }
 
-        // Verify Store Ownership
+        // Verify Store Ownership and Status
         if (store.OwnerId != ownerUserId)
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == ownerUserId);
@@ -113,6 +113,10 @@ public class InventoryService : IInventoryService
             {
                 return ApiResponse<StoreInventoryDetailDto>.ErrorResponse("Unauthorized: You do not own this store.");
             }
+        }
+        else if (store.VerificationStatus != ShopVerificationStatus.Approved || !store.IsActive)
+        {
+            return ApiResponse<StoreInventoryDetailDto>.ErrorResponse("Store is not active or approved.");
         }
 
         var variant = await _context.ProductVariants
@@ -242,6 +246,10 @@ public class InventoryService : IInventoryService
                 return ApiResponse<StoreInventoryDetailDto>.ErrorResponse("Unauthorized: You do not own this store.");
             }
         }
+        else if (store.VerificationStatus != ShopVerificationStatus.Approved || !store.IsActive)
+        {
+            return ApiResponse<StoreInventoryDetailDto>.ErrorResponse("Store is not active or approved.");
+        }
 
         var inventory = await _context.StoreInventories
             .Include(si => si.ProductVariant)
@@ -321,6 +329,10 @@ public class InventoryService : IInventoryService
             {
                 return ApiResponse<bool>.ErrorResponse("Unauthorized: You do not own this store.");
             }
+        }
+        else if (store.VerificationStatus != ShopVerificationStatus.Approved || !store.IsActive)
+        {
+            return ApiResponse<bool>.ErrorResponse("Store is not active or approved.");
         }
 
         var inventory = await _context.StoreInventories.FirstOrDefaultAsync(si => si.Id == inventoryId && si.StoreId == storeId);
@@ -572,7 +584,6 @@ public class InventoryService : IInventoryService
                 });
             }
         }
-
         var cleanToken = (qrTokenOrCode ?? string.Empty).Trim();
         var hold = await _context.InventoryHolds
             .Include(h => h.Store)
@@ -596,6 +607,15 @@ public class InventoryService : IInventoryService
             {
                 IsValid = false,
                 Message = $"Hold reservation belongs to a different store ('{hold.Store?.Name}')."
+            });
+        }
+
+        if (store.VerificationStatus != ShopVerificationStatus.Approved || !store.IsActive)
+        {
+            return ApiResponse<ValidateHoldQrResponse>.SuccessResponse(new ValidateHoldQrResponse
+            {
+                IsValid = false,
+                Message = "Store is not active or approved."
             });
         }
 
@@ -690,6 +710,10 @@ public class InventoryService : IInventoryService
             {
                 return ApiResponse<InventoryHoldDto>.ErrorResponse("Unauthorized: You do not own this store.");
             }
+        }
+        else if (store.VerificationStatus != ShopVerificationStatus.Approved || !store.IsActive)
+        {
+            return ApiResponse<InventoryHoldDto>.ErrorResponse("Store is not active or approved.");
         }
 
         var hold = await _context.InventoryHolds

@@ -3,6 +3,7 @@ using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -135,7 +136,7 @@ builder.Services.AddAuthentication(options =>
         ClockSkew = TimeSpan.Zero
     };
 
-    // Extract JWT token from Query String for SignalR WebSocket connections
+    // Extract JWT token from Query String for SignalR WebSocket connections and validate active status
     options.Events = new JwtBearerEvents
     {
         OnMessageReceived = context =>
@@ -147,6 +148,38 @@ builder.Services.AddAuthentication(options =>
                 context.Token = accessToken;
             }
             return Task.CompletedTask;
+        },
+        OnTokenValidated = async context =>
+        {
+            var dbContext = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+            var userIdClaim = context.Principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                              ?? context.Principal?.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
+
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+            {
+                context.Fail("Invalid token identity.");
+                return;
+            }
+
+            var securityStampClaim = context.Principal?.FindFirst("security_stamp")?.Value;
+
+            var userState = await dbContext.Users
+                .AsNoTracking()
+                .Where(u => u.Id == userId)
+                .Select(u => new { u.IsActive, u.SecurityStamp })
+                .FirstOrDefaultAsync();
+
+            if (userState == null || !userState.IsActive)
+            {
+                context.Fail("User account is deactivated or does not exist.");
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(securityStampClaim) && !string.IsNullOrEmpty(userState.SecurityStamp) && userState.SecurityStamp != securityStampClaim)
+            {
+                context.Fail("Token security stamp has been invalidated.");
+                return;
+            }
         }
     };
 });
@@ -322,6 +355,11 @@ using (var scope = app.Services.CreateScope())
 }
 
 // 10. HTTP Pipeline
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();

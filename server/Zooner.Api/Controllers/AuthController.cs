@@ -120,16 +120,23 @@ public class AuthController : ControllerBase
     [HttpPost("logout")]
     [HttpPost("signout")]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Logout([FromBody] RevokeTokenRequest? request = null)
     {
-        if (!IsOriginTrusted())
+        var token = request?.RefreshToken;
+        bool isCookieAuth = false;
+
+        if (string.IsNullOrWhiteSpace(token))
         {
-            _logger.LogWarning("Rejected logout from untrusted origin");
-            return StatusCode(StatusCodes.Status403Forbidden, ApiResponse.Fail("Untrusted request origin."));
+            token = Request.Cookies["refreshToken"];
+            isCookieAuth = true;
         }
 
-        // Token can be sent in request body or retrieved from HttpOnly cookie
-        var token = request?.RefreshToken ?? Request.Cookies["refreshToken"];
+        if (isCookieAuth && !IsBrowserOriginTrusted())
+        {
+            _logger.LogWarning("Rejected cookie logout from untrusted or missing origin");
+            return StatusCode(StatusCodes.Status403Forbidden, ApiResponse.Fail("Untrusted or missing origin for cookie logout."));
+        }
 
         if (!string.IsNullOrEmpty(token))
         {
@@ -159,13 +166,20 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest? request = null)
     {
-        if (!IsOriginTrusted())
+        var token = request?.RefreshToken;
+        bool isCookieAuth = false;
+
+        if (string.IsNullOrWhiteSpace(token))
         {
-            _logger.LogWarning("Rejected refresh-token from untrusted origin");
-            return StatusCode(StatusCodes.Status403Forbidden, ApiResponse<AuthResponse>.Fail("Untrusted request origin."));
+            token = Request.Cookies["refreshToken"];
+            isCookieAuth = true;
         }
 
-        var token = request?.RefreshToken ?? Request.Cookies["refreshToken"];
+        if (isCookieAuth && !IsBrowserOriginTrusted())
+        {
+            _logger.LogWarning("Rejected cookie refresh-token from untrusted or missing origin");
+            return StatusCode(StatusCodes.Status403Forbidden, ApiResponse<AuthResponse>.Fail("Untrusted or missing origin for cookie refresh."));
+        }
 
         if (string.IsNullOrEmpty(token))
         {
@@ -177,6 +191,17 @@ public class AuthController : ControllerBase
 
         if (!response.Success)
         {
+            if (isCookieAuth)
+            {
+                var isDev = _environment.IsDevelopment();
+                Response.Cookies.Delete("refreshToken", new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = !isDev || Request.IsHttps,
+                    SameSite = isDev ? SameSiteMode.Lax : SameSiteMode.None,
+                    Path = "/"
+                });
+            }
             return BadRequest(response);
         }
 
@@ -275,33 +300,45 @@ public class AuthController : ControllerBase
 
     private string? GetClientIpAddress()
     {
-        if (Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedFor))
-        {
-            return forwardedFor.FirstOrDefault()?.Split(',')[0].Trim();
-        }
         return HttpContext.Connection.RemoteIpAddress?.ToString();
     }
 
-    private bool IsOriginTrusted()
+    private bool IsBrowserOriginTrusted()
     {
-        if (!Request.Headers.TryGetValue("Origin", out var originHeader) || string.IsNullOrEmpty(originHeader))
+        string? origin = null;
+        if (Request.Headers.TryGetValue("Origin", out var originHeader) && !string.IsNullOrWhiteSpace(originHeader))
         {
-            return true; // Native clients or requests without Origin header
+            origin = originHeader.ToString().TrimEnd('/');
+        }
+        else if (Request.Headers.TryGetValue("Referer", out var refererHeader) && !string.IsNullOrWhiteSpace(refererHeader))
+        {
+            if (Uri.TryCreate(refererHeader.ToString(), UriKind.Absolute, out var refererUri))
+            {
+                origin = $"{refererUri.Scheme}://{refererUri.Authority}".TrimEnd('/');
+            }
         }
 
-        var origin = originHeader.ToString().TrimEnd('/');
+        if (string.IsNullOrWhiteSpace(origin))
+        {
+            // Missing Origin and Referer is untrusted for browser cookie authentication
+            return false;
+        }
+
         var isDev = _environment.IsDevelopment();
-        if (isDev && (origin.StartsWith("http://localhost:") || origin.StartsWith("https://localhost:")))
+        if (isDev && (origin.StartsWith("http://localhost:", StringComparison.OrdinalIgnoreCase) || 
+                      origin.StartsWith("https://localhost:", StringComparison.OrdinalIgnoreCase) ||
+                      origin.StartsWith("http://127.0.0.1:", StringComparison.OrdinalIgnoreCase)))
         {
             return true;
         }
 
-        var configuredOrigins = _configuration["Cors:AllowedOrigins"] 
-            ?? Environment.GetEnvironmentVariable("CORS_ORIGINS") 
-            ?? "https://zooner.app,https://www.zooner.app";
+        var configOrigins = _configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+        var envOrigins = Environment.GetEnvironmentVariable("CORS_ORIGINS")?.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
+        var defaultOrigins = new[] { "https://zooner.app", "https://www.zooner.app" };
 
-        var allowedList = configuredOrigins.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries)
-            .Select(o => o.Trim().TrimEnd('/'));
+        var allowedList = configOrigins.Concat(envOrigins).Concat(defaultOrigins)
+            .Select(o => o.Trim().TrimEnd('/'))
+            .Distinct(StringComparer.OrdinalIgnoreCase);
 
         return allowedList.Contains(origin, StringComparer.OrdinalIgnoreCase);
     }
