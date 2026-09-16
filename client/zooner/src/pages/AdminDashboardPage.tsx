@@ -530,7 +530,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
           <div className="p-3.5 bg-white rounded-2xl border border-gray-200/80 mb-4 text-xs space-y-1 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
             <p className="text-[11px] text-gray-400 font-medium">Logged in Administrator:</p>
             <p className="font-bold text-gray-950 truncate">{userProfile?.name || 'Administrator'}</p>
-            <p className="text-[11px] text-[#007AFF] font-mono truncate">{userProfile?.email || 'admin@zooner.app'}</p>
+            <p className="text-[11px] text-[#007AFF] font-mono truncate">{userProfile?.email || ''}</p>
           </div>
 
           <button

@@ -23,7 +23,7 @@ public class SecurityHardeningTests
     {
         using var context = TestDbContextFactory.Create(nameof(Merchant_Cannot_Self_Approve_Store_And_Requires_Admin));
         var shopService = new ShopService(context, _emptyConfig, NullLogger<ShopService>.Instance);
-        var adminService = new AdminService(context, _emptyConfig);
+        var adminService = new AdminService(context);
 
         var merchant = new User
         {

@@ -32,32 +32,6 @@ public class AuthService : IAuthService
     {
     }
 
-    private bool IsDesignatedAdminEmail(string? email)
-    {
-        if (string.IsNullOrWhiteSpace(email)) return false;
-        var normalized = email.Trim().ToLowerInvariant();
-
-        // 1. Check environment variable / configuration
-        var envAdmins = _configuration?["ADMIN_EMAILS"] ?? _configuration?["AdminEmails"] ?? Environment.GetEnvironmentVariable("ADMIN_EMAILS");
-        if (!string.IsNullOrWhiteSpace(envAdmins))
-        {
-            var adminList = envAdmins.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                                     .Select(e => e.ToLowerInvariant());
-            if (adminList.Contains(normalized)) return true;
-        }
-
-        var configAdmins = _configuration?.GetSection("AdminConfig:SuperAdminEmails").Get<string[]>();
-        if (configAdmins != null && configAdmins.Select(e => e.Trim().ToLowerInvariant()).Contains(normalized))
-        {
-            return true;
-        }
-
-        var defaultAdmin = _configuration?["ADMIN_EMAIL"] ?? _configuration?["AdminConfig:DefaultAdminEmail"] ?? Environment.GetEnvironmentVariable("ADMIN_EMAIL");
-        if (!string.IsNullOrWhiteSpace(defaultAdmin) && normalized == defaultAdmin.Trim().ToLowerInvariant()) return true;
-
-        return false;
-    }
-
     public async Task<ApiResponse<AuthResponse>> RegisterAsync(RegisterRequest request, string? ipAddress = null)
     {
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
@@ -70,8 +44,8 @@ public class AuthService : IAuthService
 
         var passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
 
-        // Public registration assigns Customer role, unless email is a designated super-admin.
-        var role = IsDesignatedAdminEmail(normalizedEmail) ? UserRoles.Admin : UserRoles.Customer;
+        // Public registration always assigns Customer role
+        var role = UserRoles.Customer;
 
         var user = new User
         {
@@ -131,14 +105,6 @@ public class AuthService : IAuthService
             if (!passwordValid)
             {
                 return ApiResponse<AuthResponse>.Fail("Invalid email or password.");
-            }
-
-            // Auto-promote designated admin emails
-            if (IsDesignatedAdminEmail(normalizedEmail) && user.Role != UserRoles.Admin)
-            {
-                user.Role = UserRoles.Admin;
-                user.UpdatedAtUtc = DateTime.UtcNow;
-                _logger.LogInformation("Promoted designated super-admin account to Admin role: {Email}", normalizedEmail);
             }
 
             var accessToken = _tokenService.GenerateAccessToken(user);
@@ -212,8 +178,8 @@ public class AuthService : IAuthService
             }
             else
             {
-                // 3. Brand new user: Default to Customer role unless designated super-admin
-                var initialRole = IsDesignatedAdminEmail(normalizedEmail) ? UserRoles.Admin : UserRoles.Customer;
+                // 3. Brand new user: Default to Customer role
+                var initialRole = UserRoles.Customer;
                 user = new User
                 {
                     Id = Guid.NewGuid(),
@@ -229,13 +195,6 @@ public class AuthService : IAuthService
                 _context.Users.Add(user);
                 _logger.LogInformation("Created new Zooner user via Google sign-in: {UserId} (Role: {Role})", user.Id, user.Role);
             }
-        }
-
-        if (IsDesignatedAdminEmail(normalizedEmail) && user.Role != UserRoles.Admin)
-        {
-            user.Role = UserRoles.Admin;
-            user.UpdatedAtUtc = DateTime.UtcNow;
-            _logger.LogInformation("Auto-promoted existing Google user {Email} to Admin role.", normalizedEmail);
         }
 
         if (!user.IsActive)
@@ -300,13 +259,6 @@ public class AuthService : IAuthService
             return ApiResponse<AuthResponse>.Fail("Associated user not found.");
         }
 
-        if (IsDesignatedAdminEmail(user.Email) && user.Role != UserRoles.Admin)
-        {
-            user.Role = UserRoles.Admin;
-            user.UpdatedAtUtc = DateTime.UtcNow;
-            _logger.LogInformation("Auto-promoted user {Email} to Admin role on token refresh.", user.Email);
-        }
-
         // Token rotation: revoke current token and create replacement
         var newRefreshToken = _tokenService.GenerateRefreshToken(user.Id, ipAddress);
         var plainNewRefreshToken = newRefreshToken.Token;
@@ -361,14 +313,6 @@ public class AuthService : IAuthService
             return ApiResponse<UserDto>.Fail("User not found.");
         }
 
-        if (IsDesignatedAdminEmail(user.Email) && user.Role != UserRoles.Admin)
-        {
-            user.Role = UserRoles.Admin;
-            user.UpdatedAtUtc = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
-            _logger.LogInformation("Auto-promoted user {Email} to Admin role on profile sync.", user.Email);
-        }
-
         return ApiResponse<UserDto>.Ok(MapToUserDto(user));
     }
 
@@ -404,7 +348,7 @@ public class AuthService : IAuthService
         }, "Vendor capability activated successfully.");
     }
 
-    private static string HashToken(string token)
+    public static string HashToken(string token)
     {
         if (string.IsNullOrEmpty(token)) return token;
         using var sha256 = System.Security.Cryptography.SHA256.Create();

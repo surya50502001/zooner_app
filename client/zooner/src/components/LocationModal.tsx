@@ -194,14 +194,18 @@ export const LocationModal: React.FC<LocationModalProps> = ({
               e.preventDefault();
               if (query.trim()) {
                 const geo = await forwardGeocode(query.trim());
+                if (!geo && (selectedLocation.lat === undefined || selectedLocation.lat === null)) {
+                  setGpsError('Could not find coordinates for that location. Please try a more specific area or city name.');
+                  return;
+                }
                 onSelectLocation({
                   id: `custom-${Date.now()}`,
                   name: geo ? geo.displayName.split(',').slice(0, 2).join(', ') : query.trim(),
                   city: query.trim().split(',')[0],
                   storesCount: 0,
                   activeRequests: 0,
-                  lat: geo ? geo.lat : (selectedLocation.lat || 11.0168),
-                  lng: geo ? geo.lng : (selectedLocation.lng || 76.9558)
+                  lat: geo ? geo.lat : selectedLocation.lat,
+                  lng: geo ? geo.lng : selectedLocation.lng
                 });
                 onClose();
               }

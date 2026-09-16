@@ -60,7 +60,7 @@ import {
   type ShopProfileDto,
   type ValidateHoldQrResponseDto
 } from '../services/api';
-import { detectUserLocation } from '../services/locationService';
+import { detectUserLocation, forwardGeocode } from '../services/locationService';
 import type { StoreInventoryItem, ProductSearchResult, CategoryDto, LiveRequestSummary, ProductVariantDto } from '../types';
 import { ExperienceHeaderPill } from '../components/ExperienceSwitcher';
 
@@ -146,7 +146,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [actionNotice, setActionNotice] = useState<{ message: string; isError: boolean } | null>(null);
 
-  const isSuperAdminUser = (() => {
+  const isAdminUser = (() => {
     try {
       const stored = localStorage.getItem('zooner_user_profile');
       if (!stored) return false;
@@ -420,12 +420,19 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
         const matched = dbCategories.find(c => c.name.toLowerCase().includes(regCategory.toLowerCase())) || dbCategories[0];
         if (matched && isGuid(matched.id)) categoryIds = [matched.id];
       }
+      let regLat = 0;
+      let regLng = 0;
+      try {
+        const detected = await detectUserLocation();
+        regLat = detected.lat;
+        regLng = detected.lng;
+      } catch {}
       const shop = await createShop({
         name: regStoreName.trim(),
         phone: formattedPhone,
         address: 'Physical Storefront',
-        latitude: 11.0168,
-        longitude: 76.9558,
+        latitude: regLat,
+        longitude: regLng,
         categoryIds
       });
       setIsAuthenticated(true);
@@ -480,12 +487,30 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
         if (matched && isGuid(matched.id)) categoryIds = [matched.id];
       }
       const formattedPhone = setupPhone.trim() ? (setupPhone.startsWith('+') ? setupPhone.trim() : `+91 ${setupPhone.trim()}`) : '+91 9876543210';
+      
+      let finalLat = setupLat;
+      let finalLng = setupLng;
+      if (finalLat === undefined || finalLng === undefined) {
+        if (setupAddress.trim()) {
+          const geo = await forwardGeocode(setupAddress.trim());
+          if (geo) {
+            finalLat = geo.lat;
+            finalLng = geo.lng;
+          }
+        }
+      }
+      if (finalLat === undefined || finalLng === undefined) {
+        setSetupError('Please detect your GPS location or provide a full store address.');
+        setIsCreatingStore(false);
+        return;
+      }
+
       const shop = await createShop({
         name: setupStoreName.trim(),
         phone: formattedPhone,
         address: setupAddress.trim() || 'Physical Storefront',
-        latitude: setupLat ?? 11.0168,
-        longitude: setupLng ?? 76.9558,
+        latitude: finalLat,
+        longitude: finalLng,
         categoryIds
       });
       if (shop) {
@@ -1470,7 +1495,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
               </div>
 
               <div className="flex items-center gap-2">
-                {isSuperAdminUser && (
+                {isAdminUser && (
                   <button
                     type="button"
                     onClick={handleInstantVerifyShop}
@@ -1478,7 +1503,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                     className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-md shadow-amber-500/20 disabled:opacity-60 shrink-0"
                   >
                     <ShieldCheck className="w-3.5 h-3.5" />
-                    <span>{isVerifyingShop ? 'Verifying...' : '⚡ Verify Storefront (Super Admin)'}</span>
+                    <span>{isVerifyingShop ? 'Verifying...' : '⚡ Verify Storefront (Admin)'}</span>
                   </button>
                 )}
               </div>

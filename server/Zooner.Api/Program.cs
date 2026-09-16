@@ -149,89 +149,42 @@ builder.Services.AddAuthentication(options =>
 // Centralized Authorization Policies
 builder.Services.AddAuthorization(options =>
 {
-    var superAdminList = builder.Configuration.GetSection("AdminConfig:SuperAdminEmails").Get<List<string>>() 
-        ?? new List<string>();
-
-    bool IsSuperAdmin(System.Security.Claims.ClaimsPrincipal user)
-    {
-        if (user.IsInRole(UserRoles.Admin)) return true;
-        var email = user.FindFirst(ClaimTypes.Email)?.Value ?? user.FindFirst("email")?.Value ?? user.FindFirst(ClaimTypes.Name)?.Value;
-        if (!string.IsNullOrEmpty(email) && superAdminList.Any(a => a.Equals(email.Trim(), StringComparison.OrdinalIgnoreCase))) return true;
-        var envAdmins = Environment.GetEnvironmentVariable("SUPER_ADMIN_EMAILS");
-        if (!string.IsNullOrEmpty(envAdmins) && !string.IsNullOrEmpty(email))
-        {
-            if (envAdmins.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Any(a => a.Equals(email.Trim(), StringComparison.OrdinalIgnoreCase))) return true;
-        }
-        return false;
-    }
-
-    options.AddPolicy("AdminPolicy", policy => policy.RequireAssertion(ctx => IsSuperAdmin(ctx.User)));
-    options.AddPolicy("AdminOnly", policy => policy.RequireAssertion(ctx => IsSuperAdmin(ctx.User)));
-    options.AddPolicy("VendorPolicy", policy => policy.RequireAssertion(ctx =>
-        ctx.User.IsInRole(UserRoles.Vendor) || ctx.User.IsInRole(UserRoles.Admin) || ctx.User.IsInRole("ShopOwner") || IsSuperAdmin(ctx.User)
-    ));
-
+    options.AddPolicy("AdminPolicy", policy => policy.RequireRole(UserRoles.Admin));
+    options.AddPolicy("AdminOnly", policy => policy.RequireRole(UserRoles.Admin));
+    options.AddPolicy("VendorPolicy", policy => policy.RequireRole(UserRoles.Vendor, UserRoles.Admin, "ShopOwner"));
     options.AddPolicy("CustomerPolicy", policy => policy.RequireRole(UserRoles.Customer, UserRoles.Vendor, UserRoles.Admin));
     options.AddPolicy("ShopOwnerOnly", policy => policy.RequireRole(UserRoles.Vendor, UserRoles.Admin));
 });
-
 
 // 6. Configure CORS with strict explicit allowlist (no wildcards)
 var configOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 var envOrigins = Environment.GetEnvironmentVariable("CORS_ORIGINS")?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
 var allowedOrigins = configOrigins.Concat(envOrigins).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 
-if (builder.Environment.IsDevelopment() && allowedOrigins.Count == 0)
+if (builder.Environment.IsDevelopment())
 {
-    allowedOrigins.AddRange(["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"]);
+    if (allowedOrigins.Count == 0)
+    {
+        allowedOrigins.AddRange(["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"]);
+    }
+}
+else
+{
+    if (allowedOrigins.Count == 0)
+    {
+        throw new InvalidOperationException(
+            "Production startup failed: An explicit CORS origin allowlist must be configured via 'Cors:AllowedOrigins' or 'CORS_ORIGINS' environment variable. Wildcard or unconfigured origins with credentials are strictly prohibited.");
+    }
 }
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowClientApp", policy =>
     {
-        policy.SetIsOriginAllowed(origin =>
-        {
-            if (string.IsNullOrEmpty(origin)) return false;
-
-            // Direct match against configured allowlist
-            if (allowedOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-
-            // Mobile Capacitor origins
-            if (origin.Equals("capacitor://localhost", StringComparison.OrdinalIgnoreCase) ||
-                origin.Equals("http://localhost", StringComparison.OrdinalIgnoreCase) ||
-                origin.Equals("https://localhost", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-
-            // Vercel preview & production deployments and custom domain
-            if (Uri.TryCreate(origin, UriKind.Absolute, out var uri))
-            {
-                var host = uri.Host;
-                if (host.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase) ||
-                    host.Equals("vercel.app", StringComparison.OrdinalIgnoreCase) ||
-                    host.EndsWith(".zooner.app", StringComparison.OrdinalIgnoreCase) ||
-                    host.Equals("zooner.app", StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
-
-                // Local development origins
-                if (builder.Environment.IsDevelopment() && (host == "localhost" || host == "127.0.0.1"))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        })
-        .AllowAnyHeader()
-        .AllowAnyMethod()
-        .AllowCredentials();
+        policy.WithOrigins(allowedOrigins.ToArray())
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
 

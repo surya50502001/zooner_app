@@ -472,11 +472,19 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
         ? `${askProductName.trim()} (Variant: ${askVariant.trim()})`
         : askProductName.trim();
 
+      const lat = currentLocation.lat;
+      const lng = currentLocation.lng;
+
+      if (!lat || !lng) {
+        onOpenLocationModal();
+        return;
+      }
+
       await createLiveRequest({
         requestText,
         categoryId,
-        latitude: currentLocation.lat || 11.0168,
-        longitude: currentLocation.lng || 76.9558,
+        latitude: lat,
+        longitude: lng,
         searchRadiusKm: radiusNumber
       });
 

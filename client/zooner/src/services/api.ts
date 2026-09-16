@@ -742,13 +742,13 @@ export async function sendLiveRequest(requestData: {
   }
 }
 
-export async function fetchTargetedAds(lat = 11.0168, lon = 76.9558, category = 'all'): Promise<Record<string, unknown>[]> {
+export async function fetchTargetedAds(lat?: number, lon?: number, category = 'all'): Promise<Record<string, unknown>[]> {
   try {
-    const params = new URLSearchParams({
-      userLat: lat.toString(),
-      userLon: lon.toString(),
-      category: category
-    });
+    const params = new URLSearchParams();
+    if (lat !== undefined && lat !== null) params.append('userLat', lat.toString());
+    if (lon !== undefined && lon !== null) params.append('userLon', lon.toString());
+    if (category) params.append('category', category);
+
     const res = await fetch(`${API_BASE_URL}/Advertisements/targeted?${params.toString()}`);
     if (!res.ok) return [];
     const json: ApiResponse<Record<string, unknown>[]> = await res.json();

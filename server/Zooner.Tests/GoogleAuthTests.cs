@@ -367,3 +367,4 @@ public class GoogleAuthTests
         Assert.Contains("httponly", cookies, StringComparison.OrdinalIgnoreCase);
     }
 }
+

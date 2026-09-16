@@ -80,12 +80,13 @@ public class ProductsController : ControllerBase
     }
 
     /// <summary>
-    /// Add a new product to the canonical global catalog
+    /// Add a new canonical product to the global catalog (Administrator Only)
     /// </summary>
     [HttpPost]
-    [Authorize]
+    [Authorize(Policy = "AdminPolicy")]
     [ProducesResponseType(typeof(ApiResponse<ProductSearchResultDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<ProductSearchResultDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> CreateGlobalProduct([FromBody] CreateProductRequest request)
     {
         if (!ModelState.IsValid)

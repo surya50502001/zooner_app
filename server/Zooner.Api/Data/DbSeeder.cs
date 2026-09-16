@@ -59,36 +59,28 @@ public static class DbSeeder
                 logger.LogInformation("Seeded default administrator account: {Email}", defaultAdminEmail);
             }
 
-            // 2b. Ensure designated super-admin accounts have Admin role from configuration
-            var envAdmins = configuration?["ADMIN_EMAILS"] ?? configuration?["AdminEmails"] ?? Environment.GetEnvironmentVariable("ADMIN_EMAILS");
-            var configAdmins = configuration?.GetSection("AdminConfig:SuperAdminEmails").Get<string[]>() ?? Array.Empty<string>();
-            var adminList = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
+            // 2b. Explicit deployment bootstrap: promote configured bootstrap admin accounts in database
+            var envAdmins = configuration?["ADMIN_EMAILS"] ?? configuration?["BOOTSTRAP_ADMIN_EMAILS"] ?? Environment.GetEnvironmentVariable("ADMIN_EMAILS");
             if (!string.IsNullOrWhiteSpace(envAdmins))
             {
-                foreach (var item in envAdmins.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-                {
-                    adminList.Add(item);
-                }
-            }
-            foreach (var item in configAdmins)
-            {
-                if (!string.IsNullOrWhiteSpace(item)) adminList.Add(item.Trim());
-            }
-            adminList.Add(defaultAdminEmail);
+                var adminList = new HashSet<string>(
+                    envAdmins.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+                    StringComparer.OrdinalIgnoreCase
+                );
 
-            var usersToPromote = await context.Users
-                .Where(u => adminList.Contains(u.Email) && u.Role != UserRoles.Admin)
-                .ToListAsync();
+                var usersToPromote = await context.Users
+                    .Where(u => adminList.Contains(u.Email) && u.Role != UserRoles.Admin)
+                    .ToListAsync();
 
-            if (usersToPromote.Any())
-            {
-                foreach (var u in usersToPromote)
+                if (usersToPromote.Any())
                 {
-                    u.Role = UserRoles.Admin;
+                    foreach (var u in usersToPromote)
+                    {
+                        u.Role = UserRoles.Admin;
+                    }
+                    await context.SaveChangesAsync();
+                    logger.LogInformation("Promoted {Count} configured bootstrap admin user(s) in database to Admin role.", usersToPromote.Count);
                 }
-                await context.SaveChangesAsync();
-                logger.LogInformation("Promoted {Count} designated super-admin user(s) in database to Admin role.", usersToPromote.Count);
             }
 
             // 3. Seed Initial Categories if database missing categories

@@ -1,0 +1,56 @@
+﻿name: Continuous Integration & Verification
+
+on:
+  push:
+    branches:
+      - main
+      - 'fix/**'
+      - 'feat/**'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  backend-ci:
+    name: Backend Build & Test Suite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK 8.0
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore Dependencies
+        run: dotnet restore server/Zooner.sln
+
+      - name: Build Solution
+        run: dotnet build server/Zooner.sln --configuration Release --no-restore
+
+      - name: Run Test Suite
+        run: dotnet test server/Zooner.sln --configuration Release --no-build --verbosity normal
+
+  frontend-ci:
+    name: Frontend Build & Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: client/zooner/package-lock.json
+
+      - name: Install Client Dependencies
+        working-directory: client/zooner
+        run: npm ci
+
+      - name: Build Client (TypeScript & Vite)
+        working-directory: client/zooner
+        run: npm run build

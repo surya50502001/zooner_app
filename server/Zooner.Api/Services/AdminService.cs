@@ -8,34 +8,10 @@ namespace Zooner.Api.Services;
 public class AdminService : IAdminService
 {
     private readonly AppDbContext _context;
-    private readonly IConfiguration? _configuration;
 
-    public AdminService(AppDbContext context, IConfiguration? configuration = null)
+    public AdminService(AppDbContext context)
     {
         _context = context;
-        _configuration = configuration;
-    }
-
-    public bool IsSuperAdminEmail(string email)
-    {
-        var normalized = email.Trim().ToLowerInvariant();
-
-        var superAdmins = _configuration?.GetSection("AdminConfig:SuperAdminEmails").Get<List<string>>()
-            ?? new List<string>();
-        if (superAdmins.Any(a => a.Trim().ToLowerInvariant() == normalized)) return true;
-
-        var superAdminEnv = Environment.GetEnvironmentVariable("SUPER_ADMIN_EMAILS");
-        if (!string.IsNullOrWhiteSpace(superAdminEnv))
-        {
-            var adminList = superAdminEnv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                                         .Select(e => e.ToLowerInvariant());
-            if (adminList.Contains(normalized)) return true;
-        }
-
-        var defaultAdmin = _configuration?["ADMIN_EMAIL"] ?? _configuration?["AdminConfig:DefaultAdminEmail"] ?? Environment.GetEnvironmentVariable("ADMIN_EMAIL");
-        if (!string.IsNullOrWhiteSpace(defaultAdmin) && normalized == defaultAdmin.Trim().ToLowerInvariant()) return true;
-
-        return false;
     }
 
     public async Task<bool> IsAdminUserAsync(Guid userId)
@@ -43,7 +19,7 @@ public class AdminService : IAdminService
         if (userId == Guid.Empty) return false;
         var user = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null) return false;
-        return user.Role.Equals(UserRoles.Admin, StringComparison.OrdinalIgnoreCase) || IsSuperAdminEmail(user.Email ?? string.Empty);
+        return user.Role.Equals(UserRoles.Admin, StringComparison.OrdinalIgnoreCase);
     }
 
     public async Task<ApiResponse<ReportDto>> CreateReportAsync(Guid reporterId, CreateReportRequest request)

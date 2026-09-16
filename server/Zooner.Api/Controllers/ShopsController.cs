@@ -206,16 +206,9 @@ public class ShopsController : ControllerBase
             isAdmin = await _adminService.IsAdminUserAsync(userId);
         }
 
-        // Check if current user is the owner of this shop
-        var isOwner = false;
-        if (userId != Guid.Empty)
+        if (!isAdmin)
         {
-            isOwner = await _context.Shops.AnyAsync(s => s.Id == id && s.OwnerId == userId);
-        }
-
-        if (!isAdmin && !isOwner)
-        {
-            return StatusCode(403, new ApiResponse { Success = false, Message = "Verification failed. Check admin privileges." });
+            return StatusCode(403, new ApiResponse { Success = false, Message = "Forbidden: Administrative privileges required to verify storefronts." });
         }
 
         var response = await _adminService.VerifyShopAsync(userId, id, new VerifyShopRequest 

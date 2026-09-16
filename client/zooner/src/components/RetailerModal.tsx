@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Store, CheckCircle, ArrowRight, ShieldCheck, Upload, MapPin, Loader2, AlertCircle, LogIn, Navigation } from 'lucide-react';
 import { createShop, fetchCategories, becomeVendor } from '../services/api';
-import { detectUserLocation, formatGeolocationError } from '../services/locationService';
+import { detectUserLocation, forwardGeocode, formatGeolocationError } from '../services/locationService';
 
 interface RetailerModalProps {
   isOpen: boolean;
@@ -107,10 +107,24 @@ export const RetailerModal: React.FC<RetailerModalProps> = ({ isOpen, onClose, o
         }
       } catch {}
 
-      // 3. Create shop on backend with detected GPS or fallback coordinates
-      const finalLat = latitude ?? 11.0168;
-      const finalLng = longitude ?? 76.9558;
+      // 3. Create shop on backend with detected GPS or forward-geocoded coordinates
+      let finalLat = latitude;
+      let finalLng = longitude;
       const combinedAddress = [address.trim(), area.trim()].filter(Boolean).join(', ') || 'Physical Storefront';
+
+      if (finalLat === null || finalLng === null) {
+        const geo = await forwardGeocode(combinedAddress);
+        if (geo) {
+          finalLat = geo.lat;
+          finalLng = geo.lng;
+        }
+      }
+
+      if (finalLat === null || finalLng === null) {
+        setErrorMessage('Could not determine store location coordinates. Please use Auto-detect GPS or provide a specific address.');
+        setIsSubmitting(false);
+        return;
+      }
 
       const shop = await createShop({
         name: storeName.trim() || 'Partner Store',
