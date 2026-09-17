@@ -64,6 +64,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="hidden md:flex items-center gap-6">
             <nav className="flex items-center gap-6 text-sm tracking-wide text-slate-700 font-semibold">
               <a href="#how-it-works" className="hover:text-slate-950 transition-colors">How It Works</a>
+              <a href="#waitlist" className="hover:text-slate-950 transition-colors text-indigo-600 font-bold">Waitlist</a>
               <button 
                 onClick={onNavigateToVendor}
                 className="hover:text-slate-950 transition-colors cursor-pointer text-sm font-semibold text-slate-700"
@@ -147,6 +148,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                 className="py-2 border-b border-slate-200"
               >
                 How It Works
+              </a>
+              <a 
+                href="#waitlist"
+                onClick={() => setMobileMenuOpen(false)}
+                className="py-2 border-b border-slate-200 text-indigo-600 font-bold"
+              >
+                Join Early Access Waitlist
               </a>
               <button 
                 onClick={() => {
