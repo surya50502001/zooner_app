@@ -741,4 +741,60 @@ public class ProductionReadinessTests
         Assert.NotNull(action);
         Assert.Equal("VerifyShop", action.Action);
     }
+
+    [Fact]
+    public async Task JoinWaitlist_Saves_Subscriber_And_Returns_Success()
+    {
+        using var context = TestDbContextFactory.Create(nameof(JoinWaitlist_Saves_Subscriber_And_Returns_Success));
+        var controller = new Zooner.Api.Controllers.WaitlistController(context, NullLogger<Zooner.Api.Controllers.WaitlistController>.Instance);
+
+        var result = await controller.JoinWaitlist(new JoinWaitlistRequest
+        {
+            Email = "waitlist.shopper@example.com",
+            City = "Coimbatore",
+            UserType = "Shopper"
+        });
+
+        var okResult = Assert.IsType<Microsoft.AspNetCore.Mvc.OkObjectResult>(result);
+        var response = Assert.IsType<ApiResponse<WaitlistEntryDto>>(okResult.Value);
+        Assert.True(response.Success);
+        Assert.Equal("waitlist.shopper@example.com", response.Data.Email);
+
+        var dbEntry = await context.WaitlistEntries.FirstOrDefaultAsync(w => w.Email == "waitlist.shopper@example.com");
+        Assert.NotNull(dbEntry);
+        Assert.Equal("Coimbatore", dbEntry.City);
+    }
+
+    [Fact]
+    public async Task JoinWaitlist_Is_Idempotent_For_Existing_Email()
+    {
+        using var context = TestDbContextFactory.Create(nameof(JoinWaitlist_Is_Idempotent_For_Existing_Email));
+        var controller = new Zooner.Api.Controllers.WaitlistController(context, NullLogger<Zooner.Api.Controllers.WaitlistController>.Instance);
+
+        // First subscription
+        var res1 = await controller.JoinWaitlist(new JoinWaitlistRequest
+        {
+            Email = "duplicate@example.com",
+            City = "Chennai",
+            UserType = "Retailer"
+        });
+        var ok1 = Assert.IsType<Microsoft.AspNetCore.Mvc.OkObjectResult>(res1);
+        var response1 = Assert.IsType<ApiResponse<WaitlistEntryDto>>(ok1.Value);
+        Assert.True(response1.Success);
+
+        // Duplicate subscription with different case
+        var res2 = await controller.JoinWaitlist(new JoinWaitlistRequest
+        {
+            Email = "DUPLICATE@EXAMPLE.COM",
+            City = "Chennai",
+            UserType = "Retailer"
+        });
+        var ok2 = Assert.IsType<Microsoft.AspNetCore.Mvc.OkObjectResult>(res2);
+        var response2 = Assert.IsType<ApiResponse<WaitlistEntryDto>>(ok2.Value);
+        Assert.True(response2.Success);
+        Assert.Contains("already on the Zooner early access waitlist", response2.Message);
+
+        var totalEntries = await context.WaitlistEntries.CountAsync(w => w.Email == "duplicate@example.com");
+        Assert.Equal(1, totalEntries);
+    }
 }

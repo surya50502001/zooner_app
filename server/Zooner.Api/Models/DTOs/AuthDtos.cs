@@ -87,3 +87,26 @@ public class GoogleValidationResult
     public static GoogleValidationResult Fail(string message) => new() { IsValid = false, ErrorMessage = message };
 }
 
+public class JoinWaitlistRequest
+{
+    [Required(ErrorMessage = "Email is required")]
+    [EmailAddress(ErrorMessage = "Invalid email format")]
+    [MaxLength(256)]
+    public string Email { get; set; } = string.Empty;
+
+    [MaxLength(100)]
+    public string? City { get; set; }
+
+    [MaxLength(50)]
+    public string? UserType { get; set; } // "Shopper" or "Retailer"
+}
+
+public class WaitlistEntryDto
+{
+    public Guid Id { get; set; }
+    public string Email { get; set; } = string.Empty;
+    public string? City { get; set; }
+    public string UserType { get; set; } = "Shopper";
+    public DateTime CreatedAtUtc { get; set; }
+}
+

@@ -8,6 +8,7 @@ import { FinalCTA } from '../components/FinalCTA';
 import { Footer } from '../components/Footer';
 import { ProductJourney } from '../components/ProductJourney';
 import { RetailerCallout } from '../components/RetailerCallout';
+import { WaitlistSection } from '../components/WaitlistSection';
 import type { LocationArea } from '../types';
 
 interface PublicLandingPageProps { currentLocation: LocationArea; onOpenLocationModal: () => void; onLaunchCustomerApp: () => void; onNavigateToVendor: () => void; }
@@ -45,6 +46,7 @@ export const PublicLandingPage: React.FC<PublicLandingPageProps> = ({ currentLoc
     <ProductJourney /><TheIdea /><TheProblem />
     <LocalDiscovery currentLocation={currentLocation} onOpenLocationModal={onOpenLocationModal} onNavigateToVendor={onNavigateToVendor} />
     <RetailerCallout onOpenRetailerModal={onNavigateToVendor} onNavigateToVendor={onNavigateToVendor} />
+    <WaitlistSection currentLocation={currentLocation} />
     <FinalCTA onOpenRetailerModal={onNavigateToVendor} onSearchClick={onLaunchCustomerApp} />
     <Footer onOpenRetailerModal={onNavigateToVendor} onOpenLocationModal={onOpenLocationModal} />
   </div>;

@@ -1274,5 +1274,26 @@ export async function toggleAdminCategoryStatus(id: string, isActive: boolean): 
   }
 }
 
+export async function joinWaitlist(data: { email: string; city?: string; userType?: string }): Promise<{ success: boolean; message: string }> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/Waitlist`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const json = await res.json();
+    return {
+      success: json.success ?? res.ok,
+      message: json.message || (res.ok ? "You're on the early access waitlist!" : "Failed to join waitlist.")
+    };
+  } catch (err) {
+    console.error('joinWaitlist error:', err);
+    return {
+      success: false,
+      message: "Network error. Please try again."
+    };
+  }
+}
+
 
 

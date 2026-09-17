@@ -30,6 +30,7 @@ public class AppDbContext : DbContext
     public DbSet<AdminAction> AdminActions => Set<AdminAction>();
     public DbSet<PremiumAdvertisement> PremiumAdvertisements => Set<PremiumAdvertisement>();
     public DbSet<InventoryHold> InventoryHolds => Set<InventoryHold>();
+    public DbSet<WaitlistEntry> WaitlistEntries => Set<WaitlistEntry>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -375,6 +376,18 @@ public class AppDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(ih => ih.CustomerId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // WaitlistEntry
+        modelBuilder.Entity<WaitlistEntry>(entity =>
+        {
+            entity.HasKey(w => w.Id);
+            entity.HasIndex(w => w.Email);
+            entity.HasIndex(w => w.CreatedAtUtc);
+            entity.Property(w => w.Email).IsRequired().HasMaxLength(256);
+            entity.Property(w => w.City).HasMaxLength(100);
+            entity.Property(w => w.UserType).HasMaxLength(50);
+            entity.Property(w => w.IpAddress).HasMaxLength(64);
         });
     }
 }
