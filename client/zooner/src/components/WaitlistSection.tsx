@@ -41,6 +41,11 @@ export const WaitlistSection: React.FC<WaitlistSectionProps> = ({ currentLocatio
           message: res.message || "You're on the early access waitlist! We'll notify you as soon as we launch."
         });
         setEmail('');
+        try {
+          localStorage.setItem('zooner_waitlist_status', 'joined');
+        } catch {
+          // Ignore storage errors
+        }
       } else {
         setStatus({
           type: 'error',

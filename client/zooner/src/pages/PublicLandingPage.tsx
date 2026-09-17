@@ -9,6 +9,7 @@ import { Footer } from '../components/Footer';
 import { ProductJourney } from '../components/ProductJourney';
 import { RetailerCallout } from '../components/RetailerCallout';
 import { WaitlistSection } from '../components/WaitlistSection';
+import { WaitlistPopupModal } from '../components/WaitlistPopupModal';
 import type { LocationArea } from '../types';
 
 interface PublicLandingPageProps { currentLocation: LocationArea; onOpenLocationModal: () => void; onLaunchCustomerApp: () => void; onNavigateToVendor: () => void; }
@@ -49,5 +50,6 @@ export const PublicLandingPage: React.FC<PublicLandingPageProps> = ({ currentLoc
     <WaitlistSection currentLocation={currentLocation} />
     <FinalCTA onOpenRetailerModal={onNavigateToVendor} onSearchClick={onLaunchCustomerApp} />
     <Footer onOpenRetailerModal={onNavigateToVendor} onOpenLocationModal={onOpenLocationModal} />
+    <WaitlistPopupModal currentLocation={currentLocation} />
   </div>;
 };
