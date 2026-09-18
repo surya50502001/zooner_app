@@ -1274,17 +1274,23 @@ export async function toggleAdminCategoryStatus(id: string, isActive: boolean): 
   }
 }
 
-export async function joinWaitlist(data: { email: string; city?: string; userType?: string }): Promise<{ success: boolean; message: string }> {
+export async function joinWaitlist(data: { email: string; city?: string; userType?: 'Shopper' | 'Retailer' | string }): Promise<{ success: boolean; message: string }> {
   try {
+    const payload = {
+      email: data.email,
+      city: data.city ? data.city.trim() : undefined,
+      userType: data.userType || 'Shopper'
+    };
     const res = await fetch(`${API_BASE_URL}/Waitlist`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
+      body: JSON.stringify(payload)
     });
-    const json = await res.json();
+    const json = await res.json().catch(() => ({}));
+    const message = json.message || (Array.isArray(json.errors) && json.errors.length > 0 ? json.errors.join(', ') : null);
     return {
       success: json.success ?? res.ok,
-      message: json.message || (res.ok ? "You're on the early access waitlist!" : "Failed to join waitlist.")
+      message: message || (res.ok ? "You're on the early access waitlist!" : "Failed to join waitlist.")
     };
   } catch (err) {
     console.error('joinWaitlist error:', err);

@@ -382,12 +382,13 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<WaitlistEntry>(entity =>
         {
             entity.HasKey(w => w.Id);
-            entity.HasIndex(w => w.Email);
+            entity.HasIndex(w => w.Email).IsUnique();
             entity.HasIndex(w => w.CreatedAtUtc);
             entity.Property(w => w.Email).IsRequired().HasMaxLength(256);
             entity.Property(w => w.City).HasMaxLength(100);
-            entity.Property(w => w.UserType).HasMaxLength(50);
-            entity.Property(w => w.IpAddress).HasMaxLength(64);
+            entity.Property(w => w.UserType).IsRequired().HasMaxLength(50);
+            entity.Property(w => w.IpAddress).HasMaxLength(45);
+            entity.Property(w => w.CreatedAtUtc).IsRequired();
         });
     }
 }

@@ -756,8 +756,9 @@ public class ProductionReadinessTests
         });
 
         var okResult = Assert.IsType<Microsoft.AspNetCore.Mvc.OkObjectResult>(result);
-        var response = Assert.IsType<ApiResponse<WaitlistEntryDto>>(okResult.Value);
+        var response = Assert.IsType<ApiResponse<WaitlistConfirmationDto>>(okResult.Value);
         Assert.True(response.Success);
+        Assert.NotNull(response.Data);
         Assert.Equal("waitlist.shopper@example.com", response.Data.Email);
 
         var dbEntry = await context.WaitlistEntries.FirstOrDefaultAsync(w => w.Email == "waitlist.shopper@example.com");
@@ -779,7 +780,7 @@ public class ProductionReadinessTests
             UserType = "Retailer"
         });
         var ok1 = Assert.IsType<Microsoft.AspNetCore.Mvc.OkObjectResult>(res1);
-        var response1 = Assert.IsType<ApiResponse<WaitlistEntryDto>>(ok1.Value);
+        var response1 = Assert.IsType<ApiResponse<WaitlistConfirmationDto>>(ok1.Value);
         Assert.True(response1.Success);
 
         // Duplicate subscription with different case
@@ -790,9 +791,9 @@ public class ProductionReadinessTests
             UserType = "Retailer"
         });
         var ok2 = Assert.IsType<Microsoft.AspNetCore.Mvc.OkObjectResult>(res2);
-        var response2 = Assert.IsType<ApiResponse<WaitlistEntryDto>>(ok2.Value);
+        var response2 = Assert.IsType<ApiResponse<WaitlistConfirmationDto>>(ok2.Value);
         Assert.True(response2.Success);
-        Assert.Contains("already on the Zooner early access waitlist", response2.Message);
+        Assert.Contains("already on the Zooner waitlist", response2.Message);
 
         var totalEntries = await context.WaitlistEntries.CountAsync(w => w.Email == "duplicate@example.com");
         Assert.Equal(1, totalEntries);

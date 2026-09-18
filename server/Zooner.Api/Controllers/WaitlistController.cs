@@ -9,7 +9,7 @@ namespace Zooner.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[EnableRateLimiting("auth-limit")]
+[EnableRateLimiting("waitlist-limit")]
 public class WaitlistController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -25,8 +25,8 @@ public class WaitlistController : ControllerBase
     /// Join the Zooner early access waitlist for city launches and updates
     /// </summary>
     [HttpPost]
-    [ProducesResponseType(typeof(ApiResponse<WaitlistEntryDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiResponse<WaitlistEntryDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<WaitlistConfirmationDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<WaitlistConfirmationDto>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> JoinWaitlist([FromBody] JoinWaitlistRequest request)
     {
         if (!ModelState.IsValid)
@@ -35,51 +35,94 @@ public class WaitlistController : ControllerBase
                 .SelectMany(v => v.Errors)
                 .Select(e => e.ErrorMessage)
                 .ToList();
-            return BadRequest(ApiResponse<WaitlistEntryDto>.Fail("Validation failed", errors));
+            return BadRequest(ApiResponse<WaitlistConfirmationDto>.Fail("Validation failed", errors));
         }
 
-        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
-        var clientIp = HttpContext?.Connection.RemoteIpAddress?.ToString();
+        // Validate and normalize UserType strictly server-side
+        var rawUserType = request.UserType?.Trim();
+        string normalizedUserType;
+        if (string.Equals(rawUserType, "Shopper", StringComparison.OrdinalIgnoreCase))
+        {
+            normalizedUserType = "Shopper";
+        }
+        else if (string.Equals(rawUserType, "Retailer", StringComparison.OrdinalIgnoreCase))
+        {
+            normalizedUserType = "Retailer";
+        }
+        else
+        {
+            return BadRequest(ApiResponse<WaitlistConfirmationDto>.Fail(
+                "Invalid user type. Allowed values are 'Shopper' or 'Retailer'.",
+                new List<string> { "UserType must be either 'Shopper' or 'Retailer'." }));
+        }
 
-        // Idempotent: If already subscribed, return friendly confirmation without creating duplicate entries
+        // Normalize email: trim whitespace and lowercase
+        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+
+        // City is optional: never invent geographic fallback, preserve null if not provided
+        var normalizedCity = string.IsNullOrWhiteSpace(request.City) ? null : request.City.Trim();
+
+        // Client IP captured safely for bot/abuse protection (max 45 chars for IPv6)
+        var clientIp = HttpContext?.Connection.RemoteIpAddress?.ToString();
+        if (clientIp != null && clientIp.Length > 45)
+        {
+            clientIp = clientIp.Substring(0, 45);
+        }
+
+        // Idempotent check: if already subscribed, return clean success without leaking internal data or DB IDs
         var existing = await _context.WaitlistEntries
             .AsNoTracking()
             .FirstOrDefaultAsync(w => w.Email.ToLower() == normalizedEmail);
 
         if (existing != null)
         {
-            return Ok(ApiResponse<WaitlistEntryDto>.Ok(new WaitlistEntryDto
-            {
-                Id = existing.Id,
-                Email = existing.Email,
-                City = existing.City,
-                UserType = existing.UserType,
-                CreatedAtUtc = existing.CreatedAtUtc
-            }, "You are already on the Zooner early access waitlist! We'll notify you as soon as we launch in your area."));
+            return Ok(ApiResponse<WaitlistConfirmationDto>.Ok(
+                new WaitlistConfirmationDto
+                {
+                    Email = normalizedEmail,
+                    City = normalizedCity,
+                    UserType = normalizedUserType
+                },
+                "You're already on the Zooner waitlist! We'll notify you as soon as we launch."));
         }
 
         var entry = new WaitlistEntry
         {
             Id = Guid.NewGuid(),
             Email = normalizedEmail,
-            City = string.IsNullOrWhiteSpace(request.City) ? "Coimbatore" : request.City.Trim(),
-            UserType = string.IsNullOrWhiteSpace(request.UserType) ? "Shopper" : request.UserType.Trim(),
+            City = normalizedCity,
+            UserType = normalizedUserType,
             IpAddress = clientIp,
             CreatedAtUtc = DateTime.UtcNow
         };
 
-        _context.WaitlistEntries.Add(entry);
-        await _context.SaveChangesAsync();
-
-        _logger.LogInformation("New waitlist subscription registered: {Email} ({City}, {UserType})", normalizedEmail, entry.City, entry.UserType);
-
-        return Ok(ApiResponse<WaitlistEntryDto>.Ok(new WaitlistEntryDto
+        try
         {
-            Id = entry.Id,
-            Email = entry.Email,
-            City = entry.City,
-            UserType = entry.UserType,
-            CreatedAtUtc = entry.CreatedAtUtc
-        }, "Welcome to Zooner! You're on the early access waitlist."));
+            _context.WaitlistEntries.Add(entry);
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            // Concurrent race condition: another request just inserted this email
+            return Ok(ApiResponse<WaitlistConfirmationDto>.Ok(
+                new WaitlistConfirmationDto
+                {
+                    Email = normalizedEmail,
+                    City = normalizedCity,
+                    UserType = normalizedUserType
+                },
+                "You're already on the Zooner waitlist! We'll notify you as soon as we launch."));
+        }
+
+        _logger.LogInformation("New waitlist subscriber registered: {Email} (UserType: {UserType})", normalizedEmail, normalizedUserType);
+
+        return Ok(ApiResponse<WaitlistConfirmationDto>.Ok(
+            new WaitlistConfirmationDto
+            {
+                Email = normalizedEmail,
+                City = normalizedCity,
+                UserType = normalizedUserType
+            },
+            "Welcome to Zooner! You're on the early access waitlist."));
     }
 }
