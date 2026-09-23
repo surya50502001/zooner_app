@@ -21,7 +21,9 @@ public class InventoryService : IInventoryService
         string? search,
         Guid? categoryId,
         Guid? requestingUserId = null,
-        bool isAdmin = false)
+        bool isAdmin = false,
+        int page = 1,
+        int pageSize = 50)
     {
         var store = await _context.Shops.FirstOrDefaultAsync(s => s.Id == storeId);
         if (store == null)
@@ -68,8 +70,13 @@ public class InventoryService : IInventoryService
                                           si.ProductVariant.Product.CategoryId == categoryId.Value);
         }
 
+        var clampedPage = Math.Max(1, page);
+        var clampedPageSize = Math.Clamp(pageSize, 1, 100);
+
         var inventories = await dbQuery
             .OrderByDescending(si => si.UpdatedAtUtc)
+            .Skip((clampedPage - 1) * clampedPageSize)
+            .Take(clampedPageSize)
             .ToListAsync();
 
         var dtos = inventories.Select(inv => new StoreInventoryDetailDto
@@ -408,9 +415,11 @@ public class InventoryService : IInventoryService
         inventory.AvailableQuantity -= quantityToHold;
         inventory.UpdatedAtUtc = DateTime.UtcNow;
 
-        var holdCode = $"H-{Random.Shared.Next(1000, 9999)}";
+        var holdCode = GenerateSecureHoldCode();
         var holdId = Guid.NewGuid();
-        var qrToken = $"zhold:{holdId}:{holdCode}:{Guid.NewGuid().ToString("N")[..8]}";
+        var secureBytes = new byte[16];
+        System.Security.Cryptography.RandomNumberGenerator.Fill(secureBytes);
+        var qrToken = $"zhold:{holdId}:{holdCode}:{Convert.ToHexString(secureBytes).ToLowerInvariant()}";
         var hold = new InventoryHold
         {
             Id = holdId,
@@ -590,7 +599,7 @@ public class InventoryService : IInventoryService
             .Include(h => h.StoreInventory)
                 .ThenInclude(si => si!.ProductVariant)
                 .ThenInclude(pv => pv!.Product)
-            .FirstOrDefaultAsync(h => h.QrToken == cleanToken || h.HoldCode == cleanToken || h.Id.ToString() == cleanToken);
+            .FirstOrDefaultAsync(h => h.QrToken == cleanToken || h.HoldCode == cleanToken);
 
         if (hold == null)
         {
@@ -793,5 +802,18 @@ public class InventoryService : IInventoryService
         };
 
         return ApiResponse<InventoryHoldDto>.SuccessResponse(dto, "Hold pass marked as collected successfully.");
+    }
+
+    private static string GenerateSecureHoldCode()
+    {
+        const string charset = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+        var bytes = new byte[8];
+        System.Security.Cryptography.RandomNumberGenerator.Fill(bytes);
+        var sb = new System.Text.StringBuilder("H-", 10);
+        for (int i = 0; i < 6; i++)
+        {
+            sb.Append(charset[bytes[i] % charset.Length]);
+        }
+        return sb.ToString();
     }
 }

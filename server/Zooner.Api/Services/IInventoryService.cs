@@ -9,7 +9,9 @@ public interface IInventoryService
         string? search,
         Guid? categoryId,
         Guid? requestingUserId = null,
-        bool isAdmin = false
+        bool isAdmin = false,
+        int page = 1,
+        int pageSize = 50
     );
 
     Task<ApiResponse<StoreInventoryDetailDto>> AddStoreInventoryAsync(

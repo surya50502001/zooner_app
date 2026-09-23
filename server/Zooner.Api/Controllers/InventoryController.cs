@@ -28,7 +28,9 @@ public class InventoryController : ControllerBase
     public async Task<IActionResult> GetStoreInventory(
         Guid storeId,
         [FromQuery] string? search,
-        [FromQuery] Guid? categoryId)
+        [FromQuery] Guid? categoryId,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50)
     {
         Guid? requestingUserId = null;
         bool isAdmin = false;
@@ -39,7 +41,7 @@ public class InventoryController : ControllerBase
             isAdmin = User.IsInRole("Admin");
         }
 
-        var response = await _inventoryService.GetStoreInventoryAsync(storeId, search, categoryId, requestingUserId, isAdmin);
+        var response = await _inventoryService.GetStoreInventoryAsync(storeId, search, categoryId, requestingUserId, isAdmin, page, pageSize);
         return response.Success ? Ok(response) : NotFound(response);
     }
 
@@ -181,6 +183,7 @@ public class InventoryController : ControllerBase
     /// </summary>
     [HttpPost("holds/validate-qr")]
     [Authorize(Policy = "VendorPolicy")]
+    [EnableRateLimiting("hold-validation-limit")]
     [ProducesResponseType(typeof(ApiResponse<ValidateHoldQrResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<ValidateHoldQrResponse>), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> ValidateHoldQr(

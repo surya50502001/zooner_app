@@ -12,6 +12,7 @@ namespace Zooner.Api.Controllers;
 [EnableRateLimiting("waitlist-limit")]
 public class WaitlistController : ControllerBase
 {
+    private const string SuccessMessage = "Thanks! We'll notify you when Zooner launches.";
     private readonly AppDbContext _context;
     private readonly ILogger<WaitlistController> _logger;
 
@@ -27,6 +28,7 @@ public class WaitlistController : ControllerBase
     [HttpPost]
     [ProducesResponseType(typeof(ApiResponse<WaitlistConfirmationDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<WaitlistConfirmationDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<WaitlistConfirmationDto>), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> JoinWaitlist([FromBody] JoinWaitlistRequest request)
     {
         if (!ModelState.IsValid)
@@ -69,7 +71,7 @@ public class WaitlistController : ControllerBase
             clientIp = clientIp.Substring(0, 45);
         }
 
-        // Idempotent check: if already subscribed, return clean success without leaking internal data or DB IDs
+        // Idempotent check: if already subscribed, return clean generic success without leaking membership details or DB IDs
         var existing = await _context.WaitlistEntries
             .AsNoTracking()
             .FirstOrDefaultAsync(w => w.Email.ToLower() == normalizedEmail);
@@ -83,7 +85,7 @@ public class WaitlistController : ControllerBase
                     City = normalizedCity,
                     UserType = normalizedUserType
                 },
-                "You're already on the Zooner waitlist! We'll notify you as soon as we launch."));
+                SuccessMessage));
         }
 
         var entry = new WaitlistEntry
@@ -101,17 +103,26 @@ public class WaitlistController : ControllerBase
             _context.WaitlistEntries.Add(entry);
             await _context.SaveChangesAsync();
         }
-        catch (DbUpdateException)
+        catch (DbUpdateException ex)
         {
-            // Concurrent race condition: another request just inserted this email
-            return Ok(ApiResponse<WaitlistConfirmationDto>.Ok(
-                new WaitlistConfirmationDto
-                {
-                    Email = normalizedEmail,
-                    City = normalizedCity,
-                    UserType = normalizedUserType
-                },
-                "You're already on the Zooner waitlist! We'll notify you as soon as we launch."));
+            if (IsUniqueConstraintViolation(ex))
+            {
+                // Concurrent race condition: another request just inserted this email
+                _logger.LogInformation("Concurrent duplicate waitlist registration handled idempotently for: {Email}", normalizedEmail);
+                return Ok(ApiResponse<WaitlistConfirmationDto>.Ok(
+                    new WaitlistConfirmationDto
+                    {
+                        Email = normalizedEmail,
+                        City = normalizedCity,
+                        UserType = normalizedUserType
+                    },
+                    SuccessMessage));
+            }
+
+            // Real unexpected database failure (e.g. connection outage, disk error, schema failure)
+            _logger.LogError(ex, "Unexpected database error during waitlist registration for {Email}", normalizedEmail);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                ApiResponse<WaitlistConfirmationDto>.Fail("An unexpected database error occurred while registering. Please try again later."));
         }
 
         _logger.LogInformation("New waitlist subscriber registered: {Email} (UserType: {UserType})", normalizedEmail, normalizedUserType);
@@ -123,6 +134,38 @@ public class WaitlistController : ControllerBase
                 City = normalizedCity,
                 UserType = normalizedUserType
             },
-            "Welcome to Zooner! You're on the early access waitlist."));
+            SuccessMessage));
+    }
+
+    private static bool IsUniqueConstraintViolation(DbUpdateException ex)
+    {
+        var message = ex.InnerException?.Message ?? ex.Message;
+
+        // Check PostgreSQL
+        if (ex.InnerException is Npgsql.PostgresException pgEx && pgEx.SqlState == "23505")
+        {
+            return true;
+        }
+
+        // Check SQLite
+        if (ex.InnerException is Microsoft.Data.Sqlite.SqliteException sqliteEx &&
+            (sqliteEx.SqliteErrorCode == 19 || sqliteEx.SqliteExtendedErrorCode == 2067))
+        {
+            return true;
+        }
+
+        // Check SQL Server
+        if (ex.InnerException?.GetType().Name == "SqlException")
+        {
+            dynamic sqlEx = ex.InnerException;
+            if (sqlEx.Number == 2601 || sqlEx.Number == 2627)
+            {
+                return true;
+            }
+        }
+
+        return message.Contains("unique", StringComparison.OrdinalIgnoreCase) ||
+               message.Contains("duplicate", StringComparison.OrdinalIgnoreCase) ||
+               message.Contains("IX_WaitlistEntries_Email", StringComparison.OrdinalIgnoreCase);
     }
 }

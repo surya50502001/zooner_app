@@ -793,7 +793,7 @@ public class ProductionReadinessTests
         var ok2 = Assert.IsType<Microsoft.AspNetCore.Mvc.OkObjectResult>(res2);
         var response2 = Assert.IsType<ApiResponse<WaitlistConfirmationDto>>(ok2.Value);
         Assert.True(response2.Success);
-        Assert.Contains("already on the Zooner waitlist", response2.Message);
+        Assert.Equal("Thanks! We'll notify you when Zooner launches.", response2.Message);
 
         var totalEntries = await context.WaitlistEntries.CountAsync(w => w.Email == "duplicate@example.com");
         Assert.Equal(1, totalEntries);

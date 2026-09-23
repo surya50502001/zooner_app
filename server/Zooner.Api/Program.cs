@@ -175,9 +175,11 @@ builder.Services.AddAuthentication(options =>
                 return;
             }
 
-            if (!string.IsNullOrEmpty(securityStampClaim) && !string.IsNullOrEmpty(userState.SecurityStamp) && userState.SecurityStamp != securityStampClaim)
+            if (string.IsNullOrWhiteSpace(securityStampClaim) ||
+                string.IsNullOrWhiteSpace(userState.SecurityStamp) ||
+                !string.Equals(userState.SecurityStamp, securityStampClaim, StringComparison.Ordinal))
             {
-                context.Fail("Token security stamp has been invalidated.");
+                context.Fail("Token security stamp is missing, invalid, or has been revoked.");
                 return;
             }
         }
@@ -248,6 +250,16 @@ builder.Services.AddRateLimiter(options =>
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = 20,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+
+    options.AddPolicy("hold-validation-limit", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown_hold_val",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 30,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0
             }));
@@ -367,10 +379,47 @@ using (var scope = app.Services.CreateScope())
 // 10. HTTP Pipeline (Configure forwarded headers for reverse proxies / load balancers)
 var forwardedHeadersOptions = new ForwardedHeadersOptions
 {
-    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+    ForwardLimit = app.Configuration.GetValue<int?>("ForwardedHeaders:ForwardLimit") ?? 2
 };
-forwardedHeadersOptions.KnownNetworks.Clear();
-forwardedHeadersOptions.KnownProxies.Clear();
+
+var configProxies = app.Configuration.GetSection("ForwardedHeaders:KnownProxies").Get<string[]>() ?? [];
+var envProxies = Environment.GetEnvironmentVariable("KNOWN_PROXIES")?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
+var allKnownProxies = configProxies.Concat(envProxies).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
+var configNetworks = app.Configuration.GetSection("ForwardedHeaders:KnownNetworks").Get<string[]>() ?? [];
+var envNetworks = Environment.GetEnvironmentVariable("KNOWN_NETWORKS")?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
+var allKnownNetworks = configNetworks.Concat(envNetworks).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
+if (allKnownProxies.Count > 0 || allKnownNetworks.Count > 0)
+{
+    forwardedHeadersOptions.KnownProxies.Clear();
+    forwardedHeadersOptions.KnownNetworks.Clear();
+
+    foreach (var proxy in allKnownProxies)
+    {
+        if (System.Net.IPAddress.TryParse(proxy, out var ip))
+        {
+            forwardedHeadersOptions.KnownProxies.Add(ip);
+        }
+    }
+
+    foreach (var network in allKnownNetworks)
+    {
+        var parts = network.Split('/');
+        if (parts.Length == 2 && System.Net.IPAddress.TryParse(parts[0], out var prefix) && int.TryParse(parts[1], out var prefixLength))
+        {
+            forwardedHeadersOptions.KnownNetworks.Add(new Microsoft.AspNetCore.HttpOverrides.IPNetwork(prefix, prefixLength));
+        }
+    }
+}
+else if (app.Configuration.GetValue<bool>("ForwardedHeaders:TrustAllProxies") || app.Environment.IsDevelopment())
+{
+    // In local development or explicitly configured container environments
+    forwardedHeadersOptions.KnownNetworks.Clear();
+    forwardedHeadersOptions.KnownProxies.Clear();
+}
+
 app.UseForwardedHeaders(forwardedHeadersOptions);
 
 if (app.Environment.IsDevelopment())

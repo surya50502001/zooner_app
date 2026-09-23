@@ -161,7 +161,7 @@ public class WaitlistTests
         var ok2 = Assert.IsType<OkObjectResult>(res2);
         var response2 = Assert.IsType<ApiResponse<WaitlistConfirmationDto>>(ok2.Value);
         Assert.True(response2.Success);
-        Assert.Contains("already on the Zooner waitlist", response2.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("Thanks! We'll notify you when Zooner launches.", response2.Message);
 
         var count = await context.WaitlistEntries.CountAsync(w => w.Email == "existing@zooner.test");
         Assert.Equal(1, count);
