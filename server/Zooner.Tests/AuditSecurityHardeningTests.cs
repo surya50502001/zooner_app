@@ -281,11 +281,20 @@ public class AuditSecurityHardeningTests : IClassFixture<TestCustomWebApplicatio
 
     private class ThrowingDbContext : AppDbContext
     {
-        public ThrowingDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+        private readonly string _exceptionMessage;
+        public ThrowingDbContext(DbContextOptions<AppDbContext> options, string exceptionMessage = "Database connection terminated abruptly") : base(options)
+        {
+            _exceptionMessage = exceptionMessage;
+        }
+
+        public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+        {
+            throw new DbUpdateException(_exceptionMessage, new System.IO.IOException(_exceptionMessage));
+        }
 
         public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
-            throw new DbUpdateException("Database connection terminated abruptly", new System.IO.IOException("Socket closed by remote host"));
+            throw new DbUpdateException(_exceptionMessage, new System.IO.IOException(_exceptionMessage));
         }
     }
 
@@ -313,5 +322,155 @@ public class AuditSecurityHardeningTests : IClassFixture<TestCustomWebApplicatio
         var response = Assert.IsType<ApiResponse<WaitlistConfirmationDto>>(objResult.Value);
         Assert.False(response.Success);
         Assert.Contains("unexpected database error", response.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData("Some generic unique violation message on table other_entity_key")]
+    [InlineData("Duplicate record encountered in another table during execution")]
+    public async Task Waitlist_GenericSubstringUniqueOrDuplicate_Returns500_WhenNotExactConstraint(string message)
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+
+        using var context = new ThrowingDbContext(options, message);
+        var controller = new WaitlistController(context, NullLogger<WaitlistController>.Instance);
+
+        var request = new JoinWaitlistRequest
+        {
+            Email = "genericunique@test.com",
+            City = "Bangalore",
+            UserType = "Shopper"
+        };
+
+        var result = await controller.JoinWaitlist(request);
+        var objResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(StatusCodes.Status500InternalServerError, objResult.StatusCode);
+    }
+
+    [Fact]
+    public async Task ActiveCustomerHold_EnforcedAtDbLevel_UniqueConstraint()
+    {
+        using var context = TestDbContextFactory.Create(nameof(ActiveCustomerHold_EnforcedAtDbLevel_UniqueConstraint));
+        var invService = new InventoryService(context, NullLogger<InventoryService>.Instance);
+
+        var vendor = new User { Id = Guid.NewGuid(), Email = "unique_v@z.app", Role = UserRoles.Vendor };
+        var customer = new User { Id = Guid.NewGuid(), Email = "unique_c@z.app", Role = UserRoles.Customer };
+        var shop = new Shop { Id = Guid.NewGuid(), OwnerId = vendor.Id, Name = "Unique Hold Store", IsActive = true, IsLiveEnabled = true, VerificationStatus = ShopVerificationStatus.Approved };
+        var category = new Category { Id = Guid.NewGuid(), Name = "Wearables" };
+        var product = new Product { Id = Guid.NewGuid(), Name = "Smart Ring", CategoryId = category.Id };
+        var variant = new ProductVariant { Id = Guid.NewGuid(), ProductId = product.Id, VariantName = "Size 10" };
+        var inv = new StoreInventory { Id = Guid.NewGuid(), StoreId = shop.Id, ProductVariantId = variant.Id, Price = 299, Quantity = 10, AvailableQuantity = 10, IsActive = true };
+
+        context.Users.AddRange(vendor, customer);
+        context.Shops.Add(shop);
+        context.Categories.Add(category);
+        context.Products.Add(product);
+        context.ProductVariants.Add(variant);
+        context.StoreInventories.Add(inv);
+        await context.SaveChangesAsync();
+
+        // 1. First hold succeeds
+        var hold1 = await invService.ReserveInventoryHoldAsync(shop.Id, inv.Id, customer.Id, 1);
+        Assert.True(hold1.Success);
+
+        // 2. Second concurrent hold by same customer on same inventory item is rejected
+        var hold2 = await invService.ReserveInventoryHoldAsync(shop.Id, inv.Id, customer.Id, 1);
+        Assert.False(hold2.Success);
+        Assert.Contains("already have an active hold pass", hold2.Message, StringComparison.OrdinalIgnoreCase);
+
+        // 3. Verify that releasing the first hold allows reserving again
+        var releaseRes = await invService.ReleaseInventoryHoldAsync(shop.Id, inv.Id, hold1.Data!.HoldId, customer.Id);
+        Assert.True(releaseRes.Success);
+
+        var hold3 = await invService.ReserveInventoryHoldAsync(shop.Id, inv.Id, customer.Id, 1);
+        Assert.True(hold3.Success);
+    }
+
+    [Fact]
+    public async Task Customer_GetActiveHolds_SupportsPagination()
+    {
+        using var context = TestDbContextFactory.Create(nameof(Customer_GetActiveHolds_SupportsPagination));
+        var invService = new InventoryService(context, NullLogger<InventoryService>.Instance);
+
+        var vendor = new User { Id = Guid.NewGuid(), Email = "holdpage_v@z.app", Role = UserRoles.Vendor };
+        var customer = new User { Id = Guid.NewGuid(), Email = "holdpage_c@z.app", Role = UserRoles.Customer };
+        var shop = new Shop { Id = Guid.NewGuid(), OwnerId = vendor.Id, Name = "Hold Page Store", IsActive = true, IsLiveEnabled = true, VerificationStatus = ShopVerificationStatus.Approved };
+        var category = new Category { Id = Guid.NewGuid(), Name = "Audio" };
+        var product = new Product { Id = Guid.NewGuid(), Name = "Speaker", CategoryId = category.Id };
+
+        context.Users.AddRange(vendor, customer);
+        context.Shops.Add(shop);
+        context.Categories.Add(category);
+        context.Products.Add(product);
+
+        for (int i = 0; i < 7; i++)
+        {
+            var variant = new ProductVariant { Id = Guid.NewGuid(), ProductId = product.Id, VariantName = $"Variant {i}" };
+            var inv = new StoreInventory { Id = Guid.NewGuid(), StoreId = shop.Id, ProductVariantId = variant.Id, Price = 100 + i, Quantity = 5, AvailableQuantity = 5, IsActive = true };
+            context.ProductVariants.Add(variant);
+            context.StoreInventories.Add(inv);
+
+            // Add an active hold per item
+            var hold = new InventoryHold
+            {
+                Id = Guid.NewGuid(),
+                StoreId = shop.Id,
+                StoreInventoryId = inv.Id,
+                CustomerId = customer.Id,
+                Quantity = 1,
+                HoldCode = $"H-{i:D6}",
+                QrToken = $"zhold:{Guid.NewGuid():N}",
+                Status = InventoryHoldStatus.Active,
+                ExpiresAtUtc = DateTime.UtcNow.AddMinutes(30),
+                CreatedAtUtc = DateTime.UtcNow.AddSeconds(i)
+            };
+            context.InventoryHolds.Add(hold);
+        }
+        await context.SaveChangesAsync();
+
+        // Page 1 with pageSize 3 -> 3 items
+        var page1 = await invService.GetActiveHoldsForCustomerAsync(customer.Id, page: 1, pageSize: 3);
+        Assert.True(page1.Success);
+        Assert.Equal(3, page1.Data!.Count);
+
+        // Page 2 with pageSize 3 -> 3 items
+        var page2 = await invService.GetActiveHoldsForCustomerAsync(customer.Id, page: 2, pageSize: 3);
+        Assert.True(page2.Success);
+        Assert.Equal(3, page2.Data!.Count);
+
+        // Page 3 with pageSize 3 -> 1 item remaining
+        var page3 = await invService.GetActiveHoldsForCustomerAsync(customer.Id, page: 3, pageSize: 3);
+        Assert.True(page3.Success);
+        Assert.Single(page3.Data!);
+
+        // Page 4 -> 0 items
+        var page4 = await invService.GetActiveHoldsForCustomerAsync(customer.Id, page: 4, pageSize: 3);
+        Assert.True(page4.Success);
+        Assert.Empty(page4.Data!);
+    }
+
+    [Fact]
+    public async Task Pagination_IntegerOverflow_HandledGracefully()
+    {
+        using var context = TestDbContextFactory.Create(nameof(Pagination_IntegerOverflow_HandledGracefully));
+        var invService = new InventoryService(context, NullLogger<InventoryService>.Instance);
+
+        var vendor = new User { Id = Guid.NewGuid(), Email = "overflow_v@z.app", Role = UserRoles.Vendor };
+        var customer = new User { Id = Guid.NewGuid(), Email = "overflow_c@z.app", Role = UserRoles.Customer };
+        var shop = new Shop { Id = Guid.NewGuid(), OwnerId = vendor.Id, Name = "Overflow Store", IsActive = true, IsLiveEnabled = true, VerificationStatus = ShopVerificationStatus.Approved };
+
+        context.Users.AddRange(vendor, customer);
+        context.Shops.Add(shop);
+        await context.SaveChangesAsync();
+
+        // Calling with int.MaxValue for page should NOT throw integer overflow exception
+        var invRes = await invService.GetStoreInventoryAsync(shop.Id, null, null, null, false, page: int.MaxValue, pageSize: int.MaxValue);
+        Assert.True(invRes.Success);
+        Assert.Empty(invRes.Data!);
+
+        var holdRes = await invService.GetActiveHoldsForCustomerAsync(customer.Id, page: int.MaxValue, pageSize: int.MaxValue);
+        Assert.True(holdRes.Success);
+        Assert.Empty(holdRes.Data!);
     }
 }

@@ -360,6 +360,9 @@ public class AppDbContext : DbContext
             entity.HasKey(ih => ih.Id);
             entity.HasIndex(ih => new { ih.CustomerId, ih.Status });
             entity.HasIndex(ih => new { ih.StoreInventoryId, ih.Status });
+            entity.HasIndex(ih => new { ih.CustomerId, ih.StoreInventoryId })
+                .IsUnique()
+                .HasFilter("\"Status\" = 0");
             entity.HasIndex(ih => ih.ExpiresAtUtc);
 
             entity.HasOne(ih => ih.StoreInventory)

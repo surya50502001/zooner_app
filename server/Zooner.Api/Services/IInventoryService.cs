@@ -48,7 +48,9 @@ public interface IInventoryService
     );
 
     Task<ApiResponse<List<InventoryHoldDto>>> GetActiveHoldsForCustomerAsync(
-        Guid customerId
+        Guid customerId,
+        int page = 1,
+        int pageSize = 20
     );
 
     Task<ApiResponse<ValidateHoldQrResponse>> ValidateHoldQrAsync(

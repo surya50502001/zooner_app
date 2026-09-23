@@ -70,12 +70,13 @@ public class InventoryService : IInventoryService
                                           si.ProductVariant.Product.CategoryId == categoryId.Value);
         }
 
-        var clampedPage = Math.Max(1, page);
+        var clampedPage = Math.Clamp(page, 1, 100_000);
         var clampedPageSize = Math.Clamp(pageSize, 1, 100);
+        var skipCount = (int)Math.Min((long)(clampedPage - 1) * clampedPageSize, int.MaxValue);
 
         var inventories = await dbQuery
             .OrderByDescending(si => si.UpdatedAtUtc)
-            .Skip((clampedPage - 1) * clampedPageSize)
+            .Skip(skipCount)
             .Take(clampedPageSize)
             .ToListAsync();
 
@@ -444,6 +445,11 @@ public class InventoryService : IInventoryService
             _logger.LogWarning(ex, "Concurrency conflict reserving inventory hold for item {InventoryId}", inventoryId);
             return ApiResponse<InventoryHoldDto>.ErrorResponse("Item was just reserved by another customer or stock changed. Please refresh and try again.");
         }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogWarning(ex, "Database constraint violation while reserving inventory hold for customer {CustomerId} and item {InventoryId}", customerId, inventoryId);
+            return ApiResponse<InventoryHoldDto>.ErrorResponse("You already have an active hold pass for this item.");
+        }
 
         var dto = new InventoryHoldDto
         {
@@ -513,7 +519,10 @@ public class InventoryService : IInventoryService
         return ApiResponse<bool>.SuccessResponse(true, "Hold pass released and inventory restored to available stock.");
     }
 
-    public async Task<ApiResponse<List<InventoryHoldDto>>> GetActiveHoldsForCustomerAsync(Guid customerId)
+    public async Task<ApiResponse<List<InventoryHoldDto>>> GetActiveHoldsForCustomerAsync(
+        Guid customerId,
+        int page = 1,
+        int pageSize = 20)
     {
         // Expire any outdated holds first
         var expired = await _context.InventoryHolds
@@ -534,6 +543,10 @@ public class InventoryService : IInventoryService
             await _context.SaveChangesAsync();
         }
 
+        var clampedPage = Math.Clamp(page, 1, 100_000);
+        var clampedPageSize = Math.Clamp(pageSize, 1, 100);
+        var skipCount = (int)Math.Min((long)(clampedPage - 1) * clampedPageSize, int.MaxValue);
+
         var activeHolds = await _context.InventoryHolds
             .Where(ih => ih.CustomerId == customerId && ih.Status == InventoryHoldStatus.Active)
             .Include(ih => ih.Store)
@@ -541,6 +554,8 @@ public class InventoryService : IInventoryService
                 .ThenInclude(si => si!.ProductVariant)
                 .ThenInclude(pv => pv!.Product)
             .OrderByDescending(ih => ih.CreatedAtUtc)
+            .Skip(skipCount)
+            .Take(clampedPageSize)
             .AsNoTracking()
             .ToListAsync();
 

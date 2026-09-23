@@ -164,8 +164,6 @@ public class WaitlistController : ControllerBase
             }
         }
 
-        return message.Contains("unique", StringComparison.OrdinalIgnoreCase) ||
-               message.Contains("duplicate", StringComparison.OrdinalIgnoreCase) ||
-               message.Contains("IX_WaitlistEntries_Email", StringComparison.OrdinalIgnoreCase);
+        return message.Contains("IX_WaitlistEntries_Email", StringComparison.OrdinalIgnoreCase);
     }
 }

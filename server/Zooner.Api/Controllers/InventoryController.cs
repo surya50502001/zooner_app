@@ -166,7 +166,9 @@ public class InventoryController : ControllerBase
     [Authorize]
     [ProducesResponseType(typeof(ApiResponse<List<InventoryHoldDto>>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<List<InventoryHoldDto>>), StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> GetMyHolds()
+    public async Task<IActionResult> GetMyHolds(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
         if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var customerId))
@@ -174,7 +176,7 @@ public class InventoryController : ControllerBase
             return Unauthorized(ApiResponse<List<InventoryHoldDto>>.ErrorResponse("Authentication required."));
         }
 
-        var response = await _inventoryService.GetActiveHoldsForCustomerAsync(customerId);
+        var response = await _inventoryService.GetActiveHoldsForCustomerAsync(customerId, page, pageSize);
         return Ok(response);
     }
 
