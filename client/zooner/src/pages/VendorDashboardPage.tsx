@@ -158,13 +158,30 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
     }
   })();
 
+  const userProfile = (() => {
+    try {
+      const stored = localStorage.getItem('zooner_user_profile');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  })();
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
+
   const showToast = (message: string, isError: boolean = false) => {
     setActionNotice({ message, isError });
     setTimeout(() => setActionNotice(null), 4000);
   };
 
-  // Store ID
+  // Store ID & Error State
   const [currentStoreId, setCurrentStoreId] = useState<string>('');
+  const [storeLoadError, setStoreLoadError] = useState<string | null>(null);
 
   // Modal Visibility State
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
@@ -580,39 +597,42 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
   };
 
   // Initial Data Fetching
-  useEffect(() => {
-    async function initVendorData() {
-      setInventoryLoading(true);
-      try {
-        const shops = await getMyShops();
-        setUserShops(shops);
-        const storeId = shops[0]?.id?.toString() || '';
-        setCurrentStoreId(storeId);
-        
-        if (shops && shops.length > 0) {
-          setStoreName(shops[0].name || '');
-          setStoreAddress(shops[0].address || '');
-          setStorePhone(shops[0].phone || '');
-          setStoreCategory(shops[0].categories?.map((c) => c.name).join(', ') || shops[0].categoryName || '');
-          setStoreLat(shops[0].latitude);
-          setStoreLng(shops[0].longitude);
-          setIsLiveOnline(Boolean(shops[0].isLiveEnabled));
-          setStoreVerificationStatus(shops[0].verificationStatus || (shops[0].isVerified ? 'Approved' : 'Pending'));
-          const incoming = await getIncomingRequests(storeId);
-          setRequests(incoming.map((request) => ({ ...request, product: request.requestText, status: request.status?.toLowerCase() || 'pending', distance: request.distanceToShopKm ? `${request.distanceToShopKm.toFixed(1)} km away` : 'Nearby', timeAgo: new Date(request.createdAtUtc).toLocaleString() })));
-          setHolds([]);
-        }
-
-        if (storeId) setInventory(await getStoreInventory(storeId));
-
-        const cats = await fetchCategories();
-        setDbCategories(cats);
-      } catch (err) {
-        console.error('Failed loading vendor inventory:', err);
-      } finally {
-        setInventoryLoading(false);
+  const initVendorData = async () => {
+    setInventoryLoading(true);
+    setStoreLoadError(null);
+    try {
+      const shops = await getMyShops();
+      setUserShops(shops);
+      const storeId = shops[0]?.id?.toString() || '';
+      setCurrentStoreId(storeId);
+      
+      if (shops && shops.length > 0) {
+        setStoreName(shops[0].name || '');
+        setStoreAddress(shops[0].address || '');
+        setStorePhone(shops[0].phone || '');
+        setStoreCategory(shops[0].categories?.map((c) => c.name).join(', ') || shops[0].categoryName || '');
+        setStoreLat(shops[0].latitude);
+        setStoreLng(shops[0].longitude);
+        setIsLiveOnline(Boolean(shops[0].isLiveEnabled));
+        setStoreVerificationStatus(shops[0].verificationStatus || (shops[0].isVerified ? 'Approved' : 'Pending'));
+        const incoming = await getIncomingRequests(storeId);
+        setRequests(incoming.map((request) => ({ ...request, product: request.requestText, status: request.status?.toLowerCase() || 'pending', distance: request.distanceToShopKm ? `${request.distanceToShopKm.toFixed(1)} km away` : 'Nearby', timeAgo: new Date(request.createdAtUtc).toLocaleString() })));
+        setHolds([]);
       }
+
+      if (storeId) setInventory(await getStoreInventory(storeId));
+
+      const cats = await fetchCategories();
+      setDbCategories(cats);
+    } catch (err: any) {
+      console.error('Failed loading vendor inventory:', err);
+      setStoreLoadError(err?.message || 'Unable to load store data.');
+    } finally {
+      setInventoryLoading(false);
     }
+  };
+
+  useEffect(() => {
     initVendorData();
   }, []);
 
@@ -1136,6 +1156,63 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
     );
   }
 
+  // ── ERROR FALLBACK: FAILED TO LOAD STORE DETAILS ──
+  if (storeLoadError && userShops.length === 0 && !inventoryLoading) {
+    return (
+      <div className="min-h-screen bg-[#07090E] text-slate-100 flex flex-col font-sans selection:bg-indigo-600 selection:text-white">
+        <header className="border-b border-slate-800 bg-slate-950/60 sticky top-0 z-40 px-6 py-4">
+          <div className="max-w-4xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl font-black tracking-tight text-white font-['Outfit']">
+                zooner<span className="text-[#7257ff]">.</span>
+              </span>
+              <span className="text-[10px] font-mono uppercase tracking-widest bg-rose-950 text-rose-300 border border-rose-800 px-2 py-0.5 rounded-full font-bold">
+                Store Mode
+              </span>
+            </div>
+            <button
+              onClick={onSwitchToCustomer}
+              className="text-xs font-semibold text-slate-400 hover:text-white transition-colors cursor-pointer"
+            >
+              Continue Shopping
+            </button>
+          </div>
+        </header>
+
+        <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-10">
+          <div className="w-full max-w-md bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl text-center space-y-5">
+            <div className="h-14 w-14 mx-auto rounded-2xl bg-rose-950/60 border border-rose-800/80 flex items-center justify-center text-rose-400">
+              <AlertTriangle className="h-7 w-7" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white font-['Outfit']">Couldn't open Store Mode</h2>
+              <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+                {storeLoadError || 'We encountered an error loading your store operations. Your account and data are safe.'}
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <button
+                type="button"
+                onClick={initVendorData}
+                className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition cursor-pointer"
+              >
+                Try Again
+              </button>
+              <button
+                type="button"
+                onClick={onSwitchToCustomer}
+                className="flex-1 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs border border-slate-700 transition cursor-pointer"
+              >
+                Continue Shopping
+              </button>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   // ── GATE 2: AUTHENTICATED BUT NO STORE CREATED YET ──
   if (isAuthenticated && userShops.length === 0 && !inventoryLoading) {
     return (
@@ -1526,10 +1603,87 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
             </div>
           )}
           
-          {/* ── TAB 1: LIVE REQUESTS ── */}
+          {/* ── TAB 1: LIVE REQUESTS / DASHBOARD ── */}
           {activeTab === 'requests' && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
+            <div className="space-y-5">
+                {/* ── STORE DASHBOARD HERO OVERVIEW & GREETING ── */}
+                <div className="p-5 rounded-3xl bg-gradient-to-br from-indigo-950/60 via-slate-900 to-slate-950 border border-indigo-900/40 space-y-4 shadow-xl">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <div className="text-[11px] font-bold uppercase tracking-wider text-indigo-400">
+                        Store Operations Dashboard
+                      </div>
+                      <h2 className="text-xl sm:text-2xl font-black text-white font-['Outfit'] mt-0.5">
+                        {getGreeting()}, {userProfile?.name?.split(' ')[0] || 'Store Owner'}
+                      </h2>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Managing <strong className="text-slate-200">{storeName || 'TechWorld'}</strong> · 0% walk-in commission
+                      </p>
+                    </div>
+
+                    {/* Quick Action Buttons */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          resetModalState();
+                          setIsAddItemOpen(true);
+                        }}
+                        className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-[0.97] text-white text-xs font-bold transition shadow-md shadow-indigo-600/30 flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add Product</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('holds')}
+                        className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-[0.97] text-slate-200 text-xs font-bold transition border border-slate-700 flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Clock className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>View Holds</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Metric Cards */}
+                  <div className="grid grid-cols-3 gap-2.5 sm:gap-3 pt-1">
+                    <div 
+                      onClick={() => setActiveTab('inventory')}
+                      className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 transition cursor-pointer"
+                    >
+                      <div className="text-[10px] uppercase font-bold text-slate-400">Active Products</div>
+                      <div className="text-lg sm:text-xl font-black text-white mt-0.5 font-mono">
+                        {inventoryLoading ? <span className="inline-block w-6 h-5 bg-slate-800 animate-pulse rounded" /> : inventory.length}
+                      </div>
+                      <div className="text-[10px] text-indigo-400 mt-0.5">On shelf</div>
+                    </div>
+
+                    <div 
+                      onClick={() => setActiveTab('holds')}
+                      className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 transition cursor-pointer"
+                    >
+                      <div className="text-[10px] uppercase font-bold text-slate-400">Pending Holds</div>
+                      <div className="text-lg sm:text-xl font-black text-emerald-400 mt-0.5 font-mono">
+                        {inventoryLoading ? <span className="inline-block w-6 h-5 bg-slate-800 animate-pulse rounded" /> : activeHoldsCount}
+                      </div>
+                      <div className="text-[10px] text-emerald-400/80 mt-0.5">30-min passes</div>
+                    </div>
+
+                    <div 
+                      onClick={() => setActiveTab('requests')}
+                      className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 transition cursor-pointer"
+                    >
+                      <div className="text-[10px] uppercase font-bold text-slate-400">Live Requests</div>
+                      <div className="text-lg sm:text-xl font-black text-blue-400 mt-0.5 font-mono">
+                        {inventoryLoading ? <span className="inline-block w-6 h-5 bg-slate-800 animate-pulse rounded" /> : pendingRequestsCount}
+                      </div>
+                      <div className="text-[10px] text-blue-400/80 mt-0.5">Nearby radar</div>
+                    </div>
+                  </div>
+                </div>
+
+              <div className="flex items-center justify-between pt-1">
                 <div>
                   <h2 className="text-xl font-bold text-white font-['Outfit'] flex items-center gap-2">
                     <Radio className="h-4 w-4 text-emerald-400 animate-pulse" />

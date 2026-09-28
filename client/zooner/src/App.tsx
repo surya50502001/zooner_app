@@ -9,6 +9,7 @@ import { LocationModal } from './components/LocationModal';
 import { RetailerModal } from './components/RetailerModal';
 import { SignInModal } from './components/SignInModal';
 import { ExperienceSwitcherModal, getUserCapabilities } from './components/ExperienceSwitcher';
+import { ModeTransitionOverlay } from './components/ModeTransitionOverlay';
 import { Capacitor } from '@capacitor/core';
 import type { LocationArea } from './types';
 import { detectUserLocation } from './services/locationService';
@@ -70,6 +71,11 @@ export function AppContent() {
     return 'marketing';
   });
 
+  // Mode Transition Animation State
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [transitionSource, setTransitionSource] = useState<AppRoute>('customer');
+  const [transitionTarget, setTransitionTarget] = useState<AppRoute>('vendor');
+
   const [currentLocation, setCurrentLocation] = useState<LocationArea>(DEFAULT_LOCATION);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isRetailerModalOpen, setIsRetailerModalOpen] = useState(false);
@@ -124,20 +130,50 @@ export function AppContent() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
-  const navigateTo = (route: AppRoute) => {
-    setCurrentRoute(route);
-    if (route === 'admin') {
-      window.location.hash = '#admin';
-    } else if (route === 'vendor') {
-      window.location.hash = '#merchant';
-      localStorage.setItem('zooner_active_mode', 'vendor');
-    } else if (route === 'marketing') {
-      window.location.hash = '#home';
-    } else {
-      window.location.hash = '#app';
-      localStorage.setItem('zooner_active_mode', 'customer');
+  const navigateTo = (route: AppRoute, skipAnimation: boolean = false) => {
+    if (route === currentRoute) return;
+
+    if (skipAnimation || route === 'marketing') {
+      setCurrentRoute(route);
+      if (route === 'admin') {
+        window.location.hash = '#admin';
+      } else if (route === 'vendor') {
+        window.location.hash = '#merchant';
+        localStorage.setItem('zooner_active_mode', 'vendor');
+      } else if (route === 'marketing') {
+        window.location.hash = '#home';
+      } else {
+        window.location.hash = '#app';
+        localStorage.setItem('zooner_active_mode', 'customer');
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
     }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Trigger seamless 400ms context transition
+    setTransitionSource(currentRoute);
+    setTransitionTarget(route);
+    setIsTransitioning(true);
+
+    // Midway swap: flip the route underneath the smooth blur overlay
+    setTimeout(() => {
+      setCurrentRoute(route);
+      if (route === 'admin') {
+        window.location.hash = '#admin';
+      } else if (route === 'vendor') {
+        window.location.hash = '#merchant';
+        localStorage.setItem('zooner_active_mode', 'vendor');
+      } else {
+        window.location.hash = '#app';
+        localStorage.setItem('zooner_active_mode', 'customer');
+      }
+      window.scrollTo({ top: 0 });
+    }, 180);
+
+    // Reveal target experience
+    setTimeout(() => {
+      setIsTransitioning(false);
+    }, 420);
   };
 
   const handleSwitchToVendor = () => {
@@ -150,6 +186,15 @@ export function AppContent() {
 
   return (
     <>
+      {/* ── SEAMLESS MODE TRANSITION OVERLAY ── */}
+      <ModeTransitionOverlay
+        isTransitioning={isTransitioning}
+        sourceMode={transitionSource}
+        targetMode={transitionTarget}
+        userName={userProfile?.name?.split(' ')[0] || 'Shopper'}
+        storeName={userProfile?.shops?.[0]?.name || userProfile?.storeName || 'TechWorld'}
+      />
+
       {/* ── EXPERIENCE 3: ADMIN DASHBOARD (Platform Control) ── */}
       {currentRoute === 'admin' && (
         <div className="min-h-screen bg-slate-950 text-white flex flex-col">
@@ -202,7 +247,7 @@ export function AppContent() {
             <CustomerAppPage
               currentLocation={currentLocation}
               onOpenLocationModal={() => setIsLocationModalOpen(true)}
-              onNavigateToHome={() => navigateTo('marketing')}
+              onNavigateToHome={() => navigateTo('marketing', true)}
               onNavigateToVendor={handleSwitchToVendor}
               onNavigateToAdmin={() => navigateTo('admin')}
               onOpenSignIn={(hint) => {
