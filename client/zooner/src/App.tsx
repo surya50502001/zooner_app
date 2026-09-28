@@ -8,7 +8,7 @@ import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { LocationModal } from './components/LocationModal';
 import { RetailerModal } from './components/RetailerModal';
 import { SignInModal } from './components/SignInModal';
-import { ExperienceSwitcherModal, GlobalExperienceBar, getUserCapabilities } from './components/ExperienceSwitcher';
+import { ExperienceSwitcherModal, getUserCapabilities } from './components/ExperienceSwitcher';
 import { Capacitor } from '@capacitor/core';
 import type { LocationArea } from './types';
 import { detectUserLocation } from './services/locationService';
@@ -280,12 +280,6 @@ export function AppContent() {
         currentExperience={currentRoute}
         onSelectExperience={(exp) => navigateTo(exp)}
         userProfile={userProfile}
-      />
-
-      {/* ── GLOBAL DEMO EXPERIENCE BAR (Switch between 9 Customer screens, 9 Vendor screens, 6 Admin screens, and Landing Page) ── */}
-      <GlobalExperienceBar
-        currentRoute={currentRoute}
-        onNavigate={(route) => navigateTo(route)}
       />
     </>
   );
