@@ -26,25 +26,6 @@ const DEFAULT_LOCATION: LocationArea = {
 export type AppRoute = 'marketing' | 'customer' | 'vendor' | 'admin';
 
 export function AppContent() {
-  const [currentRoute, setCurrentRoute] = useState<AppRoute>(() => {
-    if (Capacitor.isNativePlatform()) return 'customer';
-    const hash = window.location.hash.toLowerCase();
-    const path = window.location.pathname.toLowerCase();
-    if (hash.includes('admin') || path.includes('/admin')) {
-      return 'admin';
-    }
-    if (hash.includes('vendor') || hash.includes('merchant') || path.includes('/vendor') || path.includes('/merchant')) return 'vendor';
-    if (hash.includes('app') || hash.includes('customer') || path.includes('/app')) return 'customer';
-    return 'marketing';
-  });
-
-  const [currentLocation, setCurrentLocation] = useState<LocationArea>(DEFAULT_LOCATION);
-  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
-  const [isRetailerModalOpen, setIsRetailerModalOpen] = useState(false);
-  const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
-  const [isExperienceSwitcherOpen, setIsExperienceSwitcherOpen] = useState(false);
-  const [signInRoleHint, setSignInRoleHint] = useState<'C' | 'V' | 'VC'>('C');
-
   const [userProfile, setUserProfile] = useState<any>(() => {
     try {
       const stored = localStorage.getItem('zooner_user_profile');
@@ -69,6 +50,32 @@ export function AppContent() {
   }, []);
 
   const caps = getUserCapabilities(userProfile);
+
+  const [currentRoute, setCurrentRoute] = useState<AppRoute>(() => {
+    if (Capacitor.isNativePlatform()) return 'customer';
+    const hash = window.location.hash.toLowerCase();
+    const path = window.location.pathname.toLowerCase();
+    if (hash.includes('admin') || path.includes('/admin')) {
+      return 'admin';
+    }
+    if (hash.includes('vendor') || hash.includes('merchant') || path.includes('/vendor') || path.includes('/merchant')) {
+      return 'vendor';
+    }
+    if (hash.includes('app') || hash.includes('customer') || path.includes('/app')) {
+      return 'customer';
+    }
+    const savedMode = localStorage.getItem('zooner_active_mode');
+    if (savedMode === 'vendor') return 'vendor';
+    if (savedMode === 'customer') return 'customer';
+    return 'marketing';
+  });
+
+  const [currentLocation, setCurrentLocation] = useState<LocationArea>(DEFAULT_LOCATION);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const [isRetailerModalOpen, setIsRetailerModalOpen] = useState(false);
+  const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
+  const [isExperienceSwitcherOpen, setIsExperienceSwitcherOpen] = useState(false);
+  const [signInRoleHint, setSignInRoleHint] = useState<'C' | 'V' | 'VC'>('C');
 
   // Auto-detect real-time location with multi-tier fallback on startup
   useEffect(() => {
@@ -123,12 +130,22 @@ export function AppContent() {
       window.location.hash = '#admin';
     } else if (route === 'vendor') {
       window.location.hash = '#merchant';
+      localStorage.setItem('zooner_active_mode', 'vendor');
     } else if (route === 'marketing') {
       window.location.hash = '#home';
     } else {
       window.location.hash = '#app';
+      localStorage.setItem('zooner_active_mode', 'customer');
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSwitchToVendor = () => {
+    if (caps.canAccessVendor) {
+      navigateTo('vendor');
+    } else {
+      setIsRetailerModalOpen(true);
+    }
   };
 
   return (
@@ -138,36 +155,37 @@ export function AppContent() {
         <div className="min-h-screen bg-slate-950 text-white flex flex-col">
           <AdminDashboardPage
             onSwitchToCustomer={() => navigateTo('customer')}
-            onSwitchToVendor={() => navigateTo('vendor')}
+            onSwitchToVendor={handleSwitchToVendor}
             onOpenExperienceSwitcher={() => setIsExperienceSwitcherOpen(true)}
             isMultiRole={caps.isMultiRole}
           />
         </div>
       )}
 
-      {/* ── EXPERIENCE 2: VENDOR DASHBOARD (Merchant OS) ── */}
+      {/* ── EXPERIENCE 2: STORE MODE (Merchant OS) ── */}
       {currentRoute === 'vendor' && (
         <div className="min-h-screen bg-black text-white flex flex-col selection:bg-white selection:text-black">
           <VendorDashboardPage
             onSwitchToCustomer={() => navigateTo('customer')}
             onNavigateToAdmin={() => navigateTo('admin')}
             onOpenExperienceSwitcher={() => setIsExperienceSwitcherOpen(true)}
-            isMultiRole={caps.isMultiRole}
+            isMultiRole={true}
           />
           <SignInModal
             isOpen={isSignInModalOpen}
             onClose={() => setIsSignInModalOpen(false)}
             onSwitchToRetailer={() => setIsRetailerModalOpen(true)}
             initialRole={signInRoleHint}
-            onSuccessLogin={(role) => {
-              if (role === 'Vendor') navigateTo('vendor');
-              else navigateTo('customer');
+            onSuccessLogin={() => {
+              navigateTo('customer');
             }}
           />
           <RetailerModal
             isOpen={isRetailerModalOpen}
             onClose={() => setIsRetailerModalOpen(false)}
-            onSuccess={() => navigateTo('vendor')}
+            onSuccess={() => {
+              navigateTo('vendor');
+            }}
             onOpenSignIn={() => {
               setSignInRoleHint('V');
               setIsRetailerModalOpen(false);
@@ -177,7 +195,7 @@ export function AppContent() {
         </div>
       )}
 
-      {/* ── EXPERIENCE 1B: CUSTOMER APPLICATION (Discovery & Shopping) ── */}
+      {/* ── EXPERIENCE 1B: SHOPPING MODE (Customer App / Discovery) ── */}
       {(Capacitor.isNativePlatform() || currentRoute === 'customer') && currentRoute !== 'admin' && currentRoute !== 'vendor' && currentRoute !== 'marketing' && (
         <div className="min-h-screen bg-[#F0F2F5] text-gray-950 flex flex-col items-center justify-start selection:bg-[#7C5CFF] selection:text-white sm:py-0">
           <div className="w-full max-w-[440px] min-h-screen bg-white sm:shadow-2xl sm:border-x sm:border-gray-100 flex flex-col relative">
@@ -185,13 +203,15 @@ export function AppContent() {
               currentLocation={currentLocation}
               onOpenLocationModal={() => setIsLocationModalOpen(true)}
               onNavigateToHome={() => navigateTo('marketing')}
+              onNavigateToVendor={handleSwitchToVendor}
+              onNavigateToAdmin={() => navigateTo('admin')}
               onOpenSignIn={(hint) => {
                 setSignInRoleHint(hint || 'C');
                 setIsSignInModalOpen(true);
               }}
               onOpenRetailerModal={() => setIsRetailerModalOpen(true)}
               onOpenExperienceSwitcher={() => setIsExperienceSwitcherOpen(true)}
-              isMultiRole={caps.isMultiRole}
+              isMultiRole={true}
             />
           </div>
           <LocationModal
@@ -205,15 +225,16 @@ export function AppContent() {
             onClose={() => setIsSignInModalOpen(false)}
             onSwitchToRetailer={() => setIsRetailerModalOpen(true)}
             initialRole={signInRoleHint}
-            onSuccessLogin={(role) => {
-              if (role === 'Vendor') navigateTo('vendor');
-              else navigateTo('customer');
+            onSuccessLogin={() => {
+              navigateTo('customer');
             }}
           />
           <RetailerModal
             isOpen={isRetailerModalOpen}
             onClose={() => setIsRetailerModalOpen(false)}
-            onSuccess={() => navigateTo('vendor')}
+            onSuccess={() => {
+              navigateTo('vendor');
+            }}
             onOpenSignIn={() => {
               setIsRetailerModalOpen(false);
               setIsSignInModalOpen(true);
@@ -222,13 +243,13 @@ export function AppContent() {
         </div>
       )}
 
-      {/* ── EXPERIENCE 1A: ONE PUBLIC MARKETING LANDING PAGE (Optional Marketing Route) ── */}
+      {/* ── EXPERIENCE 1A: PUBLIC MARKETING LANDING PAGE ── */}
       {currentRoute === 'marketing' && (
         <div className="min-h-screen bg-[#070A11] text-white flex flex-col selection:bg-white selection:text-black relative">
           <Navbar
             currentLocation={currentLocation}
             onOpenLocationModal={() => setIsLocationModalOpen(true)}
-            onNavigateToVendor={() => navigateTo('vendor')}
+            onNavigateToVendor={handleSwitchToVendor}
             onLaunchCustomerApp={() => navigateTo('customer')}
             onOpenSignIn={() => setIsSignInModalOpen(true)}
           />
@@ -238,7 +259,7 @@ export function AppContent() {
               currentLocation={currentLocation}
               onOpenLocationModal={() => setIsLocationModalOpen(true)}
               onLaunchCustomerApp={() => navigateTo('customer')}
-              onNavigateToVendor={() => navigateTo('vendor')}
+              onNavigateToVendor={handleSwitchToVendor}
             />
           </main>
 
@@ -254,16 +275,17 @@ export function AppContent() {
             onClose={() => setIsSignInModalOpen(false)}
             onSwitchToRetailer={() => setIsRetailerModalOpen(true)}
             initialRole={signInRoleHint}
-            onSuccessLogin={(role) => {
-              if (role === 'Vendor') navigateTo('vendor');
-              else navigateTo('customer');
+            onSuccessLogin={() => {
+              navigateTo('customer');
             }}
           />
 
           <RetailerModal
             isOpen={isRetailerModalOpen}
             onClose={() => setIsRetailerModalOpen(false)}
-            onSuccess={() => navigateTo('vendor')}
+            onSuccess={() => {
+              navigateTo('vendor');
+            }}
             onOpenSignIn={() => {
               setSignInRoleHint('V');
               setIsRetailerModalOpen(false);
@@ -273,12 +295,13 @@ export function AppContent() {
         </div>
       )}
 
-      {/* ── MULTI-ROLE EXPERIENCE SWITCHER MODAL ── */}
+      {/* ── MODE SWITCHER MODAL (One Account, Two Modes) ── */}
       <ExperienceSwitcherModal
         isOpen={isExperienceSwitcherOpen}
         onClose={() => setIsExperienceSwitcherOpen(false)}
         currentExperience={currentRoute}
         onSelectExperience={(exp) => navigateTo(exp)}
+        onOpenRetailerModal={() => setIsRetailerModalOpen(true)}
         userProfile={userProfile}
       />
     </>
@@ -294,4 +317,3 @@ export function App() {
 }
 
 export default App;
-

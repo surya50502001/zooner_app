@@ -30,7 +30,9 @@ import {
   LogOut,
   LogIn,
   ArrowRight,
-  ShieldCheck
+  ShieldCheck,
+  ShoppingBag,
+  ChevronDown
 } from 'lucide-react';
 import { 
   searchProducts, 
@@ -62,7 +64,6 @@ import {
 } from '../services/api';
 import { detectUserLocation, forwardGeocode } from '../services/locationService';
 import type { StoreInventoryItem, ProductSearchResult, CategoryDto, LiveRequestSummary, ProductVariantDto } from '../types';
-import { ExperienceHeaderPill } from '../components/ExperienceSwitcher';
 
 interface VendorDashboardPageProps {
   onSwitchToCustomer: () => void;
@@ -88,7 +89,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
   onNavigateToVendorLanding: _onNavigateToVendorLanding,
   onNavigateToAdmin: _onNavigateToAdmin,
   onOpenExperienceSwitcher,
-  isMultiRole,
+  isMultiRole: _isMultiRole,
 }) => {
   // Authentication & Gate State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => Boolean(localStorage.getItem('zooner_token')));
@@ -1301,57 +1302,76 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
       <header className="zooner-merchant-header sticky top-0 z-40 px-4 sm:px-8 py-3.5">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           
-          {/* Store Info & Live Switch */}
+          {/* Store Info & Mode Switcher Trigger */}
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold">
-              <Store className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                {userShops.length > 1 ? (
-                  <select
-                    value={currentStoreId}
-                    onChange={(e) => {
-                      const selected = userShops.find(s => s.id.toString() === e.target.value);
-                      if (selected) handleSelectShop(selected);
-                    }}
-                    className="bg-slate-800 border border-slate-700 text-white text-xs font-bold rounded-lg px-2 py-1 focus:outline-none cursor-pointer"
-                  >
-                    {userShops.map(s => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <span className="font-bold text-white text-sm sm:text-base font-['Outfit']">{storeName || 'Merchant Store'}</span>
-                )}
-                <span className="text-[10px] font-mono bg-indigo-950 text-indigo-300 border border-indigo-800 px-1.5 py-0.2 rounded">
-                  Merchant OS
-                </span>
-                {storeVerificationStatus === 'Approved' ? (
-                  <span className="text-[10px] font-bold bg-emerald-950/80 text-emerald-300 border border-emerald-800/80 px-1.5 py-0.5 rounded flex items-center gap-1">
-                    <CheckCircle2 className="h-2.5 w-2.5" />
-                    <span>Verified</span>
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-bold bg-amber-950/80 text-amber-300 border border-amber-800/80 px-1.5 py-0.5 rounded flex items-center gap-1">
-                    <Clock className="h-2.5 w-2.5" />
-                    <span>Pending Verification</span>
-                  </span>
-                )}
+            <button
+              type="button"
+              onClick={onOpenExperienceSwitcher}
+              className="flex items-center gap-2.5 hover:opacity-90 transition cursor-pointer text-left group"
+              title="Switch Mode or Store"
+            >
+              <div className="h-9 w-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold shrink-0 shadow-xs">
+                <Store className="h-5 w-5" />
               </div>
-              <div className="text-xs text-slate-400 flex items-center gap-1.5">
-                <span className={`h-2 w-2 rounded-full ${isLiveOnline ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`} />
-                <span>{isLiveOnline ? 'Live · Accepting Walk-in Requests' : 'Offline'}</span>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-bold text-slate-300">🏪 Store Mode</span>
+                  <ChevronDown className="h-3 w-3 text-slate-400 group-hover:text-white transition-colors" />
+                </div>
+                <div className="flex items-center gap-2">
+                  {userShops.length > 1 ? (
+                    <select
+                      value={currentStoreId}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => {
+                        const selected = userShops.find(s => s.id.toString() === e.target.value);
+                        if (selected) handleSelectShop(selected);
+                      }}
+                      className="bg-slate-800 border border-slate-700 text-white text-xs font-bold rounded-lg px-2 py-0.5 focus:outline-none cursor-pointer"
+                    >
+                      {userShops.map(s => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="font-bold text-white text-sm sm:text-base font-['Outfit'] truncate max-w-[140px] sm:max-w-[220px]">
+                      {storeName || 'TechWorld'}
+                    </span>
+                  )}
+                  {storeVerificationStatus === 'Approved' ? (
+                    <span className="text-[9px] font-bold bg-emerald-950/80 text-emerald-300 border border-emerald-800/80 px-1.5 py-0.2 rounded hidden sm:flex items-center gap-1">
+                      <CheckCircle2 className="h-2.5 w-2.5" />
+                      <span>Verified</span>
+                    </span>
+                  ) : (
+                    <span className="text-[9px] font-bold bg-amber-950/80 text-amber-300 border border-amber-800/80 px-1.5 py-0.2 rounded hidden sm:flex items-center gap-1">
+                      <Clock className="h-2.5 w-2.5" />
+                      <span>Pending</span>
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
+            </button>
           </div>
 
-          {/* Quick Actions */}
-          <div className="flex items-center gap-3">
+          {/* Header Actions: Switch to Shopping & Live Toggle */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* ── ONE-TAP SWITCH TO SHOPPING BUTTON ── */}
+            <button
+              type="button"
+              onClick={onSwitchToCustomer}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-[#007AFF] hover:bg-[#0071E3] active:scale-[0.97] text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
+              title="Switch to Shopping Mode"
+            >
+              <ShoppingBag className="h-3.5 w-3.5" />
+              <span>Switch to Shopping</span>
+            </button>
+
             {/* Live Status Toggle */}
             <button
+              type="button"
               onClick={async () => {
                 if (!currentStoreId) return;
                 const nextStatus = !isLiveOnline;
@@ -1367,19 +1387,15 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
               <span>{isLiveOnline ? 'Online' : 'Go Online'}</span>
             </button>
 
-            {/* Workspace Switcher for Multi-Role */}
-            {isMultiRole && onOpenExperienceSwitcher && (
-              <ExperienceHeaderPill currentExperience="vendor" onClick={onOpenExperienceSwitcher} />
-            )}
-
-            {/* Merchant Sign Out */}
+            {/* Sign Out */}
             <button
+              type="button"
               onClick={handleMerchantLogout}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-300 transition-colors cursor-pointer"
-              title="Sign out of Merchant OS"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-300 transition-colors cursor-pointer"
+              title="Sign out of account"
             >
               <LogOut className="h-3.5 w-3.5 text-slate-400" />
-              <span className="hidden sm:inline">Sign Out</span>
+              <span>Sign Out</span>
             </button>
           </div>
 
@@ -1397,7 +1413,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
 
           <button
             onClick={() => setActiveTab('requests')}
-            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'requests'
                 ? 'bg-indigo-600 text-white font-bold shadow-md shadow-indigo-600/30'
                 : 'text-slate-300 hover:bg-slate-800/60'
@@ -1405,7 +1421,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
           >
             <div className="flex items-center gap-2.5">
               <Send className="h-4 w-4" />
-              <span>Live Requests</span>
+              <span>Dashboard</span>
             </div>
             {pendingRequestsCount > 0 && (
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white text-indigo-700">
@@ -1416,7 +1432,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
 
           <button
             onClick={() => setActiveTab('inventory')}
-            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'inventory'
                 ? 'bg-indigo-600 text-white font-bold shadow-md shadow-indigo-600/30'
                 : 'text-slate-300 hover:bg-slate-800/60'
@@ -1424,14 +1440,14 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
           >
             <div className="flex items-center gap-2.5">
               <Package className="h-4 w-4" />
-              <span>Shelf Inventory</span>
+              <span>Products</span>
             </div>
             <span className="text-[11px] text-slate-400 font-mono">{inventory.length}</span>
           </button>
 
           <button
             onClick={() => setActiveTab('holds')}
-            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'holds'
                 ? 'bg-indigo-600 text-white font-bold shadow-md shadow-indigo-600/30'
                 : 'text-slate-300 hover:bg-slate-800/60'
@@ -1439,7 +1455,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
           >
             <div className="flex items-center gap-2.5">
               <Clock className="h-4 w-4" />
-              <span>Walk-in Holds</span>
+              <span>Holds</span>
             </div>
             {activeHoldsCount > 0 && (
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500 text-black">
@@ -1449,31 +1465,31 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
           </button>
 
           <div className="text-[11px] font-mono uppercase tracking-widest text-slate-500 px-3 pt-5 pb-2">
-            Performance & Admin
+            Performance & Store
           </div>
 
           <button
             onClick={() => setActiveTab('analytics')}
-            className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+            className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'analytics'
                 ? 'bg-indigo-600 text-white font-bold shadow-md shadow-indigo-600/30'
                 : 'text-slate-300 hover:bg-slate-800/60'
             }`}
           >
             <BarChart3 className="h-4 w-4" />
-            <span>Footfall Analytics</span>
+            <span>Analytics</span>
           </button>
 
           <button
             onClick={() => setActiveTab('settings')}
-            className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+            className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'settings'
                 ? 'bg-indigo-600 text-white font-bold shadow-md shadow-indigo-600/30'
                 : 'text-slate-300 hover:bg-slate-800/60'
             }`}
           >
             <Settings className="h-4 w-4" />
-            <span>Store Profile & Hours</span>
+            <span>Profile & Settings</span>
           </button>
         </aside>
 
@@ -1867,12 +1883,38 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
             </div>
           )}
 
-          {/* ── TAB 5: SETTINGS & HOURS ── */}
+          {/* ── TAB 5: SETTINGS & HOURS (PROFILE) ── */}
           {activeTab === 'settings' && (
             <div className="space-y-5 max-w-xl">
               <div>
-                <h2 className="text-xl font-bold text-white font-['Outfit']">Store Profile & Location</h2>
-                <p className="text-xs text-slate-400">Your verified storefront details on Zooner</p>
+                <h2 className="text-xl font-bold text-white font-['Outfit']">Store Profile & Settings</h2>
+                <p className="text-xs text-slate-400">Manage your store operations or switch back to shopping</p>
+              </div>
+
+              {/* ── Prominent Switch to Shopping Mode Card ── */}
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-950/60 to-slate-900 border border-blue-600/30 flex items-center justify-between gap-4 shadow-md">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-[#007AFF] text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <ShoppingBag className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-400">
+                      Personal Account
+                    </span>
+                    <h4 className="text-xs font-bold text-white truncate">Shopping Mode</h4>
+                    <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                      Find and reserve items at nearby local stores
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={onSwitchToCustomer}
+                  className="px-3.5 py-2 rounded-xl bg-[#007AFF] hover:bg-[#0071E3] active:scale-[0.97] text-white text-xs font-bold transition-all shrink-0 cursor-pointer shadow-xs"
+                >
+                  Switch
+                </button>
               </div>
 
               {actionNotice && !actionNotice.isError && (
@@ -2310,7 +2352,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
       </AnimatePresence>
 
       {actionNotice && (
-        <div className={`fixed bottom-6 right-6 z-50 px-5 py-3 rounded-2xl text-xs font-semibold shadow-2xl flex items-center gap-2 border ${
+        <div className={`fixed bottom-20 md:bottom-6 right-6 z-50 px-5 py-3 rounded-2xl text-xs font-semibold shadow-2xl flex items-center gap-2 border ${
           actionNotice.isError 
             ? 'bg-rose-950/95 text-rose-200 border-rose-800 backdrop-blur-md' 
             : 'bg-emerald-950/95 text-emerald-200 border-emerald-800 backdrop-blur-md'
@@ -2318,6 +2360,70 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
           <span>{actionNotice.message}</span>
         </div>
       )}
+
+      {/* ── STORE MODE MOBILE BOTTOM NAVIGATION ── */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-950/95 backdrop-blur-xl border-t border-slate-800 flex items-center justify-around py-2.5 px-2 z-40 shadow-[0_-2px_12px_rgba(0,0,0,0.5)]">
+        <button
+          type="button"
+          onClick={() => setActiveTab('requests')}
+          className={`flex flex-col items-center gap-1 transition-all active:scale-[0.94] cursor-pointer relative ${
+            activeTab === 'requests' ? 'text-indigo-400 font-bold' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Send className="w-5 h-5" />
+          <span className="text-[10px]">Dashboard</span>
+          {pendingRequestsCount > 0 && (
+            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-indigo-500" />
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('inventory')}
+          className={`flex flex-col items-center gap-1 transition-all active:scale-[0.94] cursor-pointer ${
+            activeTab === 'inventory' ? 'text-indigo-400 font-bold' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Package className="w-5 h-5" />
+          <span className="text-[10px]">Products</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('holds')}
+          className={`flex flex-col items-center gap-1 transition-all active:scale-[0.94] cursor-pointer relative ${
+            activeTab === 'holds' ? 'text-indigo-400 font-bold' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Clock className="w-5 h-5" />
+          <span className="text-[10px]">Holds</span>
+          {activeHoldsCount > 0 && (
+            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400" />
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('analytics')}
+          className={`flex flex-col items-center gap-1 transition-all active:scale-[0.94] cursor-pointer ${
+            activeTab === 'analytics' ? 'text-indigo-400 font-bold' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <BarChart3 className="w-5 h-5" />
+          <span className="text-[10px]">Analytics</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('settings')}
+          className={`flex flex-col items-center gap-1 transition-all active:scale-[0.94] cursor-pointer ${
+            activeTab === 'settings' ? 'text-indigo-400 font-bold' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Settings className="w-5 h-5" />
+          <span className="text-[10px]">Profile</span>
+        </button>
+      </div>
 
     </div>
   );

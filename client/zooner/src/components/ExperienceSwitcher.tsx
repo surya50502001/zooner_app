@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShoppingBag, Store, Shield, X, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { ShoppingBag, Store, Shield, X, Check, ArrowRight, Plus } from 'lucide-react';
 import type { AppRoute } from '../App';
 
 interface ExperienceSwitcherProps {
@@ -7,12 +7,14 @@ interface ExperienceSwitcherProps {
   onClose: () => void;
   currentExperience: AppRoute;
   onSelectExperience: (experience: AppRoute) => void;
+  onOpenRetailerModal?: () => void;
   userProfile?: {
     name?: string;
     email?: string;
     role?: string;
     isVendor?: boolean;
     shops?: any[];
+    storeName?: string;
   } | null;
 }
 
@@ -46,139 +48,214 @@ export const ExperienceSwitcherModal: React.FC<ExperienceSwitcherProps> = ({
   onClose,
   currentExperience,
   onSelectExperience,
+  onOpenRetailerModal,
   userProfile
 }) => {
   if (!isOpen) return null;
 
   const caps = getUserCapabilities(userProfile);
-
-  const experiences = [
-    {
-      id: 'customer' as AppRoute,
-      title: 'Customer',
-      tagline: 'Physical Shelf Discovery & Holds',
-      description: 'Search local products, check nearby shelf stock, and reserve 30-min hold passes.',
-      icon: ShoppingBag,
-      accentColor: 'border-purple-500/40 bg-purple-500/10 text-purple-400',
-      activeBorder: 'border-purple-500 ring-2 ring-purple-500/30',
-      enabled: caps.canAccessCustomer,
-      route: '#app'
-    },
-    {
-      id: 'vendor' as AppRoute,
-      title: 'Merchant Portal',
-      tagline: 'Store & Inventory Operations',
-      description: 'Manage shelf stock, respond to customer requests, and scan QR passes for collection.',
-      icon: Store,
-      accentColor: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400',
-      activeBorder: 'border-emerald-500 ring-2 ring-emerald-500/30',
-      enabled: caps.canAccessVendor,
-      lockedReason: 'Requires registered physical store',
-      route: '#merchant'
-    },
-    {
-      id: 'admin' as AppRoute,
-      title: 'Admin Control Panel',
-      tagline: 'Platform Governance & Master Catalog',
-      description: 'Review store verifications, manage categories, inspect audit logs, and configure platform.',
-      icon: Shield,
-      accentColor: 'border-indigo-500/40 bg-indigo-500/10 text-indigo-400',
-      activeBorder: 'border-indigo-500 ring-2 ring-indigo-500/30',
-      enabled: caps.canAccessAdmin,
-      lockedReason: 'Requires Administrator credentials',
-      route: '#admin'
-    }
-  ];
+  const storeName = userProfile?.shops?.[0]?.name || userProfile?.storeName || 'My Store';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-6 text-white">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
+      <div 
+        className="absolute inset-0"
+        onClick={onClose}
+      />
+      <div className="relative w-full max-w-sm bg-white border border-gray-100 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 text-gray-900 z-10 animate-in zoom-in-95 duration-150">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div className="flex items-center justify-between border-b border-gray-100 pb-3">
           <div>
-            <h3 className="text-lg font-bold tracking-tight">Choose your Zooner experience</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Switch between independent product workspaces</p>
+            <h3 className="text-base font-bold text-gray-950">Switch Mode</h3>
+            <p className="text-[11px] text-gray-400 mt-0.5">Two modes, one Zooner account</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+            className="p-1.5 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Experience Cards — Admin only shown to admin users */}
-        <div className="space-y-3">
-          {experiences.filter(exp => exp.id !== 'admin' || caps.canAccessAdmin).map((exp) => {
-            const Icon = exp.icon;
-            const isCurrent = currentExperience === exp.id;
-
-            return (
-              <div
-                key={exp.id}
-                onClick={() => {
-                  if (exp.enabled) {
-                    onSelectExperience(exp.id);
-                    onClose();
-                  }
-                }}
-                className={`p-4 rounded-2xl border transition-all ${
-                  !exp.enabled
-                    ? 'opacity-45 bg-slate-950/40 border-slate-800/50 cursor-not-allowed'
-                    : isCurrent
-                    ? `${exp.activeBorder} bg-slate-800/80 shadow-lg cursor-pointer`
-                    : 'bg-slate-950/70 border-slate-800 hover:border-slate-700 hover:bg-slate-850 cursor-pointer'
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${exp.accentColor}`}>
-                      <Icon className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-sm font-bold text-white">{exp.title}</h4>
-                        {isCurrent && (
-                          <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                            Current
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-slate-400 font-medium">{exp.tagline}</p>
-                    </div>
-                  </div>
-
-                  {exp.enabled && !isCurrent && (
-                    <ArrowRight className="w-4 h-4 text-slate-400 mt-1" />
-                  )}
-                </div>
-
-                <p className="text-xs text-slate-400 mt-2.5 pl-13 leading-relaxed">
-                  {exp.description}
-                </p>
-
-                {!exp.enabled && exp.lockedReason && (
-                  <div className="mt-2 pl-13 text-[11px] text-rose-400/80 font-mono">
-                    🔒 {exp.lockedReason}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Footer */}
-        <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs text-slate-500">
-          <span>Logged in: <strong className="text-slate-300">{userProfile?.name || 'User'}</strong></span>
+        {/* Mode List */}
+        <div className="space-y-2.5">
+          {/* 1. Shopping Mode Option */}
           <button
             type="button"
-            onClick={onClose}
-            className="text-slate-400 hover:text-white transition cursor-pointer"
+            onClick={() => {
+              onSelectExperience('customer');
+              onClose();
+            }}
+            className={`w-full p-3.5 rounded-2xl border text-left transition-all flex items-center justify-between gap-3 cursor-pointer ${
+              currentExperience === 'customer'
+                ? 'bg-blue-50/80 border-[#007AFF] shadow-xs'
+                : 'bg-white hover:bg-gray-50 border-gray-200/80'
+            }`}
           >
-            Stay in current view
+            <div className="flex items-center gap-3 min-w-0">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                currentExperience === 'customer'
+                  ? 'bg-[#007AFF] text-white shadow-xs'
+                  : 'bg-gray-100 text-gray-600'
+              }`}>
+                <ShoppingBag className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <h4 className="text-xs font-bold text-gray-950">Shopping</h4>
+                  {currentExperience === 'customer' && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-blue-100 text-[#007AFF]">
+                      Active
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-gray-500 truncate mt-0.5">
+                  Find and reserve products nearby
+                </p>
+              </div>
+            </div>
+
+            {currentExperience === 'customer' ? (
+              <div className="w-5 h-5 rounded-full bg-[#007AFF] text-white flex items-center justify-center shrink-0 shadow-xs">
+                <Check className="w-3 h-3 stroke-[3]" />
+              </div>
+            ) : (
+              <ArrowRight className="w-4 h-4 text-gray-300 shrink-0" />
+            )}
           </button>
+
+          {/* 2. Store Mode Option (If user is Vendor) */}
+          {caps.canAccessVendor ? (
+            <button
+              type="button"
+              onClick={() => {
+                onSelectExperience('vendor');
+                onClose();
+              }}
+              className={`w-full p-3.5 rounded-2xl border text-left transition-all flex items-center justify-between gap-3 cursor-pointer ${
+                currentExperience === 'vendor'
+                  ? 'bg-blue-50/80 border-[#007AFF] shadow-xs'
+                  : 'bg-white hover:bg-gray-50 border-gray-200/80'
+              }`}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                  currentExperience === 'vendor'
+                    ? 'bg-[#007AFF] text-white shadow-xs'
+                    : 'bg-gray-100 text-gray-600'
+                }`}>
+                  <Store className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <h4 className="text-xs font-bold text-gray-950">Store</h4>
+                    {currentExperience === 'vendor' && (
+                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-blue-100 text-[#007AFF]">
+                        Active
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-gray-500 truncate mt-0.5">
+                    Manage {storeName}
+                  </p>
+                </div>
+              </div>
+
+              {currentExperience === 'vendor' ? (
+                <div className="w-5 h-5 rounded-full bg-[#007AFF] text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <Check className="w-3 h-3 stroke-[3]" />
+                </div>
+              ) : (
+                <ArrowRight className="w-4 h-4 text-gray-300 shrink-0" />
+              )}
+            </button>
+          ) : (
+            /* 2b. Become a Store Owner Option (If user does not have store yet) */
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                if (onOpenRetailerModal) {
+                  onOpenRetailerModal();
+                }
+              }}
+              className="w-full p-3.5 rounded-2xl border border-dashed border-gray-300 hover:border-[#007AFF] hover:bg-blue-50/30 text-left transition-all flex items-center justify-between gap-3 cursor-pointer group"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-gray-100 group-hover:bg-blue-50 text-gray-600 group-hover:text-[#007AFF] flex items-center justify-center shrink-0 transition-colors">
+                  <Plus className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <h4 className="text-xs font-bold text-gray-950 group-hover:text-[#007AFF] transition-colors">
+                    Become a Store Owner
+                  </h4>
+                  <p className="text-[11px] text-gray-500 truncate mt-0.5">
+                    Create and manage your store on Zooner
+                  </p>
+                </div>
+              </div>
+
+              <span className="text-xs font-bold text-[#007AFF] shrink-0">
+                Create →
+              </span>
+            </button>
+          )}
+
+          {/* 3. Admin Portal Option (Only if user has Admin role) */}
+          {caps.canAccessAdmin && (
+            <button
+              type="button"
+              onClick={() => {
+                onSelectExperience('admin');
+                onClose();
+              }}
+              className={`w-full p-3.5 rounded-2xl border text-left transition-all flex items-center justify-between gap-3 cursor-pointer ${
+                currentExperience === 'admin'
+                  ? 'bg-purple-50 border-purple-500 shadow-xs'
+                  : 'bg-white hover:bg-gray-50 border-gray-200/80'
+              }`}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                  currentExperience === 'admin'
+                    ? 'bg-purple-600 text-white shadow-xs'
+                    : 'bg-gray-100 text-purple-600'
+                }`}>
+                  <Shield className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <h4 className="text-xs font-bold text-gray-950">Admin Portal</h4>
+                    {currentExperience === 'admin' && (
+                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-purple-100 text-purple-700">
+                        Active
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-gray-500 truncate mt-0.5">
+                    Platform Governance & Master Catalog
+                  </p>
+                </div>
+              </div>
+
+              {currentExperience === 'admin' ? (
+                <div className="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <Check className="w-3 h-3 stroke-[3]" />
+                </div>
+              ) : (
+                <ArrowRight className="w-4 h-4 text-gray-300 shrink-0" />
+              )}
+            </button>
+          )}
+        </div>
+
+        {/* Account Info Footer */}
+        <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-400">
+          <span className="truncate max-w-[200px]">
+            Account: <strong className="text-gray-700 font-semibold">{userProfile?.name || userProfile?.email || 'Guest User'}</strong>
+          </span>
+          <span className="text-[10px] text-gray-400">Single Login</span>
         </div>
       </div>
     </div>
@@ -188,16 +265,17 @@ export const ExperienceSwitcherModal: React.FC<ExperienceSwitcherProps> = ({
 export const ExperienceHeaderPill: React.FC<{
   currentExperience: AppRoute;
   onClick: () => void;
-}> = ({ currentExperience, onClick }) => {
+  storeName?: string;
+}> = ({ currentExperience, onClick, storeName }) => {
   const getLabel = () => {
     switch (currentExperience) {
       case 'admin':
-        return { label: 'Admin Panel', icon: Shield, color: 'border-indigo-500/30 text-indigo-400 bg-indigo-950/70' };
+        return { label: 'Admin Mode', icon: Shield, color: 'border-purple-200 text-purple-700 bg-purple-50' };
       case 'vendor':
-        return { label: 'Merchant Portal', icon: Store, color: 'border-emerald-500/30 text-[#34C759] bg-emerald-950/70' };
+        return { label: `Store Mode${storeName ? ` · ${storeName}` : ''}`, icon: Store, color: 'border-blue-200 text-[#007AFF] bg-blue-50' };
       case 'customer':
       default:
-        return { label: 'Customer App', icon: ShoppingBag, color: 'border-[#007AFF]/30 text-[#007AFF] bg-[#007AFF]/10' };
+        return { label: 'Shopping Mode', icon: ShoppingBag, color: 'border-blue-200 text-[#007AFF] bg-blue-50' };
     }
   };
 
@@ -207,13 +285,16 @@ export const ExperienceHeaderPill: React.FC<{
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-xs font-semibold shadow-xs hover:opacity-90 active:scale-[0.97] transition-all cursor-pointer ${color}`}
-      title="Switch Zooner Product Workspace"
+      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold shadow-2xs hover:opacity-90 active:scale-[0.97] transition-all cursor-pointer truncate max-w-[220px] ${color}`}
+      title="Switch Account Mode"
     >
-      <Icon className="w-3.5 h-3.5" />
-      <span>{label}</span>
-      <span className="text-[10px] opacity-70">⇄</span>
+      <Icon className="w-3.5 h-3.5 shrink-0" />
+      <span className="truncate">{label}</span>
+      <span className="text-[10px] opacity-60">▾</span>
     </button>
   );
 };
 
+// Export alias for mode switcher semantics
+export const ModeSwitcherModal = ExperienceSwitcherModal;
+export const ModeHeaderPill = ExperienceHeaderPill;

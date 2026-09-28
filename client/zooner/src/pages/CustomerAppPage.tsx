@@ -862,7 +862,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
               </div>
 
               <div className="flex items-center gap-2">
-                {isMultiRole && onOpenExperienceSwitcher && (
+                {onOpenExperienceSwitcher && (
                   <ExperienceHeaderPill currentExperience="customer" onClick={onOpenExperienceSwitcher} />
                 )}
 
@@ -1708,17 +1708,46 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
               </div>
             )}
 
-            {/* Merchant Onboarding Prompt */}
-            {!(userProfile?.isVendor || (userProfile?.shops && userProfile.shops.length > 0)) && (
+            {/* ── PROMINENT STORE SECTION IN CUSTOMER PROFILE ── */}
+            {userProfile?.isVendor || (userProfile?.shops && userProfile.shops.length > 0) ? (
+              <div className="bg-white rounded-2xl border border-blue-100 p-4 shadow-xs bg-gradient-to-br from-blue-50/50 to-white">
+                <div className="flex items-start gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-[#007AFF] text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <Store className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#007AFF]">
+                      Your Store
+                    </span>
+                    <h4 className="text-sm font-bold text-gray-950 truncate mt-0.5">
+                      {userProfile?.shops?.[0]?.name || (userProfile as any)?.storeName || 'My Store'}
+                    </h4>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Manage your store and reservations
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onNavigateToVendor) onNavigateToVendor();
+                      }}
+                      className="mt-3.5 w-full py-2.5 px-4 rounded-xl bg-[#007AFF] hover:bg-[#0071E3] active:scale-[0.98] text-white text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer shadow-xs"
+                    >
+                      <Store className="w-4 h-4" />
+                      <span>Switch to Store</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
               <div className="bg-white rounded-2xl border border-gray-200/80 p-4 shadow-xs">
                 <div className="flex items-start gap-3.5">
                   <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#007AFF] flex items-center justify-center shrink-0">
                     <Store className="w-5 h-5" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-bold text-gray-950">Own a Physical Store?</h4>
-                    <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                      List your physical shelves on Zooner to turn nearby local search into instant footfall. 0% commission.
+                    <h4 className="text-sm font-bold text-gray-950">Become a Store Owner</h4>
+                    <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+                      Create and manage your store on Zooner
                     </p>
                     <button
                       type="button"
@@ -1726,10 +1755,10 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                         if (onOpenRetailerModal) onOpenRetailerModal();
                         else if (onNavigateToVendor) onNavigateToVendor();
                       }}
-                      className="mt-3 w-full py-2.5 px-4 rounded-xl bg-[#007AFF] hover:bg-[#0071E3] text-white text-xs font-semibold flex items-center justify-center gap-2 transition cursor-pointer shadow-xs"
+                      className="mt-3 w-full py-2.5 px-4 rounded-xl bg-[#007AFF] hover:bg-[#0071E3] active:scale-[0.98] text-white text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer shadow-xs"
                     >
                       <Store className="w-4 h-4" />
-                      <span>Register Storefront →</span>
+                      <span>Create Store</span>
                     </button>
                   </div>
                 </div>
