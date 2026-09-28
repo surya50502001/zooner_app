@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowRight, 
@@ -6,6 +6,8 @@ import {
   Store, 
   ChevronDown
 } from 'lucide-react';
+import { fetchCategories, searchProducts } from '../services/api';
+import type { ProductSearchResult, CategoryDto } from '../types';
 
 interface RetailerCalloutProps {
   onOpenRetailerModal: () => void;
@@ -18,6 +20,24 @@ export const RetailerCallout: React.FC<RetailerCalloutProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'radar' | 'inventory' | 'holds'>('radar');
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [catalogProducts, setCatalogProducts] = useState<ProductSearchResult[]>([]);
+  const [catalogCategories, setCatalogCategories] = useState<CategoryDto[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    Promise.all([fetchCategories(), searchProducts()])
+      .then(([cats, prods]) => {
+        if (!isMounted) return;
+        if (cats) setCatalogCategories(cats);
+        if (prods) setCatalogProducts(prods);
+      })
+      .catch((err) => {
+        console.error('RetailerCallout live data fetch error:', err);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const faqs = [
     {
@@ -219,7 +239,7 @@ export const RetailerCallout: React.FC<RetailerCalloutProps> = ({
             </div>
           </div>
 
-          {/* Interactive Mock Window */}
+          {/* Interactive Live Preview Window */}
           <div className="rounded-3xl border border-white/10 bg-[#0B0C11] p-6 sm:p-8 shadow-2xl overflow-hidden">
             {activeTab === 'radar' && (
               <div className="space-y-4">
@@ -235,15 +255,19 @@ export const RetailerCallout: React.FC<RetailerCalloutProps> = ({
                   <div className="p-4 rounded-2xl bg-zinc-900/80 border border-white/10 space-y-3">
                     <div className="flex justify-between items-start">
                       <div>
-                        <div className="font-bold text-white text-sm">Sony WH-1000XM5 (Black)</div>
-                        <div className="text-xs text-slate-400 mt-0.5">Shopper: Ananya S. · 850m away · 2 mins ago</div>
+                        <div className="font-bold text-white text-sm">
+                          {catalogProducts[0]?.name || (catalogCategories[0]?.name ? `${catalogCategories[0].name} Product` : 'Verified Catalog Item')}
+                        </div>
+                        <div className="text-xs text-slate-400 mt-0.5">Nearby Shopper Request · 850m away · Active broadcast</div>
                       </div>
                       <span className="px-2 py-0.5 rounded bg-emerald-950 border border-emerald-800 text-[10px] font-mono text-emerald-300 font-bold">
                         HIGH MATCH
                       </span>
                     </div>
                     <div className="flex items-center justify-between pt-2 border-t border-white/5">
-                      <span className="text-xs font-mono text-slate-300">Target Budget: ₹26,990</span>
+                      <span className="text-xs font-mono text-slate-300">
+                        Target Budget: ₹{(catalogProducts[0]?.lowestPrice || catalogProducts[0]?.minPrice || 2499).toLocaleString('en-IN')}
+                      </span>
                       <button 
                         onClick={onOpenRetailerModal}
                         className="px-3.5 py-1.5 rounded-full bg-emerald-400 text-slate-950 font-bold text-xs hover:bg-emerald-300 cursor-pointer"
@@ -256,15 +280,19 @@ export const RetailerCallout: React.FC<RetailerCalloutProps> = ({
                   <div className="p-4 rounded-2xl bg-zinc-900/80 border border-white/10 space-y-3">
                     <div className="flex justify-between items-start">
                       <div>
-                        <div className="font-bold text-white text-sm">Nike Air Zoom Pegasus 40 (UK 9)</div>
-                        <div className="text-xs text-slate-400 mt-0.5">Shopper: Karthik V. · 1.2 km away · 5 mins ago</div>
+                        <div className="font-bold text-white text-sm">
+                          {catalogProducts[1]?.name || (catalogCategories[1]?.name ? `${catalogCategories[1].name} Variant` : 'Local Search Demand')}
+                        </div>
+                        <div className="text-xs text-slate-400 mt-0.5">Nearby Shopper Request · 1.2 km away · Active broadcast</div>
                       </div>
                       <span className="px-2 py-0.5 rounded bg-cyan-950 border border-cyan-800 text-[10px] font-mono text-cyan-300 font-bold">
-                        SIZE 9
+                        IN RADIUS
                       </span>
                     </div>
                     <div className="flex items-center justify-between pt-2 border-t border-white/5">
-                      <span className="text-xs font-mono text-slate-300">Target Budget: ₹6,499</span>
+                      <span className="text-xs font-mono text-slate-300">
+                        Target Budget: ₹{(catalogProducts[1]?.lowestPrice || catalogProducts[1]?.minPrice || 4999).toLocaleString('en-IN')}
+                      </span>
                       <button 
                         onClick={onOpenRetailerModal}
                         className="px-3.5 py-1.5 rounded-full bg-emerald-400 text-slate-950 font-bold text-xs hover:bg-emerald-300 cursor-pointer"
@@ -292,12 +320,16 @@ export const RetailerCallout: React.FC<RetailerCalloutProps> = ({
                 <div className="divide-y divide-white/10">
                   <div className="py-3 flex items-center justify-between gap-4">
                     <div>
-                      <div className="font-bold text-white text-sm">Apple AirPods Pro (2nd Gen)</div>
-                      <div className="text-xs text-slate-400">Shelf: A04 · SKU: APP-PRO2 · ₹24,900</div>
+                      <div className="font-bold text-white text-sm">
+                        {catalogProducts[0]?.name || 'Standard Catalog Item'}
+                      </div>
+                      <div className="text-xs text-slate-400">
+                        {catalogProducts[0]?.categoryName || 'General'} · Model: {catalogProducts[0]?.modelNumber || 'STD-01'} · ₹{(catalogProducts[0]?.lowestPrice || catalogProducts[0]?.minPrice || 2499).toLocaleString('en-IN')}
+                      </div>
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="px-2.5 py-1 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 text-xs font-mono">
-                        3 In Stock
+                        Available on Shelf
                       </span>
                       <span className="h-2 w-2 rounded-full bg-emerald-400" />
                     </div>
@@ -305,12 +337,16 @@ export const RetailerCallout: React.FC<RetailerCalloutProps> = ({
 
                   <div className="py-3 flex items-center justify-between gap-4">
                     <div>
-                      <div className="font-bold text-white text-sm">Sony WH-1000XM5 Wireless Headphones</div>
-                      <div className="text-xs text-slate-400">Shelf: B12 · SKU: SNY-1000XM5 · ₹26,990</div>
+                      <div className="font-bold text-white text-sm">
+                        {catalogProducts[1]?.name || 'Verified Product Model'}
+                      </div>
+                      <div className="text-xs text-slate-400">
+                        {catalogProducts[1]?.categoryName || 'General'} · Model: {catalogProducts[1]?.modelNumber || 'STD-02'} · ₹{(catalogProducts[1]?.lowestPrice || catalogProducts[1]?.minPrice || 4999).toLocaleString('en-IN')}
+                      </div>
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="px-2.5 py-1 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 text-xs font-mono">
-                        2 In Stock
+                        Available on Shelf
                       </span>
                       <span className="h-2 w-2 rounded-full bg-emerald-400" />
                     </div>
@@ -323,17 +359,21 @@ export const RetailerCallout: React.FC<RetailerCalloutProps> = ({
               <div className="space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-white/10 text-xs">
                   <span className="font-mono uppercase font-bold text-slate-300">Active 30-Minute Counter Holds</span>
-                  <span className="text-emerald-400 font-mono font-bold">1 Active Reservation</span>
+                  <span className="text-emerald-400 font-mono font-bold">Counter Reservation Ready</span>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-zinc-900/80 border border-emerald-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-emerald-400 font-black text-sm">PASS #ZN-7824</span>
-                      <span className="text-xs text-slate-400">· Rahul Sharma (+91 98422 xxxxx)</span>
+                      <span className="font-mono text-emerald-400 font-black text-sm">
+                        PASS #ZN-{(catalogProducts[0]?.id || '4821').replace(/-/g, '').slice(0, 4).toUpperCase()}
+                      </span>
+                      <span className="text-xs text-slate-400">· Verified Shopper Reservation</span>
                     </div>
-                    <div className="text-sm font-bold text-white">Sony WH-1000XM5 (Black) · ₹26,990</div>
-                    <div className="text-xs text-slate-400">Reserved via Zooner Discover · ETA: 12 mins</div>
+                    <div className="text-sm font-bold text-white">
+                      {catalogProducts[0]?.name || 'Reserved Product'} · ₹{(catalogProducts[0]?.lowestPrice || catalogProducts[0]?.minPrice || 2499).toLocaleString('en-IN')}
+                    </div>
+                    <div className="text-xs text-slate-400">Reserved via Zooner Discover · Counter Hold Pass Active</div>
                   </div>
 
                   <div className="flex items-center gap-3">

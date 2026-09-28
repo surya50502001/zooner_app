@@ -169,8 +169,8 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                       id: `loc-${loc.name.toLowerCase().replace(/\s+/g, '-')}`,
                       name: `${loc.name}, ${loc.city}`,
                       city: loc.city,
-                      storesCount: 12,
-                      activeRequests: 4,
+                      storesCount: 0,
+                      activeRequests: 0,
                       lat: loc.lat,
                       lng: loc.lng
                     });

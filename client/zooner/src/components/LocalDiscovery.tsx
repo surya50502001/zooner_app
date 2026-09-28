@@ -50,12 +50,12 @@ export const LocalDiscovery: React.FC<LocalDiscoveryProps> = ({
             phone: s.phone || '',
             openStatus: s.isOpen ? 'Open Now' : 'Closed',
             verified: s.isVerified ?? true,
-            rating: s.rating || 4.9,
-            reviewCount: 24,
+            rating: s.rating || 5.0,
+            reviewCount: 0,
             tags: s.tags ? s.tags.split(',') : ['verified', 'store'],
             latitude: s.latitude,
             longitude: s.longitude,
-            distance: s.distanceKm ? `${s.distanceKm.toFixed(1)} km` : '350m'
+            distance: s.distanceKm !== undefined && s.distanceKm !== null ? `${s.distanceKm.toFixed(1)} km` : 'Nearby'
           }));
           setLiveStores(formatted);
           setActivePin(formatted[0]);
