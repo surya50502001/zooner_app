@@ -19,7 +19,8 @@ import {
   Building2,
   Mail,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  ShoppingBag
 } from 'lucide-react';
 import {
   getAdminShops,
@@ -58,7 +59,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
   onSwitchToCustomer,
   onSwitchToVendor,
   onOpenExperienceSwitcher,
-  isMultiRole,
+  isMultiRole: _isMultiRole,
 }) => {
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
     try {
@@ -502,8 +503,31 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
         </div>
 
         <div className="flex items-center gap-2.5">
+          {/* Dedicated Mode Switchers */}
+          <button
+            type="button"
+            onClick={onSwitchToCustomer}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-[#007AFF] text-xs font-bold transition-all border border-blue-200 cursor-pointer shadow-2xs active:scale-[0.98]"
+            title="Switch to Customer Shopping Mode"
+          >
+            <ShoppingBag className="w-3.5 h-3.5" />
+            <span>Shopping Mode</span>
+          </button>
+
+          {onSwitchToVendor && (
+            <button
+              type="button"
+              onClick={onSwitchToVendor}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold transition-all border border-emerald-200 cursor-pointer shadow-2xs active:scale-[0.98]"
+              title="Switch to Store Operations"
+            >
+              <Store className="w-3.5 h-3.5" />
+              <span>Store Mode</span>
+            </button>
+          )}
+
           {/* Workspace Switcher for Multi-Role */}
-          {isMultiRole && onOpenExperienceSwitcher && (
+          {onOpenExperienceSwitcher && (
             <ExperienceHeaderPill currentExperience="admin" onClick={onOpenExperienceSwitcher} />
           )}
 
@@ -617,6 +641,33 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
             <FileText className="w-4 h-4" />
             <span>Audit Trail</span>
           </button>
+
+          {/* Quick Experience Switching */}
+          <div className="pt-5 mt-4 border-t border-gray-200/80 space-y-1">
+            <div className="text-[11px] font-mono uppercase tracking-widest text-gray-400 px-3 pb-2 font-semibold">
+              Switch Mode
+            </div>
+
+            <button
+              type="button"
+              onClick={onSwitchToCustomer}
+              className="w-full flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-medium text-gray-700 hover:bg-blue-50 hover:text-[#007AFF] transition cursor-pointer"
+            >
+              <ShoppingBag className="h-4 w-4 text-[#007AFF]" />
+              <span>Shopping Mode</span>
+            </button>
+
+            {onSwitchToVendor && (
+              <button
+                type="button"
+                onClick={onSwitchToVendor}
+                className="w-full flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-medium text-emerald-700 hover:bg-emerald-50 transition cursor-pointer"
+              >
+                <Store className="h-4 w-4 text-emerald-600" />
+                <span>Store Mode</span>
+              </button>
+            )}
+          </div>
         </aside>
 
         {/* Content Body */}

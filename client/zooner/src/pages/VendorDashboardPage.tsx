@@ -29,6 +29,7 @@ import {
   LogIn,
   ArrowRight,
   ShieldCheck,
+  Shield,
   ShoppingBag,
   ChevronDown
 } from 'lucide-react';
@@ -61,6 +62,7 @@ import {
   type ValidateHoldQrResponseDto
 } from '../services/api';
 import { detectUserLocation, forwardGeocode } from '../services/locationService';
+import { ExperienceHeaderPill } from '../components/ExperienceSwitcher';
 import type { StoreInventoryItem, ProductSearchResult, CategoryDto, LiveRequestSummary, ProductVariantDto } from '../types';
 
 interface VendorDashboardPageProps {
@@ -85,7 +87,7 @@ interface VendorRequestItem extends LiveRequestSummary {
 export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
   onSwitchToCustomer,
   onNavigateToVendorLanding: _onNavigateToVendorLanding,
-  onNavigateToAdmin: _onNavigateToAdmin,
+  onNavigateToAdmin,
   onOpenExperienceSwitcher,
   isMultiRole: _isMultiRole,
 }) => {
@@ -1435,6 +1437,11 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
 
           {/* Header Actions: Switch to Shopping & Live Toggle */}
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* ── MODE SWITCHER PILL ── */}
+            {onOpenExperienceSwitcher && (
+              <ExperienceHeaderPill currentExperience="vendor" onClick={onOpenExperienceSwitcher} storeName={storeName} />
+            )}
+
             {/* ── ONE-TAP SWITCH TO SHOPPING BUTTON ── */}
             <button
               type="button"
@@ -1443,8 +1450,21 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
               title="Switch to Shopping Mode"
             >
               <ShoppingBag className="h-3.5 w-3.5 text-[#007AFF]" />
-              <span>Switch to Shopping</span>
+              <span>Shopping Mode</span>
             </button>
+
+            {/* ── ADMIN PORTAL BUTTON (If Admin) ── */}
+            {(isAdminUser || onNavigateToAdmin) && (
+              <button
+                type="button"
+                onClick={onNavigateToAdmin}
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 active:scale-[0.97] text-xs font-bold transition-all cursor-pointer border border-purple-200 shadow-2xs"
+                title="Admin Control Panel"
+              >
+                <Shield className="h-3.5 w-3.5 text-purple-600" />
+                <span>Admin Portal</span>
+              </button>
+            )}
 
             {/* Live Status Toggle */}
             <button
@@ -1575,6 +1595,33 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
             <Settings className="h-4 w-4" />
             <span>Profile & Location</span>
           </button>
+
+          {/* Quick Experience Switching */}
+          <div className="pt-5 mt-4 border-t border-gray-200/80 space-y-1">
+            <div className="text-[11px] font-mono uppercase tracking-widest text-gray-400 px-3 pb-2 font-semibold">
+              Switch Mode
+            </div>
+
+            <button
+              type="button"
+              onClick={onSwitchToCustomer}
+              className="w-full flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-medium text-gray-700 hover:bg-blue-50 hover:text-[#007AFF] transition cursor-pointer"
+            >
+              <ShoppingBag className="h-4 w-4 text-[#007AFF]" />
+              <span>Shopping Mode</span>
+            </button>
+
+            {(isAdminUser || onNavigateToAdmin) && (
+              <button
+                type="button"
+                onClick={onNavigateToAdmin}
+                className="w-full flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-medium text-purple-700 hover:bg-purple-50 transition cursor-pointer"
+              >
+                <Shield className="h-4 w-4 text-purple-600" />
+                <span>Admin Portal</span>
+              </button>
+            )}
+          </div>
         </aside>
 
         {/* ── RIGHT MAIN PANEL ── */}

@@ -274,6 +274,7 @@ export function AppContent() {
               onOpenLocationModal={() => setIsLocationModalOpen(true)}
               onLaunchCustomerApp={() => navigateTo('customer')}
               onNavigateToVendor={handleSwitchToVendor}
+              onNavigateToAdmin={() => navigateTo('admin')}
             />
           </main>
 

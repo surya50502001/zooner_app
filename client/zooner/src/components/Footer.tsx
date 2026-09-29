@@ -4,9 +4,10 @@ import { MapPin, ArrowUp } from 'lucide-react';
 interface FooterProps {
   onOpenRetailerModal: () => void;
   onOpenLocationModal: () => void;
+  onNavigateToAdmin?: () => void;
 }
 
-export const Footer: React.FC<FooterProps> = ({ onOpenRetailerModal, onOpenLocationModal }) => {
+export const Footer: React.FC<FooterProps> = ({ onOpenRetailerModal, onOpenLocationModal, onNavigateToAdmin }) => {
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -50,6 +51,16 @@ export const Footer: React.FC<FooterProps> = ({ onOpenRetailerModal, onOpenLocat
               <li>
                 <a href="#stores" className="hover:text-white transition-colors">Stores</a>
               </li>
+              {onNavigateToAdmin && (
+                <li>
+                  <button
+                    onClick={onNavigateToAdmin}
+                    className="hover:text-white transition-colors cursor-pointer text-left text-slate-400 hover:text-purple-400"
+                  >
+                    Admin Portal
+                  </button>
+                </li>
+              )}
             </ul>
           </div>
 

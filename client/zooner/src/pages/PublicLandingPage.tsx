@@ -12,9 +12,21 @@ import { WaitlistSection } from '../components/WaitlistSection';
 import { WaitlistPopupModal } from '../components/WaitlistPopupModal';
 import type { LocationArea } from '../types';
 
-interface PublicLandingPageProps { currentLocation: LocationArea; onOpenLocationModal: () => void; onLaunchCustomerApp: () => void; onNavigateToVendor: () => void; }
+interface PublicLandingPageProps {
+  currentLocation: LocationArea;
+  onOpenLocationModal: () => void;
+  onLaunchCustomerApp: () => void;
+  onNavigateToVendor: () => void;
+  onNavigateToAdmin?: () => void;
+}
 
-export const PublicLandingPage: React.FC<PublicLandingPageProps> = ({ currentLocation, onOpenLocationModal, onLaunchCustomerApp, onNavigateToVendor }) => {
+export const PublicLandingPage: React.FC<PublicLandingPageProps> = ({
+  currentLocation,
+  onOpenLocationModal,
+  onLaunchCustomerApp,
+  onNavigateToVendor,
+  onNavigateToAdmin,
+}) => {
   const [seconds, setSeconds] = useState(1787);
   const pointerX = useMotionValue(0); const pointerY = useMotionValue(0);
   const rotateX = useSpring(useTransform(pointerY, [-300, 300], [4, -4]), { stiffness: 180, damping: 24 });
@@ -49,7 +61,7 @@ export const PublicLandingPage: React.FC<PublicLandingPageProps> = ({ currentLoc
     <RetailerCallout onOpenRetailerModal={onNavigateToVendor} onNavigateToVendor={onNavigateToVendor} />
     <WaitlistSection currentLocation={currentLocation} />
     <FinalCTA onOpenRetailerModal={onNavigateToVendor} onSearchClick={onLaunchCustomerApp} />
-    <Footer onOpenRetailerModal={onNavigateToVendor} onOpenLocationModal={onOpenLocationModal} />
+    <Footer onOpenRetailerModal={onNavigateToVendor} onOpenLocationModal={onOpenLocationModal} onNavigateToAdmin={onNavigateToAdmin} />
     <WaitlistPopupModal currentLocation={currentLocation} />
   </div>;
 };
