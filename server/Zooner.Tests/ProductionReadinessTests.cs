@@ -798,4 +798,77 @@ public class ProductionReadinessTests
         var totalEntries = await context.WaitlistEntries.CountAsync(w => w.Email == "duplicate@example.com");
         Assert.Equal(1, totalEntries);
     }
+
+    [Fact]
+    public async Task Registered_Shop_Appears_In_Admin_Pending_Verification_Queue()
+    {
+        using var context = TestDbContextFactory.Create(nameof(Registered_Shop_Appears_In_Admin_Pending_Verification_Queue));
+        var config = new ConfigurationBuilder().Build();
+        var shopService = new ShopService(context, config, NullLogger<ShopService>.Instance);
+        var adminService = new AdminService(context);
+
+        var owner = new User
+        {
+            Id = Guid.NewGuid(),
+            FullName = "Surya Vendor",
+            Email = "surya@example.com",
+            PasswordHash = "hashed",
+            Role = UserRoles.Customer
+        };
+        context.Users.Add(owner);
+        await context.SaveChangesAsync();
+
+        // 1. Register store
+        var createRes = await shopService.CreateShopAsync(owner.Id, new CreateShopRequest
+        {
+            Name = "Itachi Retail Hub",
+            Description = "Anime & Electronics",
+            Phone = "+91 9876543210",
+            Address = "12 DB Road, RS Puram, Coimbatore",
+            Latitude = 11.0168,
+            Longitude = 76.9558
+        });
+
+        Assert.True(createRes.Success);
+        Assert.NotNull(createRes.Data);
+        Assert.Equal(ShopVerificationStatus.Pending.ToString(), createRes.Data.VerificationStatus);
+
+        // 2. Admin queries pending shops queue
+        var pendingShopsRes = await adminService.GetShopsForVerificationAsync();
+        Assert.True(pendingShopsRes.Success);
+        Assert.NotNull(pendingShopsRes.Data);
+        Assert.Single(pendingShopsRes.Data);
+
+        var pendingShop = pendingShopsRes.Data.First();
+        Assert.Equal("Itachi Retail Hub", pendingShop.Name);
+        Assert.Equal(ShopVerificationStatus.Pending.ToString(), pendingShop.VerificationStatus);
+        Assert.Equal(owner.Id, ((VendorShopDto)pendingShop).OwnerId);
+        Assert.Equal("Surya Vendor", ((VendorShopDto)pendingShop).OwnerName);
+
+        // 3. Admin queries all shops with pending filter
+        var allShopsRes = await adminService.GetAllShopsAsync(ShopVerificationStatus.Pending);
+        Assert.True(allShopsRes.Success);
+        Assert.NotNull(allShopsRes.Data);
+        Assert.Single(allShopsRes.Data);
+
+        // 4. Admin verifies the shop
+        var admin = new User { Id = Guid.NewGuid(), FullName = "Admin", Email = "admin@zooner.app", Role = UserRoles.Admin };
+        context.Users.Add(admin);
+        await context.SaveChangesAsync();
+
+        var verifyRes = await adminService.VerifyShopAsync(admin.Id, pendingShop.Id, new VerifyShopRequest
+        {
+            Status = ShopVerificationStatus.Approved
+        });
+        Assert.True(verifyRes.Success);
+
+        // 5. Verify shop no longer appears in pending queue and is approved in database
+        var emptyPendingRes = await adminService.GetShopsForVerificationAsync();
+        Assert.Empty(emptyPendingRes.Data!);
+
+        var updatedShop = await context.Shops.FindAsync(pendingShop.Id);
+        Assert.NotNull(updatedShop);
+        Assert.Equal(ShopVerificationStatus.Approved, updatedShop.VerificationStatus);
+        Assert.True(updatedShop.IsActive);
+    }
 }
