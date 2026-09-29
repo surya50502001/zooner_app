@@ -42,7 +42,8 @@ public static class DbSeeder
                 defaultAdminPassword = configuredAdminPassword;
             }
 
-            if (!await context.Users.AnyAsync(u => u.Email == defaultAdminEmail))
+            var existingAdmin = await context.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == defaultAdminEmail.ToLower());
+            if (existingAdmin == null)
             {
                 var admin = new User
                 {
@@ -57,6 +58,15 @@ public static class DbSeeder
                 context.Users.Add(admin);
                 await context.SaveChangesAsync();
                 logger.LogInformation("Seeded default administrator account: {Email}", defaultAdminEmail);
+            }
+            else
+            {
+                existingAdmin.FullName = "Zooner Administrator";
+                existingAdmin.Role = UserRoles.Admin;
+                existingAdmin.IsActive = true;
+                existingAdmin.PasswordHash = BCrypt.Net.BCrypt.HashPassword(defaultAdminPassword);
+                await context.SaveChangesAsync();
+                logger.LogInformation("Synchronized default administrator credentials for: {Email}", defaultAdminEmail);
             }
 
             // 2b. Explicit deployment bootstrap: promote configured bootstrap admin accounts in database
