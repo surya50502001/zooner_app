@@ -1115,7 +1115,10 @@ export async function getAdminShops(status?: string, search?: string): Promise<P
     if (status && status !== 'All') params.append('status', status);
     if (search && search.trim()) params.append('search', search.trim());
     const query = params.toString() ? `?${params.toString()}` : '';
-    const res = await authenticatedFetch(`${API_BASE_URL}/Admin/shops${query}`);
+    let res = await authenticatedFetch(`${API_BASE_URL}/Admin/shops${query}`);
+    if (res.status === 404) {
+      res = await authenticatedFetch(`${API_BASE_URL}/Admin/shops/pending`);
+    }
     if (res.ok) {
       const json: ApiResponse<PendingShopDto[]> = await res.json();
       return json.data || [];
@@ -1129,7 +1132,10 @@ export async function getAdminShops(status?: string, search?: string): Promise<P
 
 export async function getPendingShops(): Promise<PendingShopDto[]> {
   try {
-    const res = await authenticatedFetch(`${API_BASE_URL}/Admin/shops/pending`);
+    let res = await authenticatedFetch(`${API_BASE_URL}/Admin/shops/pending`);
+    if (res.status === 404) {
+      res = await authenticatedFetch(`${API_BASE_URL}/Admin/shops?status=Pending`);
+    }
     if (res.ok) {
       const json: ApiResponse<PendingShopDto[]> = await res.json();
       return json.data || [];
