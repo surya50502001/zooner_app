@@ -1453,8 +1453,8 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
               <span>Shopping Mode</span>
             </button>
 
-            {/* ── ADMIN PORTAL BUTTON (If Admin) ── */}
-            {(isAdminUser || onNavigateToAdmin) && (
+            {/* ── ADMIN PORTAL BUTTON (Only for verified Super Admins) ── */}
+            {isAdminUser && onNavigateToAdmin && (
               <button
                 type="button"
                 onClick={onNavigateToAdmin}
@@ -1611,7 +1611,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
               <span>Shopping Mode</span>
             </button>
 
-            {(isAdminUser || onNavigateToAdmin) && (
+            {isAdminUser && onNavigateToAdmin && (
               <button
                 type="button"
                 onClick={onNavigateToAdmin}
