@@ -559,7 +559,12 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
         }
       }
     } catch (err: any) {
-      setSetupError(err?.message || 'Error creating store.');
+      const msg = err?.message || 'Error creating store.';
+      if (msg.includes('401') || msg.toLowerCase().includes('unauthorized')) {
+        setSetupError('Your login session has expired. Please sign in again to launch your store.');
+      } else {
+        setSetupError(msg);
+      }
     } finally {
       setIsCreatingStore(false);
     }
@@ -1276,9 +1281,20 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
             </div>
 
             {setupError && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 shrink-0 text-rose-500" />
-                <span>{setupError}</span>
+              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-rose-500" />
+                  <span>{setupError}</span>
+                </div>
+                {(setupError.includes('session') || setupError.includes('expired') || setupError.includes('401')) && (
+                  <button
+                    type="button"
+                    onClick={handleMerchantLogout}
+                    className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold text-[11px] shrink-0 cursor-pointer"
+                  >
+                    Sign In Again
+                  </button>
+                )}
               </div>
             )}
 

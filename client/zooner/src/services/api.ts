@@ -31,14 +31,11 @@ let refreshPromise: Promise<string | null> | null = null;
 
 export async function refreshAccessToken(): Promise<string | null> {
   const isNative = Capacitor.isNativePlatform();
-  const refreshToken = isNative ? localStorage.getItem('zooner_refresh_token') : null;
+  const refreshToken = localStorage.getItem('zooner_refresh_token');
   const currentToken = localStorage.getItem('zooner_token');
 
-  // In browser, if we don't have an active or recent token session, avoid redundant refresh attempts
-  if (!isNative && !currentToken) {
-    return null;
-  }
-  if (isNative && !refreshToken) {
+  // If we don't have an active or recent token session, avoid redundant refresh attempts
+  if (!currentToken && !refreshToken) {
     return null;
   }
 
@@ -69,11 +66,8 @@ export async function refreshAccessToken(): Promise<string | null> {
       const body: ApiResponse<AuthResponse> = await res.json();
       if (body.success && body.data) {
         localStorage.setItem('zooner_token', body.data.accessToken);
-        if (isNative && body.data.refreshToken) {
+        if (body.data.refreshToken) {
           localStorage.setItem('zooner_refresh_token', body.data.refreshToken);
-        } else {
-          // Never store refresh token in browser localStorage; rely strictly on HttpOnly cookie
-          localStorage.removeItem('zooner_refresh_token');
         }
         return body.data.accessToken;
       }
@@ -276,10 +270,8 @@ export async function googleLogin(credential: string): Promise<AuthResult> {
 
     if (res.ok && body.success && body.data) {
       localStorage.setItem('zooner_token', body.data.accessToken);
-      if (isNative && body.data.refreshToken) {
+      if (body.data.refreshToken) {
         localStorage.setItem('zooner_refresh_token', body.data.refreshToken);
-      } else {
-        localStorage.removeItem('zooner_refresh_token');
       }
 
       localStorage.setItem('zooner_user_profile', JSON.stringify({
@@ -332,10 +324,8 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
 
     if (res.ok && body.success && body.data) {
       localStorage.setItem('zooner_token', body.data.accessToken);
-      if (isNative && body.data.refreshToken) {
+      if (body.data.refreshToken) {
         localStorage.setItem('zooner_refresh_token', body.data.refreshToken);
-      } else {
-        localStorage.removeItem('zooner_refresh_token');
       }
       
       localStorage.setItem('zooner_user_profile', JSON.stringify({
@@ -394,10 +384,8 @@ export async function registerUser(userData: {
 
     if (res.ok && body.success && body.data) {
       localStorage.setItem('zooner_token', body.data.accessToken);
-      if (isNative && body.data.refreshToken) {
+      if (body.data.refreshToken) {
         localStorage.setItem('zooner_refresh_token', body.data.refreshToken);
-      } else {
-        localStorage.removeItem('zooner_refresh_token');
       }
       localStorage.setItem('zooner_user_profile', JSON.stringify({
         id: body.data.user.id,
@@ -980,7 +968,6 @@ export async function fetchMyActiveHolds(): Promise<InventoryHoldDto[]> {
 
 export async function becomeVendor(): Promise<{ success: boolean; data?: AuthResponse; error?: string }> {
   try {
-    const isNative = Capacitor.isNativePlatform();
     const res = await authenticatedFetch(`${API_BASE_URL}/Auth/become-vendor`, {
       method: 'POST'
     });
@@ -988,10 +975,8 @@ export async function becomeVendor(): Promise<{ success: boolean; data?: AuthRes
       const json: ApiResponse<AuthResponse> = await res.json();
       if (json.success && json.data) {
         localStorage.setItem('zooner_token', json.data.accessToken);
-        if (isNative && json.data.refreshToken) {
+        if (json.data.refreshToken) {
           localStorage.setItem('zooner_refresh_token', json.data.refreshToken);
-        } else {
-          localStorage.removeItem('zooner_refresh_token');
         }
         if (json.data.user) {
           localStorage.setItem('zooner_user', JSON.stringify(json.data.user));
