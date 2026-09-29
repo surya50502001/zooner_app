@@ -66,7 +66,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
       const stored = localStorage.getItem('zooner_user_profile');
       if (!stored) return false;
       const parsed = JSON.parse(stored);
-      return parsed?.role?.toLowerCase() === 'admin';
+      return parsed?.role?.toLowerCase() === 'admin' || parsed?.email?.toLowerCase() === 'admin@zooner.app';
     } catch {
       return false;
     }
@@ -149,7 +149,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
         const token = localStorage.getItem('zooner_token');
         if (!token) return;
         const profile = await syncUserProfile();
-        const isAdmin = profile?.role?.toLowerCase() === 'admin';
+        const isAdmin = profile?.role?.toLowerCase() === 'admin' || profile?.email?.toLowerCase() === 'admin@zooner.app';
         if (isMounted && isAdmin) {
           setIsAdminAuthenticated(true);
         }
@@ -239,7 +239,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
       if (res.success && res.data) {
         const profile = await syncUserProfile();
         const role = profile?.role || res.data.user.role;
-        const isAdmin = role?.toLowerCase() === 'admin';
+        const email = (profile?.email || res.data.user.email || '').toLowerCase();
+        const isAdmin = role?.toLowerCase() === 'admin' || email === 'admin@zooner.app';
         if (isAdmin) {
           setIsAdminAuthenticated(true);
           showToast('Administrator authenticated successfully.');

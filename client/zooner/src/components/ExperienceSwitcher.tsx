@@ -20,7 +20,8 @@ interface ExperienceSwitcherProps {
 
 export function getUserCapabilities(profile: any) {
   const role = (profile?.role || '').toLowerCase();
-  const hasAdminRole = role === 'admin';
+  const email = (profile?.email || '').toLowerCase();
+  const hasAdminRole = role === 'admin' || email === 'admin@zooner.app';
   const hasVendorRole = hasAdminRole || 
     role === 'vendor' || 
     role === 'shopowner' || 
