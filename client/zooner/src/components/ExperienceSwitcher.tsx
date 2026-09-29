@@ -48,7 +48,7 @@ export const ExperienceSwitcherModal: React.FC<ExperienceSwitcherProps> = ({
   onClose,
   currentExperience,
   onSelectExperience,
-  onOpenRetailerModal,
+  onOpenRetailerModal: _onOpenRetailerModal,
   userProfile
 }) => {
   if (!isOpen) return null;
@@ -176,9 +176,7 @@ export const ExperienceSwitcherModal: React.FC<ExperienceSwitcherProps> = ({
               type="button"
               onClick={() => {
                 onClose();
-                if (onOpenRetailerModal) {
-                  onOpenRetailerModal();
-                }
+                onSelectExperience('vendor');
               }}
               className="w-full p-3.5 rounded-2xl border border-dashed border-gray-300 hover:border-[#007AFF] hover:bg-blue-50/30 text-left transition-all flex items-center justify-between gap-3 cursor-pointer group"
             >

@@ -6,7 +6,6 @@ import { CustomerAppPage } from './pages/CustomerAppPage';
 import { VendorDashboardPage } from './pages/VendorDashboardPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { LocationModal } from './components/LocationModal';
-import { RetailerModal } from './components/RetailerModal';
 import { SignInModal } from './components/SignInModal';
 import { ExperienceSwitcherModal, getUserCapabilities } from './components/ExperienceSwitcher';
 import { ModeTransitionOverlay } from './components/ModeTransitionOverlay';
@@ -59,7 +58,7 @@ export function AppContent() {
     if (hash.includes('admin') || path.includes('/admin')) {
       return 'admin';
     }
-    if (hash.includes('vendor') || hash.includes('merchant') || path.includes('/vendor') || path.includes('/merchant')) {
+    if (hash.includes('vendor') || hash.includes('merchant') || hash.includes('register-store') || path.includes('/vendor') || path.includes('/merchant')) {
       return 'vendor';
     }
     if (hash.includes('app') || hash.includes('customer') || path.includes('/app')) {
@@ -78,7 +77,6 @@ export function AppContent() {
 
   const [currentLocation, setCurrentLocation] = useState<LocationArea>(DEFAULT_LOCATION);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
-  const [isRetailerModalOpen, setIsRetailerModalOpen] = useState(false);
   const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
   const [isExperienceSwitcherOpen, setIsExperienceSwitcherOpen] = useState(false);
   const [signInRoleHint, setSignInRoleHint] = useState<'C' | 'V' | 'VC'>('C');
@@ -114,12 +112,10 @@ export function AppContent() {
       const path = window.location.pathname.toLowerCase();
       if (hash.includes('admin') || path.includes('/admin')) {
         setCurrentRoute('admin');
-      } else if (hash.includes('register-store') || hash.includes('registerstore')) {
-        setIsRetailerModalOpen(true);
+      } else if (hash.includes('register-store') || hash.includes('registerstore') || hash.includes('vendor') || hash.includes('merchant') || path.includes('/vendor') || path.includes('/merchant')) {
+        setCurrentRoute('vendor');
       } else if (hash.includes('login') || hash.includes('signin') || hash.includes('register')) {
         setIsSignInModalOpen(true);
-      } else if (hash.includes('vendor') || hash.includes('merchant') || path.includes('/vendor') || path.includes('/merchant')) {
-        setCurrentRoute('vendor');
       } else if (hash.includes('app') || hash.includes('customer') || path.includes('/app')) {
         setCurrentRoute('customer');
       } else {
@@ -177,11 +173,7 @@ export function AppContent() {
   };
 
   const handleSwitchToVendor = () => {
-    if (caps.canAccessVendor) {
-      navigateTo('vendor');
-    } else {
-      setIsRetailerModalOpen(true);
-    }
+    navigateTo('vendor');
   };
 
   return (
@@ -207,7 +199,7 @@ export function AppContent() {
         </div>
       )}
 
-      {/* ── EXPERIENCE 2: STORE MODE ── */}
+      {/* ── EXPERIENCE 2: STORE MODE (Individual Screen) ── */}
       {currentRoute === 'vendor' && (
         <div className="min-h-screen bg-[#F8F9FA] text-gray-900 flex flex-col selection:bg-[#007AFF] selection:text-white">
           <VendorDashboardPage
@@ -219,22 +211,10 @@ export function AppContent() {
           <SignInModal
             isOpen={isSignInModalOpen}
             onClose={() => setIsSignInModalOpen(false)}
-            onSwitchToRetailer={() => setIsRetailerModalOpen(true)}
+            onSwitchToRetailer={() => navigateTo('vendor')}
             initialRole={signInRoleHint}
             onSuccessLogin={() => {
               navigateTo('customer');
-            }}
-          />
-          <RetailerModal
-            isOpen={isRetailerModalOpen}
-            onClose={() => setIsRetailerModalOpen(false)}
-            onSuccess={() => {
-              navigateTo('vendor');
-            }}
-            onOpenSignIn={() => {
-              setSignInRoleHint('V');
-              setIsRetailerModalOpen(false);
-              setIsSignInModalOpen(true);
             }}
           />
         </div>
@@ -242,7 +222,7 @@ export function AppContent() {
 
       {/* ── EXPERIENCE 1B: SHOPPING MODE (Customer App / Discovery) ── */}
       {(Capacitor.isNativePlatform() || currentRoute === 'customer') && currentRoute !== 'admin' && currentRoute !== 'vendor' && currentRoute !== 'marketing' && (
-        <div className="min-h-screen bg-[#F0F2F5] text-gray-950 flex flex-col items-center justify-start selection:bg-[#7C5CFF] selection:text-white sm:py-0">
+        <div className="min-h-screen bg-[#F0F2F5] text-gray-950 flex flex-col items-center justify-start selection:bg-[#007AFF] selection:text-white sm:py-0">
           <div className="w-full max-w-[440px] min-h-screen bg-white sm:shadow-2xl sm:border-x sm:border-gray-100 flex flex-col relative">
             <CustomerAppPage
               currentLocation={currentLocation}
@@ -254,7 +234,7 @@ export function AppContent() {
                 setSignInRoleHint(hint || 'C');
                 setIsSignInModalOpen(true);
               }}
-              onOpenRetailerModal={() => setIsRetailerModalOpen(true)}
+              onOpenRetailerModal={() => navigateTo('vendor')}
               onOpenExperienceSwitcher={() => setIsExperienceSwitcherOpen(true)}
               isMultiRole={true}
             />
@@ -268,21 +248,10 @@ export function AppContent() {
           <SignInModal
             isOpen={isSignInModalOpen}
             onClose={() => setIsSignInModalOpen(false)}
-            onSwitchToRetailer={() => setIsRetailerModalOpen(true)}
+            onSwitchToRetailer={() => navigateTo('vendor')}
             initialRole={signInRoleHint}
             onSuccessLogin={() => {
               navigateTo('customer');
-            }}
-          />
-          <RetailerModal
-            isOpen={isRetailerModalOpen}
-            onClose={() => setIsRetailerModalOpen(false)}
-            onSuccess={() => {
-              navigateTo('vendor');
-            }}
-            onOpenSignIn={() => {
-              setIsRetailerModalOpen(false);
-              setIsSignInModalOpen(true);
             }}
           />
         </div>
@@ -318,23 +287,10 @@ export function AppContent() {
           <SignInModal
             isOpen={isSignInModalOpen}
             onClose={() => setIsSignInModalOpen(false)}
-            onSwitchToRetailer={() => setIsRetailerModalOpen(true)}
+            onSwitchToRetailer={() => navigateTo('vendor')}
             initialRole={signInRoleHint}
             onSuccessLogin={() => {
               navigateTo('customer');
-            }}
-          />
-
-          <RetailerModal
-            isOpen={isRetailerModalOpen}
-            onClose={() => setIsRetailerModalOpen(false)}
-            onSuccess={() => {
-              navigateTo('vendor');
-            }}
-            onOpenSignIn={() => {
-              setSignInRoleHint('V');
-              setIsRetailerModalOpen(false);
-              setIsSignInModalOpen(true);
             }}
           />
         </div>
@@ -346,7 +302,7 @@ export function AppContent() {
         onClose={() => setIsExperienceSwitcherOpen(false)}
         currentExperience={currentRoute}
         onSelectExperience={(exp) => navigateTo(exp)}
-        onOpenRetailerModal={() => setIsRetailerModalOpen(true)}
+        onOpenRetailerModal={() => navigateTo('vendor')}
         userProfile={userProfile}
       />
     </>

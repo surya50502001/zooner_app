@@ -152,7 +152,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
   onNavigateToVendor,
   onNavigateToAdmin,
   onOpenSignIn,
-  onOpenRetailerModal,
+  onOpenRetailerModal: _onOpenRetailerModal,
   onOpenExperienceSwitcher,
   isMultiRole,
 }) => {
@@ -1752,13 +1752,12 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                     <button
                       type="button"
                       onClick={() => {
-                        if (onOpenRetailerModal) onOpenRetailerModal();
-                        else if (onNavigateToVendor) onNavigateToVendor();
+                        if (onNavigateToVendor) onNavigateToVendor();
                       }}
                       className="mt-3 w-full py-2.5 px-4 rounded-xl bg-[#007AFF] hover:bg-[#0071E3] active:scale-[0.98] text-white text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer shadow-xs"
                     >
                       <Store className="w-4 h-4" />
-                      <span>Create Store</span>
+                      <span>Switch to Store</span>
                     </button>
                   </div>
                 </div>
