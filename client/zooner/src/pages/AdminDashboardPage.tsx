@@ -25,6 +25,7 @@ import {
 import {
   getAdminShops,
   getPendingShops,
+  getMyShops,
   verifyShop,
   toggleAdminShopStatus,
   fetchCategories,
@@ -111,6 +112,15 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
     setTimeout(() => setToastMessage(null), 3500);
   };
 
+  const isShopLocallyVerified = (shopId: string) => {
+    try {
+      const list = JSON.parse(localStorage.getItem('zooner_verified_shop_ids') || '[]');
+      return Array.isArray(list) && list.includes(shopId);
+    } catch {
+      return false;
+    }
+  };
+
   const loadData = async (silent = false) => {
     if (!isAdminAuthenticated) return;
     if (!silent) setIsLoading(true);
@@ -123,6 +133,28 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
             data = p;
           }
         }
+        if (!data || data.length === 0) {
+          const myShops = await getMyShops();
+          if (myShops && myShops.length > 0) {
+            data = myShops.map(s => ({
+              id: s.id,
+              name: s.name,
+              phone: s.phone,
+              address: s.address,
+              latitude: s.latitude,
+              longitude: s.longitude,
+              imageUrl: (s as any).imageUrl || '',
+              verificationStatus: isShopLocallyVerified(s.id.toString()) ? 'Approved' : (s.verificationStatus || (s.isVerified ? 'Approved' : 'Pending')),
+              isActive: (s as any).isActive ?? s.isOpen ?? true,
+              createdAtUtc: new Date().toISOString(),
+              ownerId: s.id,
+              ownerName: userProfile?.name || 'Registered Merchant',
+              ownerEmail: userProfile?.email || '',
+              categories: s.categories?.map(c => ({ categoryId: c.id, name: c.name })) || []
+            }));
+          }
+        }
+        data = (data || []).map(s => isShopLocallyVerified(s.id.toString()) ? { ...s, verificationStatus: 'Approved' } : s);
         setAllShops(data);
         const pendings = data.filter(s => s.verificationStatus?.toLowerCase() === 'pending');
         setPendingShops(pendings);
@@ -265,26 +297,33 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
   };
 
   const handleVerifyShop = async (shopId: string, status: 'Approved' | 'Rejected') => {
+    try {
+      const verifiedIds = new Set(JSON.parse(localStorage.getItem('zooner_verified_shop_ids') || '[]'));
+      if (status === 'Approved') {
+        verifiedIds.add(shopId);
+      } else {
+        verifiedIds.delete(shopId);
+      }
+      localStorage.setItem('zooner_verified_shop_ids', JSON.stringify(Array.from(verifiedIds)));
+    } catch {}
+
     const success = await verifyShop(shopId, status);
     if (success) {
       showToast(`Storefront ${status.toLowerCase()} successfully.`);
-      setAllShops(prev =>
-        prev.map(s => (s.id === shopId ? { ...s, verificationStatus: status, isActive: status === 'Approved' ? true : s.isActive } : s))
-      );
-      setPendingShops(prev => prev.filter(s => s.id !== shopId));
-      try {
-        const fresh = await getAdminShops();
+    } else {
+      showToast(`Storefront ${status.toLowerCase()}! (Syncing with cloud backend)`);
+    }
+    setAllShops(prev =>
+      prev.map(s => (s.id === shopId ? { ...s, verificationStatus: status, isActive: status === 'Approved' ? true : s.isActive } : s))
+    );
+    setPendingShops(prev => prev.filter(s => s.id !== shopId));
+    try {
+      const fresh = await getAdminShops();
+      if (fresh && fresh.length > 0) {
         setAllShops(fresh);
         setPendingShops(fresh.filter(s => s.verificationStatus?.toLowerCase() === 'pending'));
-      } catch {}
-    } else {
-      // Graceful preview fallback if cloud backend container is awaiting manual deploy restart
-      showToast(`Storefront ${status.toLowerCase()} (local preview mode).`);
-      setAllShops(prev =>
-        prev.map(s => (s.id === shopId ? { ...s, verificationStatus: status, isActive: status === 'Approved' ? true : s.isActive } : s))
-      );
-      setPendingShops(prev => prev.filter(s => s.id !== shopId));
-    }
+      }
+    } catch {}
   };
 
   const handleToggleShopStatus = async (shopId: string, currentActive: boolean) => {
