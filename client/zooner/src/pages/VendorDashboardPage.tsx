@@ -1655,17 +1655,19 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleInstantVerifyShop}
-                  disabled={isVerifyingShop}
-                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs disabled:opacity-60 shrink-0"
-                >
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>{isVerifyingShop ? 'Activating...' : (isAdminUser ? 'Verify Storefront (Admin)' : 'Activate Storefront Now')}</span>
-                </button>
-              </div>
+              {isAdminUser && (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleInstantVerifyShop}
+                    disabled={isVerifyingShop}
+                    className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs disabled:opacity-60 shrink-0"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span>{isVerifyingShop ? 'Verifying...' : 'Verify Storefront (Admin)'}</span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
           

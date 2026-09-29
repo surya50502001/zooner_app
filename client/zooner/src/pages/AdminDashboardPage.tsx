@@ -25,7 +25,6 @@ import {
 import {
   getAdminShops,
   getPendingShops,
-  getMyShops,
   verifyShop,
   toggleAdminShopStatus,
   fetchCategories,
@@ -121,6 +120,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
     }
   };
 
+  const [authWarning, setAuthWarning] = useState<string | null>(null);
+
   const loadData = async (silent = false) => {
     if (!isAdminAuthenticated) return;
     if (!silent) setIsLoading(true);
@@ -134,25 +135,12 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
           }
         }
         if (!data || data.length === 0) {
-          const myShops = await getMyShops();
-          if (myShops && myShops.length > 0) {
-            data = myShops.map(s => ({
-              id: s.id,
-              name: s.name,
-              phone: s.phone,
-              address: s.address,
-              latitude: s.latitude,
-              longitude: s.longitude,
-              imageUrl: (s as any).imageUrl || '',
-              verificationStatus: isShopLocallyVerified(s.id.toString()) ? 'Approved' : (s.verificationStatus || (s.isVerified ? 'Approved' : 'Pending')),
-              isActive: (s as any).isActive ?? s.isOpen ?? true,
-              createdAtUtc: new Date().toISOString(),
-              ownerId: s.id,
-              ownerName: userProfile?.name || 'Registered Merchant',
-              ownerEmail: userProfile?.email || '',
-              categories: s.categories?.map(c => ({ categoryId: c.id, name: c.name })) || []
-            }));
+          const profile = JSON.parse(localStorage.getItem('zooner_user_profile') || '{}');
+          if (profile?.role?.toLowerCase() !== 'admin' && profile?.email?.toLowerCase() === 'admin@zooner.app') {
+            setAuthWarning('Your admin account on the live Render cloud backend requires a container deployment to activate the Super Admin authorization policy. Please go to dashboard.render.com and click "Manual Deploy > Deploy latest commit".');
           }
+        } else {
+          setAuthWarning(null);
         }
         data = (data || []).map(s => isShopLocallyVerified(s.id.toString()) ? { ...s, verificationStatus: 'Approved' } : s);
         setAllShops(data);
@@ -766,6 +754,16 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
               )}
             </div>
           </div>
+
+          {authWarning && (
+            <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 flex items-start gap-3 shadow-xs">
+              <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div className="text-xs leading-relaxed">
+                <p className="font-bold text-amber-950 mb-0.5">Render Cloud Backend Deployment Required</p>
+                <p>{authWarning}</p>
+              </div>
+            </div>
+          )}
 
           {/* TAB 1: STORES & VERIFICATIONS */}
           {activeTab === 'verifications' && (
