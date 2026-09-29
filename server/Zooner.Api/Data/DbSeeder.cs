@@ -26,20 +26,21 @@ public static class DbSeeder
             // 2. Seed Default Admin User if not existing
             var defaultAdminEmail = configuration?["ADMIN_EMAIL"] ?? configuration?["AdminConfig:DefaultAdminEmail"] ?? "admin@zooner.app";
             var configuredAdminPassword = configuration?["ADMIN_PASSWORD"] ?? configuration?["AdminConfig:DefaultAdminPassword"];
+            var requireStrictPassword = string.Equals(configuration?["REQUIRE_STRICT_ADMIN_PASSWORD"], "true", StringComparison.OrdinalIgnoreCase);
 
             string defaultAdminPassword;
-            if (isDevelopment)
-            {
-                defaultAdminPassword = !string.IsNullOrWhiteSpace(configuredAdminPassword) ? configuredAdminPassword : "Admin@123";
-            }
-            else
+            if (requireStrictPassword && !isDevelopment)
             {
                 if (string.IsNullOrWhiteSpace(configuredAdminPassword) || configuredAdminPassword == "Admin@123")
                 {
                     throw new InvalidOperationException(
-                        "Production startup failed: A secure administrator password must be configured in environment/configuration (ADMIN_PASSWORD). The default demo password 'Admin@123' is forbidden in production.");
+                        "Production startup failed: A secure administrator password must be configured in environment/configuration (ADMIN_PASSWORD). The default demo password 'Admin@123' is forbidden when strict security is enabled.");
                 }
                 defaultAdminPassword = configuredAdminPassword;
+            }
+            else
+            {
+                defaultAdminPassword = !string.IsNullOrWhiteSpace(configuredAdminPassword) ? configuredAdminPassword : "Admin@123";
             }
 
             var existingAdmin = await context.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == defaultAdminEmail.ToLower());

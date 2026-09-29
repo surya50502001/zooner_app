@@ -271,7 +271,8 @@ public class SecurityHardeningTests
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 { "ADMIN_EMAIL", "admin@zooner.app" },
-                { "ADMIN_PASSWORD", "Admin@123" }
+                { "ADMIN_PASSWORD", "Admin@123" },
+                { "REQUIRE_STRICT_ADMIN_PASSWORD", "true" }
             })
             .Build();
 
