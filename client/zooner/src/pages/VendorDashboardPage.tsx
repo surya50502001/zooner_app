@@ -11,7 +11,6 @@ import {
   CheckCircle2, 
   X, 
   Trash2, 
-  Compass, 
   Radio, 
   Check, 
   Power,
@@ -25,7 +24,6 @@ import {
   Lock,
   Eye,
   EyeOff,
-  Sparkles,
   Building2,
   LogOut,
   LogIn,
@@ -839,81 +837,78 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
   // ── GATE 1: MERCHANT PORTAL SIGN IN / REGISTRATION ──
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-[#07090E] text-slate-100 flex flex-col font-sans selection:bg-indigo-600 selection:text-white">
+      <div className="min-h-screen bg-[#F8F9FA] text-gray-900 flex flex-col font-sans selection:bg-[#007AFF] selection:text-white">
         {/* Merchant Header */}
-        <header className="border-b border-slate-800/80 bg-slate-950/60 backdrop-blur-xl sticky top-0 z-40 px-6 py-4">
+        <header className="border-b border-gray-200/80 bg-white/95 backdrop-blur-md sticky top-0 z-40 px-6 py-3.5">
           <div className="max-w-6xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <span className="text-2xl font-black tracking-tight text-white font-['Outfit']">
-                zooner<span className="text-[#7257ff]">.</span>
+              <span className="text-2xl font-black tracking-tight text-gray-950 font-['Outfit']">
+                zooner<span className="text-[#007AFF]">.</span>
               </span>
-              <span className="text-[10px] font-mono uppercase tracking-widest bg-indigo-950 text-indigo-300 border border-indigo-800/80 px-2 py-0.5 rounded-full font-bold">
-                Merchant Portal
+              <span className="text-[10px] font-mono uppercase tracking-widest bg-gray-100 text-gray-700 border border-gray-200/80 px-2 py-0.5 rounded-full font-bold">
+                Store Mode
               </span>
             </div>
 
             <button
+              type="button"
               onClick={onSwitchToCustomer}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-bold text-slate-300 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-semibold text-gray-800 transition-colors cursor-pointer border border-gray-200/60"
             >
-              <Compass className="h-3.5 w-3.5 text-emerald-400" />
-              <span>Shopper App</span>
+              <ShoppingBag className="h-3.5 w-3.5 text-[#007AFF]" />
+              <span>Shopping Mode</span>
             </button>
           </div>
         </header>
 
         {/* Hero & Login Container */}
-        <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-12 relative overflow-hidden">
-          {/* Background Glows */}
-          <div className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-[140px]" />
-          <div className="pointer-events-none absolute -bottom-40 right-10 w-[400px] h-[400px] bg-emerald-500/10 rounded-full blur-[120px]" />
-
-          <div className="w-full max-w-4xl relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+        <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-12">
+          <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
             
-            {/* Left Column: B2B Proposition */}
-            <div className="lg:col-span-6 space-y-6 text-left">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-950/80 border border-indigo-800 text-indigo-300 text-xs font-semibold">
-                <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
-                <span>Physical Retail Discovery Network</span>
+            {/* Left Column: Proposition */}
+            <div className="lg:col-span-6 space-y-5 text-left">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-[#007AFF] text-xs font-semibold">
+                <Store className="h-3.5 w-3.5 text-[#007AFF]" />
+                <span>Physical Storefront Network</span>
               </div>
 
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white font-['Outfit'] tracking-tight leading-tight">
-                Turn nearby search into <span className="bg-gradient-to-r from-indigo-400 to-emerald-400 bg-clip-text text-transparent">instant footfall</span>.
+              <h1 className="text-3xl sm:text-4xl font-black text-gray-950 font-['Outfit'] tracking-tight leading-tight">
+                Turn nearby shoppers into <span className="text-[#007AFF]">in-store footfall</span>.
               </h1>
 
-              <p className="text-sm text-slate-400 leading-relaxed max-w-md">
-                Log in to Merchant OS to accept live buyer broadcasts, verify walk-in hold passes, and manage shelf availability in real time.
+              <p className="text-sm text-gray-600 leading-relaxed max-w-md">
+                Manage your local store inventory, respond to real-time customer requests, and verify 30-minute walk-in hold passes.
               </p>
 
               {/* Value Highlights */}
-              <div className="space-y-3 pt-2">
-                <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-900/60 border border-slate-800/80">
-                  <div className="h-8 w-8 rounded-xl bg-indigo-950 flex items-center justify-center text-indigo-400 shrink-0">
+              <div className="space-y-2.5 pt-2">
+                <div className="flex items-center gap-3 p-3 rounded-2xl bg-white border border-gray-200/80 shadow-2xs">
+                  <div className="h-8 w-8 rounded-xl bg-blue-50 flex items-center justify-center text-[#007AFF] shrink-0 border border-blue-100">
                     <Radio className="h-4 w-4" />
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-white">Live Demand Radar</h4>
-                    <p className="text-[11px] text-slate-400">Receive alerts when shoppers search for products within 5 km.</p>
+                    <h4 className="text-xs font-bold text-gray-950">Live Buyer Requests</h4>
+                    <p className="text-[11px] text-gray-500">Receive alerts when shoppers search for products within your area.</p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-900/60 border border-slate-800/80">
-                  <div className="h-8 w-8 rounded-xl bg-emerald-950 flex items-center justify-center text-emerald-400 shrink-0">
+                <div className="flex items-center gap-3 p-3 rounded-2xl bg-white border border-gray-200/80 shadow-2xs">
+                  <div className="h-8 w-8 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0 border border-emerald-100">
                     <Clock className="h-4 w-4" />
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-white">30-Minute Walk-In Holds</h4>
-                    <p className="text-[11px] text-slate-400">Secure buyers with QR hold passes before they leave home.</p>
+                    <h4 className="text-xs font-bold text-gray-950">30-Minute Walk-In Holds</h4>
+                    <p className="text-[11px] text-gray-500">Secure buyers with QR hold passes before they leave home.</p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-900/60 border border-slate-800/80">
-                  <div className="h-8 w-8 rounded-xl bg-amber-950 flex items-center justify-center text-amber-400 shrink-0">
+                <div className="flex items-center gap-3 p-3 rounded-2xl bg-white border border-gray-200/80 shadow-2xs">
+                  <div className="h-8 w-8 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 shrink-0 border border-amber-100">
                     <ShieldCheck className="h-4 w-4" />
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-white">0% Walk-In Commission</h4>
-                    <p className="text-[11px] text-slate-400">100% of counter sales stay with your storefront.</p>
+                    <h4 className="text-xs font-bold text-gray-950">Direct Counter Sales</h4>
+                    <p className="text-[11px] text-gray-500">100% of walk-in sales stay directly with your storefront.</p>
                   </div>
                 </div>
               </div>
@@ -921,29 +916,31 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
 
             {/* Right Column: Portal Auth Card */}
             <div className="lg:col-span-6">
-              <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-2xl">
+              <div className="bg-white border border-gray-200/80 rounded-3xl p-6 sm:p-8 shadow-xl">
                 
                 {/* Tabs */}
-                <div className="flex rounded-2xl bg-slate-950 p-1 border border-slate-800 mb-6">
+                <div className="flex rounded-2xl bg-gray-100 p-1 border border-gray-200/60 mb-6">
                   <button
+                    type="button"
                     onClick={() => { setAuthTab('signin'); setLoginError(''); setRegError(''); }}
-                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                    className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                       authTab === 'signin'
-                        ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                        : 'text-slate-400 hover:text-white'
+                        ? 'bg-white text-gray-950 shadow-xs'
+                        : 'text-gray-500 hover:text-gray-900'
                     }`}
                   >
-                    Merchant Login
+                    Sign In
                   </button>
                   <button
+                    type="button"
                     onClick={() => { setAuthTab('register'); setLoginError(''); setRegError(''); }}
-                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                    className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                       authTab === 'register'
-                        ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                        : 'text-slate-400 hover:text-white'
+                        ? 'bg-white text-gray-950 shadow-xs'
+                        : 'text-gray-500 hover:text-gray-900'
                     }`}
                   >
-                    Register Storefront
+                    Register Store
                   </button>
                 </div>
 
@@ -952,9 +949,9 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                   <div className="mb-5 space-y-3">
                     <div ref={googleBtnRef} className="flex justify-center w-full overflow-hidden rounded-xl" />
                     <div className="flex items-center gap-3">
-                      <div className="h-px bg-slate-800 flex-1" />
-                      <span className="text-[10px] uppercase font-mono tracking-widest text-slate-500 font-semibold">or with email</span>
-                      <div className="h-px bg-slate-800 flex-1" />
+                      <div className="h-px bg-gray-200 flex-1" />
+                      <span className="text-[10px] uppercase font-mono tracking-widest text-gray-400 font-semibold">or with email</span>
+                      <div className="h-px bg-gray-200 flex-1" />
                     </div>
                   </div>
                 )}
@@ -963,43 +960,43 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                 {authTab === 'signin' ? (
                   <form onSubmit={handleEmailLogin} className="space-y-4 text-left">
                     {loginError && (
-                      <div className="p-3 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-300 text-xs flex items-center gap-2">
-                        <AlertTriangle className="h-4 w-4 shrink-0" />
+                      <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 shrink-0 text-rose-500" />
                         <span>{loginError}</span>
                       </div>
                     )}
 
                     <div>
-                      <label className="text-xs font-bold text-slate-300 block mb-1.5">Work Email</label>
+                      <label className="text-xs font-bold text-gray-700 block mb-1.5">Work Email</label>
                       <div className="relative">
-                        <Mail className="h-4 w-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <Mail className="h-4 w-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                         <input
                           type="email"
                           value={loginEmail}
                           onChange={(e) => setLoginEmail(e.target.value)}
                           placeholder="owner@yourstore.com"
                           required
-                          className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-xs text-gray-900 focus:bg-white focus:outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/20 transition-all"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="text-xs font-bold text-slate-300 block mb-1.5">Password</label>
+                      <label className="text-xs font-bold text-gray-700 block mb-1.5">Password</label>
                       <div className="relative">
-                        <Lock className="h-4 w-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <Lock className="h-4 w-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                         <input
                           type={showLoginPassword ? 'text' : 'password'}
                           value={loginPassword}
                           onChange={(e) => setLoginPassword(e.target.value)}
                           placeholder="••••••••"
                           required
-                          className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-10 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-10 pr-10 py-2.5 text-xs text-gray-900 focus:bg-white focus:outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/20 transition-all"
                         />
                         <button
                           type="button"
                           onClick={() => setShowLoginPassword(!showLoginPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
                         >
                           {showLoginPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                         </button>
@@ -1009,7 +1006,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                     <button
                       type="submit"
                       disabled={isLoggingIn}
-                      className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                      className="w-full py-3 rounded-xl bg-gray-950 hover:bg-gray-800 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
                     >
                       {isLoggingIn ? (
                         <>
@@ -1019,55 +1016,55 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                       ) : (
                         <>
                           <LogIn className="h-4 w-4" />
-                          <span>Enter Merchant OS</span>
+                          <span>Enter Store Mode</span>
                         </>
                       )}
                     </button>
                   </form>
                 ) : (
                   /* REGISTRATION FORM */
-                  <form onSubmit={handleRegisterVendor} className="space-y-3.5 text-left">
+                  <form onSubmit={handleRegisterVendor} className="space-y-3 text-left">
                     {regError && (
-                      <div className="p-3 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-300 text-xs flex items-center gap-2">
-                        <AlertTriangle className="h-4 w-4 shrink-0" />
+                      <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 shrink-0 text-rose-500" />
                         <span>{regError}</span>
                       </div>
                     )}
 
                     <div>
-                      <label className="text-xs font-bold text-slate-300 block mb-1">Store / Business Name *</label>
+                      <label className="text-xs font-bold text-gray-700 block mb-1">Store / Business Name *</label>
                       <div className="relative">
-                        <Building2 className="h-4 w-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <Building2 className="h-4 w-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                         <input
                           type="text"
                           value={regStoreName}
                           onChange={(e) => setRegStoreName(e.target.value)}
                           placeholder="e.g. Apex Sports & Sneakers"
                           required
-                          className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-10 pr-4 py-2 text-xs text-gray-900 focus:bg-white focus:outline-none focus:border-[#007AFF]"
                         />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs font-bold text-slate-300 block mb-1">Owner Name *</label>
+                        <label className="text-xs font-bold text-gray-700 block mb-1">Owner Name *</label>
                         <input
                           type="text"
                           value={regName}
                           onChange={(e) => setRegName(e.target.value)}
                           placeholder="e.g. Rajesh Kumar"
                           required
-                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:bg-white focus:outline-none focus:border-[#007AFF]"
                         />
                       </div>
 
                       <div>
-                        <label className="text-xs font-bold text-slate-300 block mb-1">Primary Category</label>
+                        <label className="text-xs font-bold text-gray-700 block mb-1">Category</label>
                         <select
                           value={regCategory}
                           onChange={(e) => setRegCategory(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl px-2.5 py-2 text-xs text-gray-900 focus:bg-white focus:outline-none focus:border-[#007AFF]"
                         >
                           <option value="Footwear & Sports">Footwear & Sports</option>
                           <option value="Electronics & Gadgets">Electronics & Gadgets</option>
@@ -1081,46 +1078,46 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
 
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs font-bold text-slate-300 block mb-1">Phone Number *</label>
+                        <label className="text-xs font-bold text-gray-700 block mb-1">Phone *</label>
                         <input
                           type="tel"
                           value={regPhone}
                           onChange={(e) => setRegPhone(e.target.value)}
                           placeholder="98765 43210"
                           required
-                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:bg-white focus:outline-none focus:border-[#007AFF]"
                         />
                       </div>
 
                       <div>
-                        <label className="text-xs font-bold text-slate-300 block mb-1">Work Email *</label>
+                        <label className="text-xs font-bold text-gray-700 block mb-1">Email *</label>
                         <input
                           type="email"
                           value={regEmail}
                           onChange={(e) => setRegEmail(e.target.value)}
                           placeholder="owner@store.com"
                           required
-                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:bg-white focus:outline-none focus:border-[#007AFF]"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="text-xs font-bold text-slate-300 block mb-1">Create Password *</label>
+                      <label className="text-xs font-bold text-gray-700 block mb-1">Password *</label>
                       <div className="relative">
-                        <Lock className="h-4 w-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <Lock className="h-4 w-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                         <input
                           type={showRegPassword ? 'text' : 'password'}
                           value={regPassword}
                           onChange={(e) => setRegPassword(e.target.value)}
                           placeholder="•••••••• (Min 6 characters)"
                           required
-                          className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-10 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-10 pr-10 py-2 text-xs text-gray-900 focus:bg-white focus:outline-none focus:border-[#007AFF]"
                         />
                         <button
                           type="button"
                           onClick={() => setShowRegPassword(!showRegPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
                         >
                           {showRegPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                         </button>
@@ -1130,17 +1127,17 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                     <button
                       type="submit"
                       disabled={isRegistering}
-                      className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-emerald-600 hover:brightness-110 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 mt-2"
+                      className="w-full py-3 rounded-xl bg-[#007AFF] hover:bg-blue-600 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 mt-2"
                     >
                       {isRegistering ? (
                         <>
                           <Loader2 className="h-4 w-4 animate-spin" />
-                          <span>Creating Storefront...</span>
+                          <span>Registering Storefront...</span>
                         </>
                       ) : (
                         <>
                           <ArrowRight className="h-4 w-4" />
-                          <span>Register & Launch Merchant OS</span>
+                          <span>Register & Open Store Mode</span>
                         </>
                       )}
                     </button>
@@ -1159,34 +1156,35 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
   // ── ERROR FALLBACK: FAILED TO LOAD STORE DETAILS ──
   if (storeLoadError && userShops.length === 0 && !inventoryLoading) {
     return (
-      <div className="min-h-screen bg-[#07090E] text-slate-100 flex flex-col font-sans selection:bg-indigo-600 selection:text-white">
-        <header className="border-b border-slate-800 bg-slate-950/60 sticky top-0 z-40 px-6 py-4">
+      <div className="min-h-screen bg-[#F8F9FA] text-gray-900 flex flex-col font-sans selection:bg-[#007AFF] selection:text-white">
+        <header className="border-b border-gray-200/80 bg-white/95 backdrop-blur-md sticky top-0 z-40 px-6 py-3.5">
           <div className="max-w-4xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <span className="text-2xl font-black tracking-tight text-white font-['Outfit']">
-                zooner<span className="text-[#7257ff]">.</span>
+              <span className="text-2xl font-black tracking-tight text-gray-950 font-['Outfit']">
+                zooner<span className="text-[#007AFF]">.</span>
               </span>
-              <span className="text-[10px] font-mono uppercase tracking-widest bg-rose-950 text-rose-300 border border-rose-800 px-2 py-0.5 rounded-full font-bold">
+              <span className="text-[10px] font-mono uppercase tracking-widest bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 rounded-full font-bold">
                 Store Mode
               </span>
             </div>
             <button
+              type="button"
               onClick={onSwitchToCustomer}
-              className="text-xs font-semibold text-slate-400 hover:text-white transition-colors cursor-pointer"
+              className="text-xs font-semibold text-gray-600 hover:text-gray-950 transition-colors cursor-pointer"
             >
               Continue Shopping
             </button>
           </div>
         </header>
 
-        <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-10">
-          <div className="w-full max-w-md bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl text-center space-y-5">
-            <div className="h-14 w-14 mx-auto rounded-2xl bg-rose-950/60 border border-rose-800/80 flex items-center justify-center text-rose-400">
+        <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-12">
+          <div className="w-full max-w-md bg-white border border-gray-200/80 rounded-3xl p-6 sm:p-8 shadow-xl text-center space-y-5">
+            <div className="h-14 w-14 mx-auto rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-500">
               <AlertTriangle className="h-7 w-7" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-white font-['Outfit']">Couldn't open Store Mode</h2>
-              <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+              <h2 className="text-xl font-bold text-gray-950 font-['Outfit']">Couldn't open Store Mode</h2>
+              <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">
                 {storeLoadError || 'We encountered an error loading your store operations. Your account and data are safe.'}
               </p>
             </div>
@@ -1195,14 +1193,14 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
               <button
                 type="button"
                 onClick={initVendorData}
-                className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition cursor-pointer"
+                className="flex-1 py-2.5 rounded-xl bg-gray-950 hover:bg-gray-800 text-white font-bold text-xs shadow-xs transition cursor-pointer"
               >
                 Try Again
               </button>
               <button
                 type="button"
                 onClick={onSwitchToCustomer}
-                className="flex-1 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs border border-slate-700 transition cursor-pointer"
+                className="flex-1 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs border border-gray-200/80 transition cursor-pointer"
               >
                 Continue Shopping
               </button>
@@ -1216,29 +1214,31 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
   // ── GATE 2: AUTHENTICATED BUT NO STORE CREATED YET ──
   if (isAuthenticated && userShops.length === 0 && !inventoryLoading) {
     return (
-      <div className="min-h-screen bg-[#07090E] text-slate-100 flex flex-col font-sans selection:bg-indigo-600 selection:text-white">
+      <div className="min-h-screen bg-[#F8F9FA] text-gray-900 flex flex-col font-sans selection:bg-[#007AFF] selection:text-white">
         {/* Top Header */}
-        <header className="border-b border-slate-800 bg-slate-950/60 sticky top-0 z-40 px-6 py-4">
+        <header className="border-b border-gray-200/80 bg-white/95 backdrop-blur-md sticky top-0 z-40 px-6 py-3.5">
           <div className="max-w-4xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <span className="text-2xl font-black tracking-tight text-white font-['Outfit']">
-                zooner<span className="text-[#7257ff]">.</span>
+              <span className="text-2xl font-black tracking-tight text-gray-950 font-['Outfit']">
+                zooner<span className="text-[#007AFF]">.</span>
               </span>
-              <span className="text-[10px] font-mono uppercase tracking-widest bg-emerald-950 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded-full font-bold">
+              <span className="text-[10px] font-mono uppercase tracking-widest bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full font-bold">
                 Store Onboarding
               </span>
             </div>
 
             <div className="flex items-center gap-3">
               <button
+                type="button"
                 onClick={onSwitchToCustomer}
-                className="text-xs font-semibold text-slate-400 hover:text-white transition-colors"
+                className="text-xs font-semibold text-gray-600 hover:text-gray-950 transition-colors cursor-pointer"
               >
-                Shopper App
+                Shopping Mode
               </button>
               <button
+                type="button"
                 onClick={handleMerchantLogout}
-                className="text-xs font-semibold text-rose-400 hover:text-rose-300 transition-colors"
+                className="text-xs font-semibold text-rose-600 hover:text-rose-700 transition-colors cursor-pointer"
               >
                 Sign Out
               </button>
@@ -1248,44 +1248,44 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
 
         {/* Store Setup Form */}
         <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-10">
-          <div className="w-full max-w-xl bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl text-left">
+          <div className="w-full max-w-xl bg-white border border-gray-200/80 rounded-3xl p-6 sm:p-8 shadow-xl text-left">
             <div className="flex items-center gap-3 mb-6">
-              <div className="h-10 w-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-white font-bold">
+              <div className="h-10 w-10 rounded-2xl bg-emerald-600 flex items-center justify-center text-white font-bold">
                 <Store className="h-5 w-5" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-white font-['Outfit']">Set Up Your Physical Storefront</h2>
-                <p className="text-xs text-slate-400">Complete your store details to start receiving local customer footfall</p>
+                <h2 className="text-xl font-bold text-gray-950 font-['Outfit']">Set Up Your Physical Storefront</h2>
+                <p className="text-xs text-gray-500">Complete your store details to start receiving local customer footfall</p>
               </div>
             </div>
 
             {setupError && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-300 text-xs flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 shrink-0" />
+              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 shrink-0 text-rose-500" />
                 <span>{setupError}</span>
               </div>
             )}
 
             <form onSubmit={handleCreateStoreOnboarding} className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-slate-300 block mb-1">Store Name *</label>
+                <label className="text-xs font-bold text-gray-700 block mb-1">Store Name *</label>
                 <input
                   type="text"
                   value={setupStoreName}
                   onChange={(e) => setSetupStoreName(e.target.value)}
                   placeholder="e.g. Reliance Digital, DB Road"
                   required
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs text-gray-900 focus:bg-white focus:outline-none focus:border-[#007AFF]"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-slate-300 block mb-1">Category</label>
+                  <label className="text-xs font-bold text-gray-700 block mb-1">Category</label>
                   <select
                     value={setupCategory}
                     onChange={(e) => setSetupCategory(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs text-gray-900 focus:bg-white focus:outline-none focus:border-[#007AFF]"
                   >
                     {dbCategories.length > 0 ? (
                       dbCategories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)
@@ -1302,25 +1302,25 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-300 block mb-1">Store Phone</label>
+                  <label className="text-xs font-bold text-gray-700 block mb-1">Store Phone</label>
                   <input
                     type="tel"
                     value={setupPhone}
                     onChange={(e) => setSetupPhone(e.target.value)}
                     placeholder="98765 43210"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs text-gray-900 focus:bg-white focus:outline-none focus:border-[#007AFF]"
                   />
                 </div>
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-bold text-slate-300">Physical Storefront Address</label>
+                  <label className="text-xs font-bold text-gray-700">Physical Storefront Address</label>
                   <button
                     type="button"
                     onClick={handleDetectSetupLocation}
                     disabled={isDetectingSetupGps}
-                    className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 cursor-pointer"
+                    className="text-[11px] font-bold text-[#007AFF] hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     {isDetectingSetupGps ? (
                       <>
@@ -1340,17 +1340,17 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                   value={setupAddress}
                   onChange={(e) => setSetupAddress(e.target.value)}
                   placeholder="e.g. 104 DB Road, RS Puram, Coimbatore"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs text-gray-900 focus:bg-white focus:outline-none focus:border-[#007AFF]"
                 />
                 {setupGpsFeedback && (
-                  <p className="text-[11px] text-emerald-400 mt-1 font-mono">{setupGpsFeedback}</p>
+                  <p className="text-[11px] text-emerald-600 mt-1 font-mono">{setupGpsFeedback}</p>
                 )}
               </div>
 
               <button
                 type="submit"
                 disabled={isCreatingStore}
-                className="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 mt-3"
+                className="w-full py-3 rounded-xl bg-gray-950 hover:bg-gray-800 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 mt-3"
               >
                 {isCreatingStore ? (
                   <>
@@ -1360,7 +1360,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                 ) : (
                   <>
                     <Store className="h-4 w-4" />
-                    <span>Activate Storefront & Open Merchant OS</span>
+                    <span>Launch Storefront & Enter Store Mode</span>
                   </>
                 )}
               </button>
@@ -1373,10 +1373,10 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
 
   // ── ACTIVE MERCHANT DASHBOARD VIEW ──
   return (
-    <div className="zooner-merchant min-h-screen text-slate-100 flex flex-col font-sans selection:bg-indigo-600 selection:text-white">
+    <div className="zooner-merchant min-h-screen bg-[#F8F9FA] text-gray-900 flex flex-col font-sans selection:bg-[#007AFF] selection:text-white pb-20 md:pb-8">
       
       {/* ── TOP MERCHANT HEADER BAR ── */}
-      <header className="zooner-merchant-header sticky top-0 z-40 px-4 sm:px-8 py-3.5">
+      <header className="zooner-merchant-header bg-white/95 backdrop-blur-md border-b border-gray-200/80 sticky top-0 z-40 px-4 sm:px-8 py-3 shadow-2xs">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           
           {/* Store Info & Mode Switcher Trigger */}
@@ -1387,13 +1387,13 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
               className="flex items-center gap-2.5 hover:opacity-90 transition cursor-pointer text-left group"
               title="Switch Mode or Store"
             >
-              <div className="h-9 w-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold shrink-0 shadow-xs">
+              <div className="h-9 w-9 rounded-xl bg-emerald-600 flex items-center justify-center text-white font-bold shrink-0 shadow-xs">
                 <Store className="h-5 w-5" />
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] font-bold text-slate-300">🏪 Store Mode</span>
-                  <ChevronDown className="h-3 w-3 text-slate-400 group-hover:text-white transition-colors" />
+                  <span className="text-[11px] font-bold text-gray-500">Store Mode</span>
+                  <ChevronDown className="h-3 w-3 text-gray-400 group-hover:text-gray-700 transition-colors" />
                 </div>
                 <div className="flex items-center gap-2">
                   {userShops.length > 1 ? (
@@ -1404,7 +1404,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                         const selected = userShops.find(s => s.id.toString() === e.target.value);
                         if (selected) handleSelectShop(selected);
                       }}
-                      className="bg-slate-800 border border-slate-700 text-white text-xs font-bold rounded-lg px-2 py-0.5 focus:outline-none cursor-pointer"
+                      className="bg-gray-100 border border-gray-200 text-gray-900 text-xs font-bold rounded-lg px-2 py-0.5 focus:outline-none cursor-pointer"
                     >
                       {userShops.map(s => (
                         <option key={s.id} value={s.id}>
@@ -1413,17 +1413,17 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                       ))}
                     </select>
                   ) : (
-                    <span className="font-bold text-white text-sm sm:text-base font-['Outfit'] truncate max-w-[140px] sm:max-w-[220px]">
+                    <span className="font-bold text-gray-950 text-sm sm:text-base font-['Outfit'] truncate max-w-[140px] sm:max-w-[220px]">
                       {storeName || 'TechWorld'}
                     </span>
                   )}
                   {storeVerificationStatus === 'Approved' ? (
-                    <span className="text-[9px] font-bold bg-emerald-950/80 text-emerald-300 border border-emerald-800/80 px-1.5 py-0.2 rounded hidden sm:flex items-center gap-1">
+                    <span className="text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.2 rounded hidden sm:flex items-center gap-1">
                       <CheckCircle2 className="h-2.5 w-2.5" />
                       <span>Verified</span>
                     </span>
                   ) : (
-                    <span className="text-[9px] font-bold bg-amber-950/80 text-amber-300 border border-amber-800/80 px-1.5 py-0.2 rounded hidden sm:flex items-center gap-1">
+                    <span className="text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.2 rounded hidden sm:flex items-center gap-1">
                       <Clock className="h-2.5 w-2.5" />
                       <span>Pending</span>
                     </span>
@@ -1439,10 +1439,10 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
             <button
               type="button"
               onClick={onSwitchToCustomer}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-[#007AFF] hover:bg-[#0071E3] active:scale-[0.97] text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-gray-100 hover:bg-gray-200 active:scale-[0.97] text-gray-900 text-xs font-bold transition-all cursor-pointer border border-gray-200/80 shadow-2xs"
               title="Switch to Shopping Mode"
             >
-              <ShoppingBag className="h-3.5 w-3.5" />
+              <ShoppingBag className="h-3.5 w-3.5 text-[#007AFF]" />
               <span>Switch to Shopping</span>
             </button>
 
@@ -1456,22 +1456,22 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
               }}
               className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
                 isLiveOnline 
-                  ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/80 hover:bg-emerald-900/60' 
-                  : 'bg-slate-800 text-slate-400 border-slate-700'
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' 
+                  : 'bg-gray-100 text-gray-500 border-gray-200'
               }`}
             >
               <Power className="h-3.5 w-3.5" />
-              <span>{isLiveOnline ? 'Online' : 'Go Online'}</span>
+              <span>{isLiveOnline ? 'Online' : 'Offline'}</span>
             </button>
 
             {/* Sign Out */}
             <button
               type="button"
               onClick={handleMerchantLogout}
-              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-300 transition-colors cursor-pointer"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 border border-gray-200/80 text-xs font-semibold text-gray-600 transition-colors cursor-pointer"
               title="Sign out of account"
             >
-              <LogOut className="h-3.5 w-3.5 text-slate-400" />
+              <LogOut className="h-3.5 w-3.5 text-gray-500" />
               <span>Sign Out</span>
             </button>
           </div>
@@ -1483,105 +1483,112 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
       <div className="zooner-merchant-content max-w-7xl mx-auto w-full px-4 sm:px-8 py-6 flex-1 flex flex-col md:flex-row gap-6">
         
         {/* ── LEFT SIDEBAR NAVIGATION ── */}
-        <aside className="zooner-merchant-nav w-full md:w-64 shrink-0 space-y-1">
-          <div className="text-[11px] font-mono uppercase tracking-widest text-slate-500 px-3 py-2">
+        <aside className="zooner-merchant-nav w-full md:w-60 shrink-0 space-y-1">
+          <div className="text-[11px] font-mono uppercase tracking-widest text-gray-400 px-3 py-2 font-semibold">
             Store Operations
           </div>
 
           <button
+            type="button"
             onClick={() => setActiveTab('requests')}
             className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'requests'
-                ? 'bg-indigo-600 text-white font-bold shadow-md shadow-indigo-600/30'
-                : 'text-slate-300 hover:bg-slate-800/60'
+                ? 'bg-gray-950 text-white font-bold shadow-xs'
+                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
             }`}
           >
             <div className="flex items-center gap-2.5">
               <Send className="h-4 w-4" />
-              <span>Dashboard</span>
+              <span>Overview & Requests</span>
             </div>
             {pendingRequestsCount > 0 && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white text-indigo-700">
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                activeTab === 'requests' ? 'bg-[#007AFF] text-white' : 'bg-blue-100 text-[#007AFF]'
+              }`}>
                 {pendingRequestsCount}
               </span>
             )}
           </button>
 
           <button
+            type="button"
             onClick={() => setActiveTab('inventory')}
             className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'inventory'
-                ? 'bg-indigo-600 text-white font-bold shadow-md shadow-indigo-600/30'
-                : 'text-slate-300 hover:bg-slate-800/60'
+                ? 'bg-gray-950 text-white font-bold shadow-xs'
+                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
             }`}
           >
             <div className="flex items-center gap-2.5">
               <Package className="h-4 w-4" />
-              <span>Products</span>
+              <span>Products & Shelf</span>
             </div>
-            <span className="text-[11px] text-slate-400 font-mono">{inventory.length}</span>
+            <span className="text-[11px] text-gray-400 font-mono">{inventory.length}</span>
           </button>
 
           <button
+            type="button"
             onClick={() => setActiveTab('holds')}
             className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'holds'
-                ? 'bg-indigo-600 text-white font-bold shadow-md shadow-indigo-600/30'
-                : 'text-slate-300 hover:bg-slate-800/60'
+                ? 'bg-gray-950 text-white font-bold shadow-xs'
+                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
             }`}
           >
             <div className="flex items-center gap-2.5">
               <Clock className="h-4 w-4" />
-              <span>Holds</span>
+              <span>Walk-In Holds</span>
             </div>
             {activeHoldsCount > 0 && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500 text-black">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">
                 {activeHoldsCount}
               </span>
             )}
           </button>
 
-          <div className="text-[11px] font-mono uppercase tracking-widest text-slate-500 px-3 pt-5 pb-2">
-            Performance & Store
+          <div className="text-[11px] font-mono uppercase tracking-widest text-gray-400 px-3 pt-5 pb-2 font-semibold">
+            Store Performance
           </div>
 
           <button
+            type="button"
             onClick={() => setActiveTab('analytics')}
             className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'analytics'
-                ? 'bg-indigo-600 text-white font-bold shadow-md shadow-indigo-600/30'
-                : 'text-slate-300 hover:bg-slate-800/60'
+                ? 'bg-gray-950 text-white font-bold shadow-xs'
+                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
             }`}
           >
             <BarChart3 className="h-4 w-4" />
-            <span>Analytics</span>
+            <span>Store Analytics</span>
           </button>
 
           <button
+            type="button"
             onClick={() => setActiveTab('settings')}
             className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'settings'
-                ? 'bg-indigo-600 text-white font-bold shadow-md shadow-indigo-600/30'
-                : 'text-slate-300 hover:bg-slate-800/60'
+                ? 'bg-gray-950 text-white font-bold shadow-xs'
+                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
             }`}
           >
             <Settings className="h-4 w-4" />
-            <span>Profile & Settings</span>
+            <span>Profile & Location</span>
           </button>
         </aside>
 
         {/* ── RIGHT MAIN PANEL ── */}
         <main className="flex-1 space-y-6 text-left">
-          {/* Storefront Verification Status Warning Banner */}
+          {/* Storefront Verification Status Notice Banner */}
           {storeVerificationStatus !== 'Approved' && (
-            <div className="p-4 rounded-2xl bg-amber-950/40 border border-amber-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/30">
+                <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 border border-amber-200">
                   <Clock className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="font-bold text-amber-200 text-sm">Storefront Pending Verification</p>
-                  <p className="text-amber-400/80 text-[11px] mt-0.5">
+                  <p className="font-bold text-amber-950 text-sm">Storefront Pending Verification</p>
+                  <p className="text-amber-700 text-[11px] mt-0.5">
                     This store is awaiting approval. Live customer requests cannot be accepted until verified.
                   </p>
                 </div>
@@ -1593,10 +1600,10 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                     type="button"
                     onClick={handleInstantVerifyShop}
                     disabled={isVerifyingShop}
-                    className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-md shadow-amber-500/20 disabled:opacity-60 shrink-0"
+                    className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs disabled:opacity-60 shrink-0"
                   >
                     <ShieldCheck className="w-3.5 h-3.5" />
-                    <span>{isVerifyingShop ? 'Verifying...' : '⚡ Verify Storefront (Admin)'}</span>
+                    <span>{isVerifyingShop ? 'Verifying...' : 'Verify Storefront (Admin)'}</span>
                   </button>
                 )}
               </div>
@@ -1606,161 +1613,171 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
           {/* ── TAB 1: LIVE REQUESTS / DASHBOARD ── */}
           {activeTab === 'requests' && (
             <div className="space-y-5">
-                {/* ── STORE DASHBOARD HERO OVERVIEW & GREETING ── */}
-                <div className="p-5 rounded-3xl bg-gradient-to-br from-indigo-950/60 via-slate-900 to-slate-950 border border-indigo-900/40 space-y-4 shadow-xl">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <div className="text-[11px] font-bold uppercase tracking-wider text-indigo-400">
-                        Store Operations Dashboard
-                      </div>
-                      <h2 className="text-xl sm:text-2xl font-black text-white font-['Outfit'] mt-0.5">
-                        {getGreeting()}, {userProfile?.name?.split(' ')[0] || 'Store Owner'}
-                      </h2>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        Managing <strong className="text-slate-200">{storeName || 'TechWorld'}</strong> · 0% walk-in commission
-                      </p>
+              {/* ── STORE DASHBOARD HERO OVERVIEW & GREETING ── */}
+              <div className="p-5 sm:p-6 rounded-3xl bg-white border border-gray-200/80 space-y-4 shadow-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-[#007AFF]">
+                      Store Operations Overview
                     </div>
-
-                    {/* Quick Action Buttons */}
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          resetModalState();
-                          setIsAddItemOpen(true);
-                        }}
-                        className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-[0.97] text-white text-xs font-bold transition shadow-md shadow-indigo-600/30 flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Add Product</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab('holds')}
-                        className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-[0.97] text-slate-200 text-xs font-bold transition border border-slate-700 flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <Clock className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>View Holds</span>
-                      </button>
-                    </div>
+                    <h2 className="text-xl sm:text-2xl font-black text-gray-950 font-['Outfit'] mt-0.5">
+                      {getGreeting()}, {userProfile?.name?.split(' ')[0] || 'Store Owner'}
+                    </h2>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Managing <strong className="text-gray-800">{storeName || 'TechWorld'}</strong> · 0% walk-in commission
+                    </p>
                   </div>
 
-                  {/* Metric Cards */}
-                  <div className="grid grid-cols-3 gap-2.5 sm:gap-3 pt-1">
-                    <div 
-                      onClick={() => setActiveTab('inventory')}
-                      className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 transition cursor-pointer"
+                  {/* Quick Action Buttons */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        resetModalState();
+                        setIsAddItemOpen(true);
+                      }}
+                      className="px-3.5 py-2 rounded-xl bg-gray-950 hover:bg-gray-800 active:scale-[0.97] text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
                     >
-                      <div className="text-[10px] uppercase font-bold text-slate-400">Active Products</div>
-                      <div className="text-lg sm:text-xl font-black text-white mt-0.5 font-mono">
-                        {inventoryLoading ? <span className="inline-block w-6 h-5 bg-slate-800 animate-pulse rounded" /> : inventory.length}
-                      </div>
-                      <div className="text-[10px] text-indigo-400 mt-0.5">On shelf</div>
-                    </div>
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add Product</span>
+                    </button>
 
-                    <div 
+                    <button
+                      type="button"
                       onClick={() => setActiveTab('holds')}
-                      className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 transition cursor-pointer"
+                      className="px-3.5 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 active:scale-[0.97] text-gray-800 text-xs font-bold transition border border-gray-200/80 flex items-center gap-1.5 cursor-pointer"
                     >
-                      <div className="text-[10px] uppercase font-bold text-slate-400">Pending Holds</div>
-                      <div className="text-lg sm:text-xl font-black text-emerald-400 mt-0.5 font-mono">
-                        {inventoryLoading ? <span className="inline-block w-6 h-5 bg-slate-800 animate-pulse rounded" /> : activeHoldsCount}
-                      </div>
-                      <div className="text-[10px] text-emerald-400/80 mt-0.5">30-min passes</div>
-                    </div>
-
-                    <div 
-                      onClick={() => setActiveTab('requests')}
-                      className="p-3 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 transition cursor-pointer"
-                    >
-                      <div className="text-[10px] uppercase font-bold text-slate-400">Live Requests</div>
-                      <div className="text-lg sm:text-xl font-black text-blue-400 mt-0.5 font-mono">
-                        {inventoryLoading ? <span className="inline-block w-6 h-5 bg-slate-800 animate-pulse rounded" /> : pendingRequestsCount}
-                      </div>
-                      <div className="text-[10px] text-blue-400/80 mt-0.5">Nearby radar</div>
-                    </div>
+                      <Clock className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>View Holds</span>
+                    </button>
                   </div>
                 </div>
 
+                {/* Metric Cards */}
+                <div className="grid grid-cols-3 gap-2.5 sm:gap-3 pt-1">
+                  <div 
+                    onClick={() => setActiveTab('inventory')}
+                    className="p-3.5 rounded-2xl bg-gray-50 border border-gray-200/60 hover:bg-gray-100/70 transition cursor-pointer"
+                  >
+                    <div className="text-[10px] uppercase font-bold text-gray-500">Active Products</div>
+                    <div className="text-lg sm:text-xl font-black text-gray-950 mt-0.5 font-mono">
+                      {inventoryLoading ? <span className="inline-block w-6 h-5 bg-gray-200 animate-pulse rounded" /> : inventory.length}
+                    </div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">On shelf</div>
+                  </div>
+
+                  <div 
+                    onClick={() => setActiveTab('holds')}
+                    className="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200/60 hover:bg-emerald-50 transition cursor-pointer"
+                  >
+                    <div className="text-[10px] uppercase font-bold text-emerald-800">Pending Holds</div>
+                    <div className="text-lg sm:text-xl font-black text-emerald-700 mt-0.5 font-mono">
+                      {inventoryLoading ? <span className="inline-block w-6 h-5 bg-emerald-200 animate-pulse rounded" /> : activeHoldsCount}
+                    </div>
+                    <div className="text-[10px] text-emerald-700/80 mt-0.5">30-min passes</div>
+                  </div>
+
+                  <div 
+                    onClick={() => setActiveTab('requests')}
+                    className="p-3.5 rounded-2xl bg-blue-50/70 border border-blue-200/60 hover:bg-blue-50 transition cursor-pointer"
+                  >
+                    <div className="text-[10px] uppercase font-bold text-blue-800">Live Requests</div>
+                    <div className="text-lg sm:text-xl font-black text-[#007AFF] mt-0.5 font-mono">
+                      {inventoryLoading ? <span className="inline-block w-6 h-5 bg-blue-200 animate-pulse rounded" /> : pendingRequestsCount}
+                    </div>
+                    <div className="text-[10px] text-blue-700/80 mt-0.5">Nearby shoppers</div>
+                  </div>
+                </div>
+              </div>
+
               <div className="flex items-center justify-between pt-1">
                 <div>
-                  <h2 className="text-xl font-bold text-white font-['Outfit'] flex items-center gap-2">
-                    <Radio className="h-4 w-4 text-emerald-400 animate-pulse" />
-                    Incoming Shopper Broadcasts
+                  <h2 className="text-lg font-bold text-gray-950 font-['Outfit'] flex items-center gap-2">
+                    <Radio className="h-4 w-4 text-[#007AFF]" />
+                    Incoming Shopper Requests
                   </h2>
-                  <p className="text-xs text-slate-400">Shoppers within 5 km looking for items right now</p>
+                  <p className="text-xs text-gray-500">Shoppers looking for items within 5 km of your store</p>
                 </div>
               </div>
 
               <div className="space-y-3">
-                {requests.map(req => (
-                  <div 
-                    key={req.id}
-                    className={`p-5 rounded-2xl border transition-all ${
-                      req.status === 'accepted'
-                        ? 'bg-emerald-950/20 border-emerald-800/40'
-                        : req.status === 'declined'
-                        ? 'bg-slate-900/40 border-slate-800 opacity-60'
-                        : 'bg-slate-900/90 border-slate-800 hover:border-slate-700 shadow-xl'
-                    }`}
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-bold text-white text-base">{req.product}</h3>
-                          {(req.size || req.subCategoryName || req.categoryName) && (
-                            <span className="text-xs font-bold text-indigo-400 bg-indigo-950/80 px-2 py-0.5 rounded border border-indigo-800">
-                              {req.size || req.subCategoryName || req.categoryName}
-                            </span>
+                {requests.length === 0 ? (
+                  <div className="p-8 rounded-2xl bg-white border border-gray-200/80 text-center space-y-2">
+                    <Radio className="h-8 w-8 text-gray-300 mx-auto" />
+                    <div className="text-xs font-bold text-gray-700">No active shopper requests right now</div>
+                    <p className="text-[11px] text-gray-400">Incoming requests from nearby shoppers will appear here in real time.</p>
+                  </div>
+                ) : (
+                  requests.map(req => (
+                    <div 
+                      key={req.id}
+                      className={`p-4 sm:p-5 rounded-2xl border transition-all ${
+                        req.status === 'accepted'
+                          ? 'bg-emerald-50/50 border-emerald-200'
+                          : req.status === 'declined'
+                          ? 'bg-gray-50 border-gray-200 opacity-60'
+                          : 'bg-white border-gray-200/80 hover:border-gray-300 shadow-2xs'
+                      }`}
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-gray-950 text-base">{req.product}</h3>
+                            {(req.size || req.subCategoryName || req.categoryName) && (
+                              <span className="text-xs font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                                {req.size || req.subCategoryName || req.categoryName}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1 flex items-center gap-2">
+                            <span>By {req.shopperName || 'Nearby Shopper'}</span>
+                            <span>·</span>
+                            <span className="text-[#007AFF] font-semibold">{req.distance}</span>
+                            <span>·</span>
+                            <span>{req.timeAgo}</span>
+                          </div>
+                          {req.budget && (
+                            <div className="text-xs text-gray-700 mt-2 font-mono">
+                              Customer Target Budget: <strong className="text-gray-950">{req.budget}</strong>
+                            </div>
                           )}
                         </div>
-                        <div className="text-xs text-slate-400 mt-1 flex items-center gap-2">
-                          <span>By {req.shopperName || 'Nearby Shopper'}</span>
-                          <span>·</span>
-                          <span className="text-emerald-400 font-medium">{req.distance}</span>
-                          <span>·</span>
-                          <span>{req.timeAgo}</span>
-                        </div>
-                        {req.budget && (
-                          <div className="text-xs text-slate-300 mt-2 font-mono">
-                            Customer Target Budget: <strong className="text-white">{req.budget}</strong>
-                          </div>
-                        )}
-                      </div>
 
-                      {/* Request Action Buttons */}
-                      <div className="flex items-center gap-2 shrink-0 pt-2 sm:pt-0">
-                        {(req.status === 'pending' || req.status === 'active') && (
-                          <>
-                            <button
-                              onClick={() => handleAcceptRequest(req.id)}
-                              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md shadow-indigo-600/30 flex items-center gap-1.5 cursor-pointer"
-                            >
-                              <Check className="h-3.5 w-3.5" />
-                              <span>Confirm In-Stock</span>
-                            </button>
-                            <button
-                              onClick={() => handleDeclineRequest(req.id)}
-                              className="px-3 py-2 rounded-xl border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-white text-xs font-semibold cursor-pointer"
-                            >
-                              Decline
-                            </button>
-                          </>
-                        )}
-                        {req.status === 'accepted' && (
-                          <span className="text-xs font-bold text-emerald-400 bg-emerald-950 px-3 py-1.5 rounded-xl border border-emerald-800 flex items-center gap-1.5">
-                            <CheckCircle2 className="h-4 w-4" />
-                            <span>Confirmed & Held 30m ✓</span>
-                          </span>
-                        )}
-                        {req.status === 'declined' && (
-                          <span className="text-xs text-slate-500 font-semibold">Declined</span>
-                        )}
+                        {/* Request Action Buttons */}
+                        <div className="flex items-center gap-2 shrink-0 pt-2 sm:pt-0">
+                          {(req.status === 'pending' || req.status === 'active') && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleAcceptRequest(req.id)}
+                                className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-xs flex items-center gap-1.5 cursor-pointer"
+                              >
+                                <Check className="h-3.5 w-3.5" />
+                                <span>Confirm In-Stock</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeclineRequest(req.id)}
+                                className="px-3 py-2 rounded-xl border border-gray-200 hover:bg-gray-100 text-gray-600 text-xs font-semibold cursor-pointer"
+                              >
+                                Decline
+                              </button>
+                            </>
+                          )}
+                          {req.status === 'accepted' && (
+                            <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 flex items-center gap-1.5">
+                              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                              <span>Confirmed & Held 30m</span>
+                            </span>
+                          )}
+                          {req.status === 'declined' && (
+                            <span className="text-xs text-gray-400 font-semibold">Declined</span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
           )}
@@ -1770,80 +1787,84 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-bold text-white font-['Outfit']">Physical Shelf Inventory</h2>
-                  <p className="text-xs text-slate-400">Manage store inventory attached to the global product catalog</p>
+                  <h2 className="text-lg font-bold text-gray-950 font-['Outfit']">Store Shelf Inventory</h2>
+                  <p className="text-xs text-gray-500">Manage shelf quantities and price for items available in your physical store</p>
                 </div>
                 <button
+                  type="button"
                   onClick={() => { resetModalState(); setIsAddItemOpen(true); }}
-                  className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md cursor-pointer"
+                  className="px-3.5 py-2 rounded-xl bg-gray-950 hover:bg-gray-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer"
                 >
                   <Plus className="h-4 w-4" />
                   <span>Add Shelf Inventory</span>
                 </button>
               </div>
 
-              {/* Inventory Table / Grid */}
-              <div className="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden shadow-xl">
+              {/* Inventory Table / List */}
+              <div className="rounded-2xl bg-white border border-gray-200/80 overflow-hidden shadow-xs">
                 {inventoryLoading ? (
-                  <div className="p-8 text-center text-xs text-slate-400 font-mono">Loading store inventory...</div>
+                  <div className="p-8 text-center text-xs text-gray-400 font-mono">Loading store inventory...</div>
                 ) : inventory.length === 0 ? (
                   <div className="p-12 text-center space-y-3">
-                    <div className="text-sm font-bold text-white">No shelf inventory found.</div>
-                    <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                      Search the global catalog to add existing products (e.g. Sony WH-1000XM5, iPhone 15) to your store!
+                    <div className="text-sm font-bold text-gray-900">No shelf inventory found.</div>
+                    <p className="text-xs text-gray-500 max-w-sm mx-auto">
+                      Search the global catalog to add products available at your storefront.
                     </p>
                     <button
+                      type="button"
                       onClick={() => { resetModalState(); setIsAddItemOpen(true); }}
-                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer"
+                      className="px-4 py-2 bg-gray-950 hover:bg-gray-800 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer"
                     >
                       + Add First Product
                     </button>
                   </div>
                 ) : (
-                  <div className="divide-y divide-slate-800">
+                  <div className="divide-y divide-gray-100">
                     {inventory.map((item: StoreInventoryItem) => {
                       const prodName = item.variantName || 'Product Item';
                       const isAvailable = item.availableQuantity > 0 && item.quantity > 0;
                       return (
-                        <div key={item.inventoryId} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-800/40 transition-colors">
+                        <div key={item.inventoryId} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-gray-50/80 transition-colors">
                           <div className="flex items-center gap-3.5">
-                            <div className="h-12 w-12 rounded-xl flex items-center justify-center bg-slate-800 border border-slate-700 text-slate-400 font-bold text-xs shrink-0">
+                            <div className="h-11 w-11 rounded-xl flex items-center justify-center bg-gray-100 border border-gray-200/80 text-gray-600 font-bold text-xs shrink-0">
                               <Package className="h-5 w-5" />
                             </div>
                             <div>
                               <div className="flex items-center gap-2">
-                                <span className="font-bold text-white text-sm">{prodName}</span>
+                                <span className="font-bold text-gray-950 text-sm">{prodName}</span>
                                 {item.shelfLocation && (
-                                  <span className="text-[10px] font-mono text-indigo-300 bg-indigo-950 border border-indigo-800 px-1.5 py-0.2 rounded">
+                                  <span className="text-[10px] font-mono text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.2 rounded font-semibold">
                                     {item.shelfLocation}
                                   </span>
                                 )}
                               </div>
-                              <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-3">
-                                <span>Shelf Quantity: <strong>{item.quantity}</strong></span>
+                              <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-3">
+                                <span>Shelf Units: <strong className="text-gray-800">{item.quantity}</strong></span>
                                 <span>·</span>
-                                <span className="font-mono text-emerald-400 font-bold">
+                                <span className="font-mono text-emerald-700 font-bold">
                                   ₹{item.price ? item.price.toLocaleString('en-IN') : '0'}
                                 </span>
                               </div>
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-3 self-end sm:self-center">
+                          <div className="flex items-center gap-2.5 self-end sm:self-center">
                             <button
+                              type="button"
                               onClick={() => handleToggleInventoryStock(item)}
                               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
                                 isAvailable
-                                  ? 'bg-emerald-950/60 text-emerald-400 border-emerald-800'
-                                  : 'bg-red-950/60 text-red-400 border-red-800'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : 'bg-rose-50 text-rose-700 border-rose-200'
                               }`}
                             >
-                              {isAvailable ? `In Stock (${item.availableQuantity} available)` : 'Out of Stock'}
+                              {isAvailable ? `In Stock (${item.availableQuantity})` : 'Out of Stock'}
                             </button>
 
                             <button
+                              type="button"
                               onClick={() => handleDeleteInventoryItem(item.inventoryId)}
-                              className="p-1.5 text-slate-500 hover:text-red-400 rounded-lg transition-colors cursor-pointer"
+                              className="p-1.5 text-gray-400 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
                               title="Delete from Inventory"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -1862,78 +1883,79 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
           {activeTab === 'holds' && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-xl font-bold text-white font-['Outfit']">Counter Holds & Walk-in Pickup Verifier</h2>
-                <p className="text-xs text-slate-400">Scan customer QR codes or verify pass codes to mark items as collected</p>
+                <h2 className="text-lg font-bold text-gray-950 font-['Outfit']">Walk-In Holds & Counter Pickup Verification</h2>
+                <p className="text-xs text-gray-500">Scan customer QR codes or verify hold codes to complete pickups</p>
               </div>
 
               {/* QR Verification Scanner Box */}
-              <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
+              <div className="p-6 rounded-3xl bg-white border border-gray-200/80 shadow-xs space-y-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-                    <QrCode className="h-6 w-6" />
+                  <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700">
+                    <QrCode className="h-5 w-5" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-white font-['Outfit']">Scan / Verify Customer QR Pass</h3>
-                    <p className="text-xs text-slate-400">Scan customer QR pass or enter 4-character pass code to validate reservation before handing item over</p>
+                    <h3 className="text-sm font-bold text-gray-950">Verify Customer QR Hold Pass</h3>
+                    <p className="text-xs text-gray-500">Enter customer hold pass code or scan QR before handing item over</p>
                   </div>
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-3">
                   <div className="relative flex-1">
-                    <Scan className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                    <Scan className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <input
                       type="text"
                       value={qrInput}
                       onChange={(e) => setQrInput(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleValidateQr()}
-                      placeholder="Paste QR token (zhold:...) or enter pass code (e.g. H-4821)"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                      placeholder="Enter pass code (e.g. H-4821) or paste token..."
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-xs text-gray-900 placeholder-gray-400 focus:bg-white focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/20 transition-all"
                     />
                   </div>
                   <button
+                    type="button"
                     onClick={() => handleValidateQr()}
                     disabled={isValidatingQr || !qrInput.trim()}
-                    className="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                    className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-xs"
                   >
                     {isValidatingQr ? <Loader2 className="h-4 w-4 animate-spin" /> : <Scan className="h-4 w-4" />}
-                    <span>Verify QR Code</span>
+                    <span>Verify Pass</span>
                   </button>
                 </div>
 
-                {/* Validated Hold Pass Result Dialog Card */}
+                {/* Validated Hold Pass Result Card */}
                 {validatedHoldResult && (
-                  <div className={`p-5 rounded-2xl border transition-all ${
+                  <div className={`p-4 sm:p-5 rounded-2xl border transition-all ${
                     validatedHoldResult.isValid 
-                      ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-200' 
-                      : 'bg-rose-950/40 border-rose-500/40 text-rose-200'
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-950' 
+                      : 'bg-rose-50 border-rose-200 text-rose-950'
                   }`}>
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className={`h-2.5 w-2.5 rounded-full ${validatedHoldResult.isValid ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`} />
-                          <span className="text-sm font-bold tracking-wide font-['Outfit']">
-                            {validatedHoldResult.isValid ? 'PASS VERIFIED & ACTIVE' : 'INVALID PASS'}
+                          <span className={`h-2.5 w-2.5 rounded-full ${validatedHoldResult.isValid ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                          <span className="text-xs font-bold tracking-wide">
+                            {validatedHoldResult.isValid ? 'PASS VERIFIED & READY FOR PICKUP' : 'INVALID PASS'}
                           </span>
                         </div>
-                        <p className="text-xs mt-1 text-slate-300">{validatedHoldResult.message}</p>
+                        <p className="text-xs mt-1 text-gray-600">{validatedHoldResult.message}</p>
 
                         {validatedHoldResult.isValid && validatedHoldResult.hold && (
-                          <div className="mt-4 p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2 text-slate-200 text-xs max-w-lg">
+                          <div className="mt-3 p-3.5 rounded-xl bg-white border border-emerald-200/80 space-y-1.5 text-gray-800 text-xs max-w-lg">
                             <div className="flex justify-between">
-                              <span className="text-slate-400">Reserved Product:</span>
-                              <span className="font-bold text-white text-sm">{validatedHoldResult.hold.productName} ({validatedHoldResult.hold.variantName})</span>
+                              <span className="text-gray-500">Product:</span>
+                              <span className="font-bold text-gray-950">{validatedHoldResult.hold.productName}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-slate-400">Quantity Reserved:</span>
-                              <span className="font-bold text-white">{validatedHoldResult.hold.quantity} unit(s)</span>
+                              <span className="text-gray-500">Reserved Units:</span>
+                              <span className="font-bold text-gray-950">{validatedHoldResult.hold.quantity} unit(s)</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-slate-400">Store Price to Collect:</span>
-                              <span className="font-black text-emerald-400 text-sm font-['Outfit']">₹{validatedHoldResult.hold.price.toLocaleString('en-IN')}</span>
+                              <span className="text-gray-500">Counter Price to Collect:</span>
+                              <span className="font-bold text-emerald-700 text-sm font-mono">₹{validatedHoldResult.hold.price.toLocaleString('en-IN')}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-slate-400">Pass Code:</span>
-                              <span className="font-mono font-bold text-white">{validatedHoldResult.hold.holdCode}</span>
+                              <span className="text-gray-500">Hold Pass Code:</span>
+                              <span className="font-mono font-bold text-gray-950">{validatedHoldResult.hold.holdCode}</span>
                             </div>
                           </div>
                         )}
@@ -1941,9 +1963,10 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
 
                       {validatedHoldResult.isValid && validatedHoldResult.hold && (
                         <button
+                          type="button"
                           onClick={() => handleMarkAsCollected(validatedHoldResult.hold!.holdId)}
                           disabled={isCollecting}
-                          className="px-5 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 transition-colors cursor-pointer shrink-0"
+                          className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shrink-0"
                         >
                           {isCollecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                           <span>Mark as Collected</span>
@@ -1955,37 +1978,46 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
               </div>
 
               <div className="space-y-3">
-                {holds.map(hold => (
-                  <div key={hold.id} className="p-5 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-4">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-white text-base">{hold.product}</span>
-                        <span className="text-xs font-bold text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded">
-                          ₹{hold.price.toLocaleString('en-IN')}
-                        </span>
-                      </div>
-                      <div className="text-xs text-slate-400 mt-1 flex items-center gap-3">
-                        <span>Customer: <strong>{hold.customerName}</strong></span>
-                        <span>·</span>
-                        <span>{hold.phone}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs font-mono font-bold text-amber-400 bg-amber-950/60 border border-amber-800/80 px-2.5 py-1 rounded-lg">
-                        {hold.expiresIn}
-                      </span>
-                      {hold.status === 'active' && (
-                        <button
-                          onClick={() => setHolds(prev => prev.map(h => h.id === hold.id ? { ...h, status: 'completed', expiresIn: 'Picked Up ✓' } : h))}
-                          className="px-3.5 py-1.5 rounded-xl bg-white text-black font-bold text-xs hover:bg-slate-200 transition-colors"
-                        >
-                          Mark Sold
-                        </button>
-                      )}
-                    </div>
+                {holds.length === 0 ? (
+                  <div className="p-8 rounded-2xl bg-white border border-gray-200/80 text-center space-y-2">
+                    <Clock className="h-8 w-8 text-gray-300 mx-auto" />
+                    <div className="text-xs font-bold text-gray-700">No active walk-in holds at this moment</div>
+                    <p className="text-[11px] text-gray-400">When shoppers reserve items for 30-minute hold, they will appear here.</p>
                   </div>
-                ))}
+                ) : (
+                  holds.map(hold => (
+                    <div key={hold.id} className="p-4 sm:p-5 rounded-2xl bg-white border border-gray-200/80 flex items-center justify-between gap-4 shadow-2xs">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-gray-950 text-base">{hold.product}</span>
+                          <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                            ₹{hold.price.toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1 flex items-center gap-3">
+                          <span>Customer: <strong className="text-gray-800">{hold.customerName}</strong></span>
+                          <span>·</span>
+                          <span>{hold.phone}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-mono font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg">
+                          {hold.expiresIn}
+                        </span>
+                        {hold.status === 'active' && (
+                          <button
+                            type="button"
+                            onClick={() => setHolds(prev => prev.map(h => h.id === hold.id ? { ...h, status: 'completed', expiresIn: 'Picked Up' } : h))}
+                            className="px-3.5 py-1.5 rounded-xl bg-gray-950 text-white font-bold text-xs hover:bg-gray-800 transition-colors cursor-pointer"
+                          >
+                            Mark Sold
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           )}
@@ -1994,44 +2026,44 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
           {activeTab === 'analytics' && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-xl font-bold text-white font-['Outfit']">Store Footfall & Inventory Analytics</h2>
-                <p className="text-xs text-slate-400">Live operational performance summary for {storeName || 'Your Storefront'}</p>
+                <h2 className="text-lg font-bold text-gray-950 font-['Outfit']">Store Performance Analytics</h2>
+                <p className="text-xs text-gray-500">Live operational summary for {storeName || 'Your Storefront'}</p>
               </div>
 
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
-                  <div className="text-xs text-slate-400">Active Shelf Items</div>
-                  <div className="text-2xl font-extrabold text-white font-['Outfit'] mt-1">
+                <div className="p-4 rounded-2xl bg-white border border-gray-200/80 shadow-2xs">
+                  <div className="text-xs text-gray-500 font-medium">Active Shelf Items</div>
+                  <div className="text-2xl font-black text-gray-950 font-['Outfit'] mt-1">
                     {inventory.length}
                   </div>
-                  <div className="text-[11px] text-emerald-400 font-semibold mt-1">
-                    {inventory.filter(i => i.availableQuantity > 0).length} in stock right now
+                  <div className="text-[11px] text-emerald-700 font-semibold mt-1">
+                    {inventory.filter(i => i.availableQuantity > 0).length} in stock
                   </div>
                 </div>
-                <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
-                  <div className="text-xs text-slate-400">Live Requests</div>
-                  <div className="text-2xl font-extrabold text-white font-['Outfit'] mt-1">
+                <div className="p-4 rounded-2xl bg-white border border-gray-200/80 shadow-2xs">
+                  <div className="text-xs text-gray-500 font-medium">Shopper Requests</div>
+                  <div className="text-2xl font-black text-gray-950 font-['Outfit'] mt-1">
                     {requests.length}
                   </div>
-                  <div className="text-[11px] text-emerald-400 font-semibold mt-1">
+                  <div className="text-[11px] text-[#007AFF] font-semibold mt-1">
                     {requests.filter(r => r.status === 'pending').length} pending response
                   </div>
                 </div>
-                <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
-                  <div className="text-xs text-slate-400">Total Stock Units</div>
-                  <div className="text-2xl font-extrabold text-white font-['Outfit'] mt-1">
+                <div className="p-4 rounded-2xl bg-white border border-gray-200/80 shadow-2xs">
+                  <div className="text-xs text-gray-500 font-medium">Total Stock Units</div>
+                  <div className="text-2xl font-black text-gray-950 font-['Outfit'] mt-1">
                     {inventory.reduce((acc, i) => acc + (i.quantity || 0), 0)}
                   </div>
-                  <div className="text-[11px] text-indigo-400 font-semibold mt-1">
+                  <div className="text-[11px] text-gray-500 font-semibold mt-1">
                     {inventory.reduce((acc, i) => acc + (i.availableQuantity || 0), 0)} available for hold
                   </div>
                 </div>
-                <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
-                  <div className="text-xs text-slate-400">Total Inventory Value</div>
-                  <div className="text-2xl font-extrabold text-white font-['Outfit'] mt-1">
+                <div className="p-4 rounded-2xl bg-white border border-gray-200/80 shadow-2xs">
+                  <div className="text-xs text-gray-500 font-medium">Total Inventory Value</div>
+                  <div className="text-2xl font-black text-gray-950 font-['Outfit'] mt-1">
                     ₹{inventory.reduce((acc, i) => acc + ((i.price || 0) * (i.quantity || 0)), 0).toLocaleString('en-IN')}
                   </div>
-                  <div className="text-[11px] text-emerald-400 font-semibold mt-1">0% commission taken</div>
+                  <div className="text-[11px] text-emerald-700 font-semibold mt-1">0% commission taken</div>
                 </div>
               </div>
             </div>
@@ -2041,22 +2073,22 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
           {activeTab === 'settings' && (
             <div className="space-y-5 max-w-xl">
               <div>
-                <h2 className="text-xl font-bold text-white font-['Outfit']">Store Profile & Settings</h2>
-                <p className="text-xs text-slate-400">Manage your store operations or switch back to shopping</p>
+                <h2 className="text-lg font-bold text-gray-950 font-['Outfit']">Store Profile & Settings</h2>
+                <p className="text-xs text-gray-500">Manage store details, contact info, and GPS location</p>
               </div>
 
               {/* ── Prominent Switch to Shopping Mode Card ── */}
-              <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-950/60 to-slate-900 border border-blue-600/30 flex items-center justify-between gap-4 shadow-md">
+              <div className="p-4 rounded-2xl bg-blue-50/80 border border-blue-200 flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-[#007AFF] text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <div className="w-10 h-10 rounded-xl bg-[#007AFF] text-white flex items-center justify-center shrink-0 shadow-2xs">
                     <ShoppingBag className="w-5 h-5" />
                   </div>
                   <div className="min-w-0">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-400">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#007AFF]">
                       Personal Account
                     </span>
-                    <h4 className="text-xs font-bold text-white truncate">Shopping Mode</h4>
-                    <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                    <h4 className="text-xs font-bold text-gray-950 truncate">Shopping Mode</h4>
+                    <p className="text-[11px] text-gray-500 truncate mt-0.5">
                       Find and reserve items at nearby local stores
                     </p>
                   </div>
@@ -2065,47 +2097,47 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                 <button
                   type="button"
                   onClick={onSwitchToCustomer}
-                  className="px-3.5 py-2 rounded-xl bg-[#007AFF] hover:bg-[#0071E3] active:scale-[0.97] text-white text-xs font-bold transition-all shrink-0 cursor-pointer shadow-xs"
+                  className="px-3.5 py-2 rounded-xl bg-[#007AFF] hover:bg-blue-600 active:scale-[0.97] text-white text-xs font-bold transition-all shrink-0 cursor-pointer shadow-xs"
                 >
                   Switch
                 </button>
               </div>
 
               {actionNotice && !actionNotice.isError && (
-                <div className="p-3.5 rounded-xl bg-emerald-950/60 border border-emerald-800 text-xs text-emerald-300 font-semibold">
+                <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-semibold">
                   {actionNotice.message}
                 </div>
               )}
 
-              <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+              <div className="p-6 rounded-2xl bg-white border border-gray-200/80 shadow-xs space-y-4">
                 <div>
-                  <label className="text-xs font-semibold text-slate-300 block mb-1">Store Name</label>
+                  <label className="text-xs font-semibold text-gray-700 block mb-1">Store Name</label>
                   <input
                     type="text"
                     value={storeName}
                     onChange={(e) => setStoreName(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs text-gray-900 focus:bg-white focus:outline-none focus:border-[#007AFF]"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-slate-300 block mb-1">Primary Category</label>
+                  <label className="text-xs font-semibold text-gray-700 block mb-1">Primary Category</label>
                   <input
                     type="text"
                     value={storeCategory}
                     onChange={(e) => setStoreCategory(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs text-gray-900 focus:bg-white focus:outline-none focus:border-[#007AFF]"
                   />
                 </div>
 
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs font-semibold text-slate-300 block">Physical Address</label>
+                    <label className="text-xs font-semibold text-gray-700 block">Physical Address</label>
                     <button
                       type="button"
                       onClick={handleDetectStoreLocation}
                       disabled={isDetectingStoreGps}
-                      className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-[#007AFF] hover:underline cursor-pointer disabled:opacity-50"
                     >
                       {isDetectingStoreGps ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -2120,42 +2152,43 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                     value={storeAddress}
                     onChange={(e) => setStoreAddress(e.target.value)}
                     placeholder="Shop #, Street Name, Area, City"
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs text-gray-900 focus:bg-white focus:outline-none focus:border-[#007AFF]"
                   />
                   {storeGpsFeedback && (
-                    <p className="text-[11px] text-emerald-400 mt-1 font-mono">{storeGpsFeedback}</p>
+                    <p className="text-[11px] text-emerald-600 mt-1 font-mono">{storeGpsFeedback}</p>
                   )}
                   {storeLat !== undefined && storeLng !== undefined && !storeGpsFeedback && (
-                    <p className="text-[11px] text-slate-400 mt-1 font-mono">
-                      📍 Pinned GPS: {storeLat.toFixed(4)}°, {storeLng.toFixed(4)}°
+                    <p className="text-[11px] text-gray-500 mt-1 font-mono">
+                      Pinned GPS: {storeLat.toFixed(4)}°, {storeLng.toFixed(4)}°
                     </p>
                   )}
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-slate-300 block mb-1">Contact Phone</label>
+                  <label className="text-xs font-semibold text-gray-700 block mb-1">Contact Phone</label>
                   <input
                     type="text"
                     value={storePhone}
                     onChange={(e) => setStorePhone(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs text-gray-900 focus:bg-white focus:outline-none focus:border-[#007AFF]"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-slate-300 block mb-1">Operating Hours</label>
+                  <label className="text-xs font-semibold text-gray-700 block mb-1">Operating Hours</label>
                   <input
                     type="text"
                     value={storeHours}
                     onChange={(e) => setStoreHours(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs text-gray-900 focus:bg-white focus:outline-none focus:border-[#007AFF]"
                   />
                 </div>
 
                 <button
+                  type="button"
                   onClick={handleSaveStoreSettings}
                   disabled={isSavingSettings}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-bold text-xs text-white transition-colors disabled:opacity-60 cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gray-950 hover:bg-gray-800 font-bold text-xs text-white transition-colors disabled:opacity-60 cursor-pointer shadow-xs"
                 >
                   {isSavingSettings ? (
                     <>
@@ -2170,27 +2203,26 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
             </div>
           )}
 
-
         </main>
 
       </div>
 
-      {/* ── ADD SHELF ITEM MODAL (Global Catalog + Store Inventory Flow) ── */}
+      {/* ── ADD SHELF ITEM MODAL ── */}
       <AnimatePresence>
         {isAddItemOpen && (
-          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4 text-left shadow-2xl max-h-[90vh] overflow-y-auto"
+              className="w-full max-w-lg bg-white border border-gray-200 rounded-3xl p-6 space-y-4 text-left shadow-2xl max-h-[90vh] overflow-y-auto"
             >
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                 <div>
-                  <h3 className="text-lg font-bold text-white font-['Outfit']">Add Product to Store Inventory</h3>
-                  <p className="text-xs text-slate-400">Link your store to canonical global catalog products</p>
+                  <h3 className="text-lg font-bold text-gray-950 font-['Outfit']">Add Product to Shelf</h3>
+                  <p className="text-xs text-gray-500">Link your physical store inventory to canonical catalog products</p>
                 </div>
-                <button onClick={resetModalState} className="p-1 text-slate-400 hover:text-white cursor-pointer">
+                <button type="button" onClick={resetModalState} className="p-1 text-gray-400 hover:text-gray-700 cursor-pointer">
                   <X className="h-5 w-5" />
                 </button>
               </div>
@@ -2199,26 +2231,26 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                 /* STEP 1: CATALOG SEARCH & SELECTION */
                 <div className="space-y-4">
                   <div>
-                    <label className="text-xs font-bold text-slate-200 block mb-1">Search Product Catalog</label>
+                    <label className="text-xs font-bold text-gray-700 block mb-1">Search Product Catalog</label>
                     <div className="relative">
-                      <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+                      <Search className="absolute left-3.5 top-3 h-4 w-4 text-gray-400" />
                       <input
                         type="text"
                         value={catalogSearchQuery}
                         onChange={(e) => setCatalogSearchQuery(e.target.value)}
-                        placeholder="Search by product name, model (e.g. sony xm5, iphone 15)..."
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                        placeholder="Search product name, model (e.g. Sony XM5, iPhone 15)..."
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-xs text-gray-900 focus:bg-white focus:outline-none focus:border-[#007AFF]"
                       />
                     </div>
                   </div>
 
                   {/* Catalog Results Dropdown */}
                   {catalogSearchQuery.trim() && (
-                    <div className="max-h-44 overflow-y-auto rounded-xl border border-slate-800 bg-slate-950 divide-y divide-slate-800/60">
+                    <div className="max-h-48 overflow-y-auto rounded-xl border border-gray-200 bg-white divide-y divide-gray-100 shadow-xs">
                       {isSearchingCatalog ? (
-                        <div className="p-3 text-xs text-slate-400 text-center font-mono">Searching canonical catalog...</div>
+                        <div className="p-3 text-xs text-gray-400 text-center font-mono">Searching catalog...</div>
                       ) : catalogResults.length === 0 ? (
-                        <div className="p-3 text-xs text-slate-400 text-center">
+                        <div className="p-3 text-xs text-gray-500 text-center">
                           No matching product found in catalog.
                         </div>
                       ) : (
@@ -2226,24 +2258,24 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                           <div
                             key={prod.id}
                             onClick={() => handleSelectCatalogProduct(prod)}
-                            className={`p-3 flex items-center justify-between cursor-pointer hover:bg-indigo-950/40 transition-colors ${
-                              selectedProduct?.id === prod.id ? 'bg-indigo-950/70 border-l-4 border-indigo-500' : ''
+                            className={`p-3 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition-colors ${
+                              selectedProduct?.id === prod.id ? 'bg-blue-50/70 border-l-4 border-[#007AFF]' : ''
                             }`}
                           >
                             <div className="flex items-center gap-3">
                               <img 
                                 src={prod.imageUrl || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=150&q=80'} 
                                 alt={prod.name} 
-                                className="h-10 w-10 rounded-lg object-cover bg-slate-800 shrink-0" 
+                                className="h-10 w-10 rounded-lg object-cover bg-gray-100 shrink-0 border border-gray-200/60" 
                               />
                               <div>
-                                <div className="text-xs font-bold text-white">{prod.name}</div>
-                                <div className="text-[11px] text-slate-400">
+                                <div className="text-xs font-bold text-gray-950">{prod.name}</div>
+                                <div className="text-[11px] text-gray-500">
                                   {prod.brandName ? `${prod.brandName} · ` : ''}{prod.categoryName || 'General'}
                                 </div>
                               </div>
                             </div>
-                            <span className="text-xs font-bold text-indigo-400 px-2 py-1 rounded bg-indigo-950 border border-indigo-800">
+                            <span className="text-xs font-semibold text-[#007AFF] px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-100">
                               Select
                             </span>
                           </div>
@@ -2254,28 +2286,28 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
 
                   {/* Selected Product Banner & Form */}
                   {selectedProduct ? (
-                    <form onSubmit={handleSaveInventory} className="space-y-4 border-t border-slate-800 pt-4">
-                      <div className="p-3 rounded-xl bg-indigo-950/40 border border-indigo-800/60 flex items-center gap-3">
+                    <form onSubmit={handleSaveInventory} className="space-y-4 border-t border-gray-100 pt-4">
+                      <div className="p-3 rounded-xl bg-blue-50/60 border border-blue-100 flex items-center gap-3">
                         <img 
                           src={selectedProduct.imageUrl || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=150&q=80'} 
                           alt={selectedProduct.name} 
-                          className="h-12 w-12 rounded-lg object-cover bg-slate-800 shrink-0" 
+                          className="h-12 w-12 rounded-lg object-cover bg-white shrink-0 border border-gray-200" 
                         />
                         <div className="min-w-0 flex-1">
-                          <div className="text-xs font-mono text-indigo-300 font-bold uppercase">Selected Global Product</div>
-                          <div className="text-sm font-bold text-white truncate">{selectedProduct.name}</div>
-                          <div className="text-xs text-slate-400">{selectedProduct.brandName}</div>
+                          <div className="text-[10px] font-mono text-[#007AFF] font-bold uppercase">Selected Global Product</div>
+                          <div className="text-xs font-bold text-gray-950 truncate">{selectedProduct.name}</div>
+                          <div className="text-[11px] text-gray-500">{selectedProduct.brandName}</div>
                         </div>
                       </div>
 
                       {/* Variant Selection if available */}
                       {selectedProduct.variants && selectedProduct.variants.length > 0 && (
                         <div>
-                          <label className="text-xs font-semibold text-slate-300 block mb-1">Product Variant</label>
+                          <label className="text-xs font-semibold text-gray-700 block mb-1">Product Variant</label>
                           <select
                             value={selectedVariantId}
                             onChange={(e) => setSelectedVariantId(e.target.value)}
-                            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:bg-white focus:outline-none focus:border-[#007AFF]"
                           >
                             {selectedProduct.variants.map((v: ProductVariantDto) => (
                               <option key={v.id} value={v.id}>
@@ -2288,53 +2320,53 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
 
                       <div className="grid grid-cols-3 gap-3">
                         <div>
-                          <label className="text-xs font-semibold text-slate-300 block mb-1">Your Price (₹)</label>
+                          <label className="text-xs font-semibold text-gray-700 block mb-1">Store Price (₹)</label>
                           <input
                             type="number"
                             value={itemPrice}
                             onChange={(e) => setItemPrice(e.target.value)}
                             placeholder="e.g. 26990"
-                            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:bg-white focus:outline-none focus:border-[#007AFF]"
                             required
                           />
                         </div>
                         <div>
-                          <label className="text-xs font-semibold text-slate-300 block mb-1">Quantity</label>
+                          <label className="text-xs font-semibold text-gray-700 block mb-1">Quantity</label>
                           <input
                             type="number"
                             value={itemQuantity}
                             onChange={(e) => setItemQuantity(e.target.value)}
                             placeholder="e.g. 2"
-                            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:bg-white focus:outline-none focus:border-[#007AFF]"
                             required
                           />
                         </div>
                         <div>
-                          <label className="text-xs font-semibold text-slate-300 block mb-1">Shelf Location</label>
+                          <label className="text-xs font-semibold text-gray-700 block mb-1">Shelf Location</label>
                           <input
                             type="text"
                             value={itemShelf}
                             onChange={(e) => setItemShelf(e.target.value)}
-                            placeholder="e.g. A12"
-                            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                            placeholder="e.g. Shelf A"
+                            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:bg-white focus:outline-none focus:border-[#007AFF]"
                           />
                         </div>
                       </div>
 
                       <button
                         type="submit"
-                        className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-bold text-xs text-white transition-colors cursor-pointer shadow-lg shadow-indigo-600/30"
+                        className="w-full py-2.5 rounded-xl bg-gray-950 hover:bg-gray-800 font-bold text-xs text-white transition-colors cursor-pointer shadow-xs"
                       >
-                        Save Inventory to Store
+                        Save to Store Shelf
                       </button>
                     </form>
                   ) : (
-                    <div className="pt-2 text-center space-y-2 border-t border-slate-800">
-                      <p className="text-xs text-slate-400">Can't find this product in the global catalog?</p>
+                    <div className="pt-2 text-center space-y-2 border-t border-gray-100">
+                      <p className="text-xs text-gray-500">Can't find this product in the global catalog?</p>
                       <button
                         type="button"
                         onClick={() => setShowCreateProductForm(true)}
-                        className="text-xs font-bold text-indigo-400 hover:underline cursor-pointer"
+                        className="text-xs font-bold text-[#007AFF] hover:underline cursor-pointer"
                       >
                         + Create New Global Product
                       </button>
@@ -2342,16 +2374,16 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                   )}
                 </div>
               ) : (
-                /* STEP 2: CREATE NEW GLOBAL PRODUCT (WITH DUPLICATE PREVENTION) */
-                <form onSubmit={handleCheckAndCreateProduct} className="space-y-3.5">
+                /* STEP 2: CREATE NEW GLOBAL PRODUCT */
+                <form onSubmit={handleCheckAndCreateProduct} className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">
+                    <span className="text-xs font-mono font-bold text-[#007AFF] uppercase tracking-wider">
                       New Global Product Entry
                     </span>
                     <button
                       type="button"
                       onClick={() => setShowCreateProductForm(false)}
-                      className="text-xs text-slate-400 hover:text-white"
+                      className="text-xs text-gray-500 hover:text-gray-900"
                     >
                       ← Back to Search
                     </button>
@@ -2359,15 +2391,15 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
 
                   {/* DUPLICATE WARNING ALERT */}
                   {duplicateCheckWarning && duplicateCheckWarning.matchingProduct && (
-                    <div className="p-4 rounded-2xl bg-amber-950/70 border border-amber-700/80 space-y-3 text-left">
+                    <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 space-y-2.5 text-left">
                       <div className="flex items-start gap-2.5">
-                        <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+                        <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
                         <div>
-                          <div className="text-xs font-bold text-amber-300">
+                          <div className="text-xs font-bold text-amber-950">
                             Potential Duplicate Product Found!
                           </div>
-                          <p className="text-xs text-amber-200/80 mt-1">
-                            Did you mean: <strong className="text-white">{duplicateCheckWarning.matchingProduct.name}</strong> ({duplicateCheckWarning.matchingProduct.brandName})?
+                          <p className="text-xs text-amber-800 mt-0.5">
+                            Did you mean: <strong className="text-gray-950">{duplicateCheckWarning.matchingProduct.name}</strong> ({duplicateCheckWarning.matchingProduct.brandName})?
                           </p>
                         </div>
                       </div>
@@ -2385,14 +2417,14 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                             setShowCreateProductForm(false);
                             setDuplicateCheckWarning(null);
                           }}
-                          className="px-3 py-1.5 rounded-xl bg-amber-400 text-slate-950 font-bold text-xs hover:bg-amber-300 transition-colors cursor-pointer"
+                          className="px-3 py-1.5 rounded-xl bg-amber-600 text-white font-bold text-xs hover:bg-amber-500 transition-colors cursor-pointer"
                         >
-                          Yes, Select Existing Product
+                          Select Existing Product
                         </button>
                         <button
                           type="button"
                           onClick={executeProductCreation}
-                          className="px-3 py-1.5 rounded-xl border border-amber-600/60 text-amber-200 font-semibold text-xs hover:bg-amber-900/40 cursor-pointer"
+                          className="px-3 py-1.5 rounded-xl border border-gray-300 text-gray-700 font-semibold text-xs hover:bg-gray-100 cursor-pointer"
                         >
                           Create New Anyway
                         </button>
@@ -2401,58 +2433,58 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                   )}
 
                   <div>
-                    <label className="text-xs font-semibold text-slate-300 block mb-1">Brand Name *</label>
+                    <label className="text-xs font-semibold text-gray-700 block mb-1">Brand Name *</label>
                     <input
                       type="text"
                       value={newProdBrand}
                       onChange={(e) => setNewProdBrand(e.target.value)}
                       placeholder="e.g. Sony, Apple, Nike"
-                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:bg-white focus:outline-none focus:border-[#007AFF]"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold text-slate-300 block mb-1">Product Name *</label>
+                    <label className="text-xs font-semibold text-gray-700 block mb-1">Product Name *</label>
                     <input
                       type="text"
                       value={newProdName}
                       onChange={(e) => setNewProdName(e.target.value)}
                       placeholder="e.g. Sony WH-1000XM5 Wireless Headphones"
-                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:bg-white focus:outline-none focus:border-[#007AFF]"
                       required
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs font-semibold text-slate-300 block mb-1">Model Number</label>
+                      <label className="text-xs font-semibold text-gray-700 block mb-1">Model Number</label>
                       <input
                         type="text"
                         value={newProdModel}
                         onChange={(e) => setNewProdModel(e.target.value)}
                         placeholder="e.g. WH-1000XM5"
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none font-mono"
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:bg-white focus:outline-none font-mono"
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-semibold text-slate-300 block mb-1">GTIN / Barcode</label>
+                      <label className="text-xs font-semibold text-gray-700 block mb-1">GTIN / Barcode</label>
                       <input
                         type="text"
                         value={newProdGtin}
                         onChange={(e) => setNewProdGtin(e.target.value)}
                         placeholder="e.g. 4548736132580"
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none font-mono"
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:bg-white focus:outline-none font-mono"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold text-slate-300 block mb-1">Category</label>
+                    <label className="text-xs font-semibold text-gray-700 block mb-1">Category</label>
                     <select
                       value={newProdCategory}
                       onChange={(e) => setNewProdCategory(e.target.value)}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:bg-white focus:outline-none"
                     >
                       {dbCategories.length > 0 ? (
                         dbCategories.map(c => (
@@ -2470,31 +2502,31 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold text-slate-300 block mb-1">Description</label>
+                    <label className="text-xs font-semibold text-gray-700 block mb-1">Description</label>
                     <textarea
                       value={newProdDesc}
                       onChange={(e) => setNewProdDesc(e.target.value)}
-                      placeholder="Key specifications, features, color, size details..."
+                      placeholder="Key specifications, features, color details..."
                       rows={2}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none resize-none"
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:bg-white focus:outline-none resize-none"
                     />
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold text-slate-300 block mb-1">Image URL</label>
+                    <label className="text-xs font-semibold text-gray-700 block mb-1">Image URL</label>
                     <input
                       type="text"
                       value={newProdImage}
                       onChange={(e) => setNewProdImage(e.target.value)}
                       placeholder="https://..."
-                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 focus:bg-white focus:outline-none"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={isCheckingDuplicate}
-                    className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-bold text-xs text-white transition-colors cursor-pointer shadow-lg shadow-indigo-600/30"
+                    className="w-full py-2.5 rounded-xl bg-gray-950 hover:bg-gray-800 font-bold text-xs text-white transition-colors cursor-pointer shadow-xs"
                   >
                     {isCheckingDuplicate ? 'Checking Catalog Duplicates...' : 'Create & Proceed to Add Inventory'}
                   </button>
@@ -2506,28 +2538,28 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
       </AnimatePresence>
 
       {actionNotice && (
-        <div className={`fixed bottom-20 md:bottom-6 right-6 z-50 px-5 py-3 rounded-2xl text-xs font-semibold shadow-2xl flex items-center gap-2 border ${
+        <div className={`fixed bottom-20 md:bottom-6 right-6 z-50 px-4 py-2.5 rounded-2xl text-xs font-semibold shadow-xl flex items-center gap-2 border ${
           actionNotice.isError 
-            ? 'bg-rose-950/95 text-rose-200 border-rose-800 backdrop-blur-md' 
-            : 'bg-emerald-950/95 text-emerald-200 border-emerald-800 backdrop-blur-md'
+            ? 'bg-rose-50 text-rose-800 border-rose-200' 
+            : 'bg-emerald-50 text-emerald-800 border-emerald-200'
         }`}>
           <span>{actionNotice.message}</span>
         </div>
       )}
 
       {/* ── STORE MODE MOBILE BOTTOM NAVIGATION ── */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-950/95 backdrop-blur-xl border-t border-slate-800 flex items-center justify-around py-2.5 px-2 z-40 shadow-[0_-2px_12px_rgba(0,0,0,0.5)]">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200/80 flex items-center justify-around py-2 px-2 z-40 shadow-xs">
         <button
           type="button"
           onClick={() => setActiveTab('requests')}
           className={`flex flex-col items-center gap-1 transition-all active:scale-[0.94] cursor-pointer relative ${
-            activeTab === 'requests' ? 'text-indigo-400 font-bold' : 'text-slate-400 hover:text-slate-200'
+            activeTab === 'requests' ? 'text-[#007AFF] font-bold' : 'text-gray-400 hover:text-gray-700'
           }`}
         >
           <Send className="w-5 h-5" />
           <span className="text-[10px]">Dashboard</span>
           {pendingRequestsCount > 0 && (
-            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-indigo-500" />
+            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-[#007AFF]" />
           )}
         </button>
 
@@ -2535,7 +2567,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
           type="button"
           onClick={() => setActiveTab('inventory')}
           className={`flex flex-col items-center gap-1 transition-all active:scale-[0.94] cursor-pointer ${
-            activeTab === 'inventory' ? 'text-indigo-400 font-bold' : 'text-slate-400 hover:text-slate-200'
+            activeTab === 'inventory' ? 'text-[#007AFF] font-bold' : 'text-gray-400 hover:text-gray-700'
           }`}
         >
           <Package className="w-5 h-5" />
@@ -2546,13 +2578,13 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
           type="button"
           onClick={() => setActiveTab('holds')}
           className={`flex flex-col items-center gap-1 transition-all active:scale-[0.94] cursor-pointer relative ${
-            activeTab === 'holds' ? 'text-indigo-400 font-bold' : 'text-slate-400 hover:text-slate-200'
+            activeTab === 'holds' ? 'text-[#007AFF] font-bold' : 'text-gray-400 hover:text-gray-700'
           }`}
         >
           <Clock className="w-5 h-5" />
           <span className="text-[10px]">Holds</span>
           {activeHoldsCount > 0 && (
-            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400" />
+            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-500" />
           )}
         </button>
 
@@ -2560,7 +2592,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
           type="button"
           onClick={() => setActiveTab('analytics')}
           className={`flex flex-col items-center gap-1 transition-all active:scale-[0.94] cursor-pointer ${
-            activeTab === 'analytics' ? 'text-indigo-400 font-bold' : 'text-slate-400 hover:text-slate-200'
+            activeTab === 'analytics' ? 'text-[#007AFF] font-bold' : 'text-gray-400 hover:text-gray-700'
           }`}
         >
           <BarChart3 className="w-5 h-5" />
@@ -2571,7 +2603,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
           type="button"
           onClick={() => setActiveTab('settings')}
           className={`flex flex-col items-center gap-1 transition-all active:scale-[0.94] cursor-pointer ${
-            activeTab === 'settings' ? 'text-indigo-400 font-bold' : 'text-slate-400 hover:text-slate-200'
+            activeTab === 'settings' ? 'text-[#007AFF] font-bold' : 'text-gray-400 hover:text-gray-700'
           }`}
         >
           <Settings className="w-5 h-5" />

@@ -207,9 +207,9 @@ export function AppContent() {
         </div>
       )}
 
-      {/* ── EXPERIENCE 2: STORE MODE (Merchant OS) ── */}
+      {/* ── EXPERIENCE 2: STORE MODE ── */}
       {currentRoute === 'vendor' && (
-        <div className="min-h-screen bg-black text-white flex flex-col selection:bg-white selection:text-black">
+        <div className="min-h-screen bg-[#F8F9FA] text-gray-900 flex flex-col selection:bg-[#007AFF] selection:text-white">
           <VendorDashboardPage
             onSwitchToCustomer={() => navigateTo('customer')}
             onNavigateToAdmin={() => navigateTo('admin')}
