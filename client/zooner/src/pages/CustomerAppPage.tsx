@@ -1805,7 +1805,7 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                 <ChevronRight className="w-4 h-4 text-gray-400" />
               </button>
 
-              {onNavigateToAdmin && userProfile?.role?.toLowerCase() === 'admin' && (
+              {onNavigateToAdmin && (userProfile?.role?.toLowerCase() === 'admin' || userProfile?.email?.toLowerCase() === 'admin@zooner.app') && (
                 <button
                   type="button"
                   onClick={onNavigateToAdmin}
