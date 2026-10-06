@@ -189,7 +189,7 @@ export function AppContent() {
 
       {/* ── EXPERIENCE 3: ADMIN DASHBOARD (Platform Control) ── */}
       {currentRoute === 'admin' && (
-        <div className="min-h-screen bg-slate-950 text-white flex flex-col">
+        <div className="min-h-screen bg-[#F4F6F9] text-gray-900 flex flex-col">
           <AdminDashboardPage
             onSwitchToCustomer={() => navigateTo('customer')}
             onSwitchToVendor={handleSwitchToVendor}
@@ -201,13 +201,15 @@ export function AppContent() {
 
       {/* ── EXPERIENCE 2: STORE MODE (Individual Screen) ── */}
       {currentRoute === 'vendor' && (
-        <div className="min-h-screen bg-[#F8F9FA] text-gray-900 flex flex-col selection:bg-[#007AFF] selection:text-white">
-          <VendorDashboardPage
-            onSwitchToCustomer={() => navigateTo('customer')}
-            onNavigateToAdmin={() => navigateTo('admin')}
-            onOpenExperienceSwitcher={() => setIsExperienceSwitcherOpen(true)}
-            isMultiRole={true}
-          />
+        <div className="min-h-screen bg-[#F0F2F5] text-gray-950 flex flex-col items-center justify-start selection:bg-[#007AFF] selection:text-white sm:py-0">
+          <div className="w-full max-w-[440px] min-h-screen bg-white sm:shadow-2xl sm:border-x sm:border-gray-100 flex flex-col relative">
+            <VendorDashboardPage
+              onSwitchToCustomer={() => navigateTo('customer')}
+              onNavigateToAdmin={() => navigateTo('admin')}
+              onOpenExperienceSwitcher={() => setIsExperienceSwitcherOpen(true)}
+              isMultiRole={true}
+            />
+          </div>
           <SignInModal
             isOpen={isSignInModalOpen}
             onClose={() => setIsSignInModalOpen(false)}

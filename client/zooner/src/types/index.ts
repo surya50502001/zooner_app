@@ -184,6 +184,31 @@ export interface LiveRequestSummary {
   responses?: (RetailerResponse | RequestResponseDto)[];
 }
 
+export interface ChatMessageDto {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  senderName: string;
+  messageText: string;
+  isRead: boolean;
+  createdAtUtc: string;
+}
+
+export interface ConversationDto {
+  id: string;
+  liveRequestId: string;
+  liveRequestText: string;
+  customerId: string;
+  customerName: string;
+  shopId: string;
+  shopName: string;
+  createdAtUtc: string;
+  updatedAtUtc: string;
+  lastMessage?: ChatMessageDto;
+  unreadCount: number;
+}
+
+
 export interface InventoryHoldDto {
   holdId: string;
   storeInventoryId: string;

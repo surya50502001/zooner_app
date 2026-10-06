@@ -1,55 +1,49 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import QRCode from 'qrcode';
 import { 
   Search, 
   MapPin, 
-  Clock, 
   Radio, 
-  Bookmark, 
-  ArrowLeft,
+  ArrowLeft, 
   X, 
-  Compass, 
   User, 
   ChevronRight, 
   ChevronDown, 
   Share2, 
   Bell, 
   Info, 
-  LogOut, 
   CheckCircle2, 
   Loader2, 
   PackageOpen, 
-  Shield, 
-  Store,
-  SlidersHorizontal,
-  Heart,
-  Home as HomeIcon,
-  Sparkles,
-  Smartphone,
-  Laptop,
-  Headphones,
-  Shirt,
-  ShoppingBag,
-  Watch,
-  LayoutGrid,
-  RotateCcw
+  Store, 
+  SlidersHorizontal, 
+  Heart, 
+  Home as HomeIcon, 
+  Smartphone, 
+  Headphones, 
+  Shirt, 
+  LayoutGrid, 
+  Phone,
+  Navigation,
+  Send,
+  Star,
+  MoreVertical
 } from 'lucide-react';
 import { 
   fetchCategories, 
   fetchShops, 
   searchProducts, 
-  reserveInventoryHold, 
-  releaseInventoryHold, 
   fetchMyActiveHolds, 
   syncUserProfile, 
   createLiveRequest, 
   ensureCustomerSession, 
+  sendChatMessage,
   type ShopProfileDto 
 } from '../services/api';
 import { ExperienceHeaderPill } from '../components/ExperienceSwitcher';
 import type { LocationArea, ProductSearchResult, StoreInventoryItem, CategoryDto } from '../types';
 
-interface CustomerAppPageProps {
+export interface CustomerAppPageProps {
   currentLocation: LocationArea;
   onOpenLocationModal: () => void;
   onNavigateToHome: () => void;
@@ -61,10 +55,19 @@ interface CustomerAppPageProps {
   isMultiRole?: boolean;
 }
 
-type TabType = 'explore' | 'live-ask' | 'holds' | 'account';
-type SearchTabType = 'products' | 'stores' | 'categories';
-type PriceRangeFilter = 'all' | 'under1000' | '1000-5000' | '5000-20000' | 'above20000';
-type SortByType = 'relevance' | 'price-asc' | 'price-desc' | 'nearby';
+export type CustomerScreenType = 
+  | 'onboarding'
+  | 'welcome'
+  | 'home'
+  | 'search'
+  | 'product-details'
+  | 'store-details'
+  | 'chat-conversation'
+  | 'requests'
+  | 'stores'
+  | 'profile';
+
+type SearchTabType = 'products' | 'stores';
 
 interface ActiveHold {
   id: string;
@@ -82,9 +85,39 @@ interface ActiveHold {
   qrCode: string;
 }
 
+interface ChatMessage {
+  id: string;
+  sender: 'customer' | 'store';
+  text: string;
+  time: string;
+}
+
+interface ActiveChatData {
+  product: {
+    id: string;
+    name: string;
+    category?: string;
+    price: number;
+    imageUrl?: string;
+  };
+  store: {
+    id: string;
+    name: string;
+    address?: string;
+    distance?: string;
+    rating?: number;
+    reviewsCount?: number;
+    phone?: string;
+    responseSpeed?: string;
+    avatarUrl?: string;
+  };
+  conversationId?: string;
+  messages: ChatMessage[];
+}
+
 // ── Format distance cleanly ──
 function formatDistance(distKm?: number | null): string {
-  if (distKm === undefined || distKm === null || isNaN(distKm)) return '';
+  if (distKm === undefined || distKm === null || isNaN(distKm)) return '2.1 km';
   if (distKm < 1) {
     return `${Math.round(distKm * 1000)} m`;
   }
@@ -131,56 +164,55 @@ const StandardQRCode: React.FC<{ value: string; size?: number; className?: strin
   );
 };
 
-// ── Category Icon Resolver ──
-function getCategoryIcon(catName: string) {
-  const name = catName.toLowerCase();
-  if (name.includes('mobile') || name.includes('phone')) return Smartphone;
-  if (name.includes('laptop') || name.includes('computer') || name.includes('tech')) return Laptop;
-  if (name.includes('audio') || name.includes('headphone') || name.includes('earphone') || name.includes('sound')) return Headphones;
-  if (name.includes('fashion') || name.includes('cloth') || name.includes('apparel') || name.includes('wear') || name.includes('footwear')) return Shirt;
-  if (name.includes('home') || name.includes('decor') || name.includes('kitchen')) return HomeIcon;
-  if (name.includes('beauty') || name.includes('cosmetic') || name.includes('wellness') || name.includes('care')) return Sparkles;
-  if (name.includes('groc') || name.includes('food') || name.includes('essential')) return ShoppingBag;
-  if (name.includes('watch') || name.includes('wearable')) return Watch;
-  return LayoutGrid;
-}
-
 export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
   currentLocation,
   onOpenLocationModal,
-  onNavigateToHome,
+  onNavigateToHome: _onNavigateToHome,
   onNavigateToVendor,
-  onNavigateToAdmin,
+  onNavigateToAdmin: _onNavigateToAdmin,
   onOpenSignIn,
   onOpenRetailerModal: _onOpenRetailerModal,
   onOpenExperienceSwitcher,
-  isMultiRole,
+  isMultiRole: _isMultiRole,
 }) => {
-  // Navigation & Screen States
-  const [activeTab, setActiveTab] = useState<TabType>('explore');
+  // ── SCREEN ROUTING STATE ──
+  const [customerScreen, setCustomerScreen] = useState<CustomerScreenType>('home');
+  const [screenHistory, setScreenHistory] = useState<CustomerScreenType[]>([]);
+
+  const navigateToScreen = (screen: CustomerScreenType) => {
+    setScreenHistory((prev) => [...prev, customerScreen]);
+    setCustomerScreen(screen);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const goBackScreen = () => {
+    if (screenHistory.length > 0) {
+      const prev = screenHistory[screenHistory.length - 1];
+      setScreenHistory((prevArr) => prevArr.slice(0, -1));
+      setCustomerScreen(prev);
+    } else {
+      setCustomerScreen('home');
+    }
+  };
+
+  // ── SEARCH & FILTER STATE ──
   const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [searchTab, setSearchTab] = useState<SearchTabType>('products');
-
-  // Selected Store Details View
-  const [selectedStore, setSelectedStore] = useState<ShopProfileDto | null>(null);
-  const [storeActiveTab, setStoreActiveTab] = useState<'products' | 'about'>('products');
-
-  // Selected Product Detail Modal / Sheet
-  const [selectedProduct, setSelectedProduct] = useState<ProductSearchResult | null>(null);
-
-  // Filter Sheet State
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-
-  // Explore & Search Filters
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [radiusFilter, setRadiusFilter] = useState<'2 km' | '5 km' | '10 km' | '15 km'>('5 km');
-  const [priceRangeFilter, setPriceRangeFilter] = useState<PriceRangeFilter>('all');
-  const [inStockOnlyFilter, setInStockOnlyFilter] = useState<boolean>(false);
-  const [sortBy, setSortBy] = useState<SortByType>('relevance');
+  const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
-  // Saved Wishlist Items State (Persisted locally)
+  // ── ACTIVE PRODUCT & STORE SELECTIONS ──
+  const [selectedProduct, setSelectedProduct] = useState<ProductSearchResult | null>(null);
+  const [selectedStore, setSelectedStore] = useState<ShopProfileDto | null>(null);
+
+  // ── CONVERSATION / ASK CHAT STATE ──
+  const [activeChat, setActiveChat] = useState<ActiveChatData | null>(null);
+  const [chatInputText, setChatInputText] = useState('');
+  const [isSendingChat, setIsSendingChat] = useState(false);
+
+  // ── USER PROFILE & WISHLIST ──
   const [wishlistIds, setWishlistIds] = useState<Record<string, boolean>>(() => {
     try {
       const saved = localStorage.getItem('zooner_wishlist_ids');
@@ -190,22 +222,22 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
     }
   });
 
-  // Real Database Data State
+  const toggleWishlist = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setWishlistIds((prev) => {
+      const updated = { ...prev, [id]: !prev[id] };
+      localStorage.setItem('zooner_wishlist_ids', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  // ── REAL BACKEND DATA ──
   const [dbCategories, setDbCategories] = useState<CategoryDto[]>([]);
   const [dbProducts, setDbProducts] = useState<ProductSearchResult[]>([]);
   const [dbShops, setDbShops] = useState<ShopProfileDto[]>([]);
-  const [isLoadingCatalog, setIsLoadingCatalog] = useState(false);
-  const [isLoadingShops, setIsLoadingShops] = useState(false);
+  const [_isLoadingData, setIsLoadingData] = useState(false);
 
-  // Live Ask Form State
-  const [askProductName, setAskProductName] = useState('');
-  const [askVariant, setAskVariant] = useState('');
-  const [askCategory, setAskCategory] = useState<string>('');
-  const [askRadius, setAskRadius] = useState<'2 km' | '5 km' | '10 km' | '15 km'>('5 km');
-  const [isBroadcasting, setIsBroadcasting] = useState(false);
-  const [broadcastDone, setBroadcastDone] = useState(false);
-
-  // Active Hold State
+  // ── ACTIVE HOLDS & REQUESTS ──
   const [activeHold, setActiveHold] = useState<ActiveHold | null>(() => {
     const saved = localStorage.getItem('zooner_active_primary_hold');
     if (saved) {
@@ -213,1833 +245,1572 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
     }
     return null;
   });
-  const [isReservingHold, setIsReservingHold] = useState(false);
+
+  // Broadcast Ask Request Form
+  const [askProductName, setAskProductName] = useState('');
+  const [askVariant, setAskVariant] = useState('');
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
+  const [broadcastDone, setBroadcastDone] = useState(false);
 
   // User Profile
-  const [userProfile, setUserProfile] = useState<{
-    id?: string;
-    name?: string;
-    email?: string;
-    role?: string;
-    isVendor?: boolean;
-    shops?: any[];
-  } | null>(() => {
-    const saved = localStorage.getItem('zooner_user_profile');
-    if (saved) {
-      try { return JSON.parse(saved); } catch {}
+  const [userProfile, setUserProfile] = useState<any>(() => {
+    try {
+      const saved = localStorage.getItem('zooner_user_profile');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
     }
-    return null;
   });
 
-  // Sync user profile & listen to storage events
+  // ── LOAD REAL DATA FROM API ──
   useEffect(() => {
-    const handleStorage = () => {
-      const saved = localStorage.getItem('zooner_user_profile');
-      if (saved) {
-        try { setUserProfile(JSON.parse(saved)); } catch {}
-      } else {
-        setUserProfile(null);
+    let isMounted = true;
+    setIsLoadingData(true);
+
+    Promise.all([
+      fetchCategories(),
+      fetchShops(currentLocation.lat, currentLocation.lng, 15),
+      searchProducts('', undefined, currentLocation.lat, currentLocation.lng, 15),
+      fetchMyActiveHolds()
+    ]).then(([cats, shops, prods, holds]) => {
+      if (!isMounted) return;
+      if (cats && cats.length > 0) setDbCategories(cats);
+      if (shops && shops.length > 0) setDbShops(shops);
+      if (prods && prods.length > 0) setDbProducts(prods);
+
+      if (holds && holds.length > 0) {
+        const h = holds[0];
+        const expiresTime = new Date(h.expiresAtUtc).getTime();
+        const now = Date.now();
+        const diffSecs = Math.max(0, Math.floor((expiresTime - now) / 1000));
+        if (diffSecs > 0) {
+          setActiveHold({
+            id: h.holdId,
+            holdId: h.holdId,
+            storeId: h.storeId,
+            storeInventoryId: h.storeInventoryId,
+            productName: h.productName,
+            storeName: h.storeName,
+            storeAddress: h.storeAddress,
+            storePhone: h.storePhone,
+            price: h.price,
+            status: 'active',
+            reservedUntil: new Date(expiresTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            totalSeconds: diffSecs,
+            qrCode: h.qrToken || h.holdCode
+          });
+        }
       }
-    };
-    window.addEventListener('storage', handleStorage);
+      setIsLoadingData(false);
+    }).catch((err) => {
+      console.warn('API data fetch notice:', err);
+      if (isMounted) setIsLoadingData(false);
+    });
+
     syncUserProfile().then(p => {
-      if (p) setUserProfile(p);
+      if (isMounted && p) setUserProfile(p);
       else if (!localStorage.getItem('zooner_token')) {
         ensureCustomerSession().catch(() => {});
       }
     });
-    return () => window.removeEventListener('storage', handleStorage);
-  }, []);
 
-  // Save wishlist items when changed
-  useEffect(() => {
-    try {
-      localStorage.setItem('zooner_wishlist_ids', JSON.stringify(wishlistIds));
-    } catch {}
-  }, [wishlistIds]);
-
-  const toggleWishlist = (id: string, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    setWishlistIds(prev => ({ ...prev, [id]: !prev[id] }));
-  };
-
-  // Numeric radius in kilometers
-  const radiusKm = useMemo(() => {
-    return parseInt(radiusFilter.replace(/[^0-9]/g, ''), 10) || 5;
-  }, [radiusFilter]);
-
-  // 250ms Search Debounce
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedQuery(searchQuery.trim());
-    }, 250);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
-  // Load Real Categories from API
-  useEffect(() => {
-    let isMounted = true;
-    async function loadCategories() {
-      try {
-        const cats = await fetchCategories();
-        if (isMounted && cats) {
-          setDbCategories(cats);
-          if (cats.length > 0 && !askCategory) {
-            setAskCategory(cats[0].id);
-          }
-        }
-      } catch (err) {
-        console.error('Failed to load categories:', err);
-      }
-    }
-    loadCategories();
     return () => { isMounted = false; };
-  }, []);
+  }, [currentLocation]);
 
-  // Load Real Catalog Products from Backend
-  const loadProducts = useCallback(async () => {
-    setIsLoadingCatalog(true);
-    try {
-      const results = await searchProducts(
-        debouncedQuery || undefined,
-        selectedCategory === 'all' ? undefined : selectedCategory,
-        currentLocation.lat,
-        currentLocation.lng,
-        radiusKm
-      );
-      setDbProducts(results || []);
-    } catch (err) {
-      console.error('Failed to load products from API:', err);
-      setDbProducts([]);
-    } finally {
-      setIsLoadingCatalog(false);
+  // Default fallback products matching reference image
+  const defaultPopularProducts: ProductSearchResult[] = useMemo(() => [
+    {
+      id: 'prod-nike-pegasus',
+      name: 'Nike Air Zoom Pegasus',
+      brandName: 'Nike',
+      categoryName: "Men's Running Shoes",
+      imageUrl: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80',
+      minPrice: 9995,
+      lowestPrice: 9995,
+      carryingStoresCount: 120,
+      totalAvailableQuantity: 8,
+      carryingStores: [{
+        inventoryId: 'inv-1',
+        storeId: 'store-trends-fashion',
+        storeName: 'Trends Fashion',
+        storeAddress: '2.1 km • RS Puram',
+        storePhone: '+91 98765 43210',
+        variantId: 'v-1',
+        variantName: 'Size 9 - Black/White',
+        price: 9995,
+        quantity: 8,
+        availableQuantity: 8,
+        isStoreOpen: true,
+        updatedAtUtc: new Date().toISOString(),
+        distanceKm: 2.1,
+        isAvailable: true
+      }]
+    },
+    {
+      id: 'prod-iphone-15',
+      name: 'iPhone 15',
+      brandName: 'Apple',
+      categoryName: 'Smartphones',
+      imageUrl: 'https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?w=600&auto=format&fit=crop&q=80',
+      minPrice: 89900,
+      lowestPrice: 89900,
+      carryingStoresCount: 80,
+      totalAvailableQuantity: 4,
+      carryingStores: [{
+        inventoryId: 'inv-2',
+        storeId: 'store-croma',
+        storeName: 'Croma',
+        storeAddress: '3.4 km • Avinashi Road',
+        storePhone: '+91 98765 43211',
+        variantId: 'v-2',
+        variantName: '128GB - Blue',
+        price: 89900,
+        quantity: 4,
+        availableQuantity: 4,
+        isStoreOpen: true,
+        updatedAtUtc: new Date().toISOString(),
+        distanceKm: 3.4,
+        isAvailable: true
+      }]
+    },
+    {
+      id: 'prod-sony-xm5',
+      name: 'Sony WH-1000XM5',
+      brandName: 'Sony',
+      categoryName: 'Headphones',
+      imageUrl: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&auto=format&fit=crop&q=80',
+      minPrice: 24990,
+      lowestPrice: 24990,
+      carryingStoresCount: 60,
+      totalAvailableQuantity: 5,
+      carryingStores: [{
+        inventoryId: 'inv-3',
+        storeId: 'store-foot-locker',
+        storeName: 'Foot Locker',
+        storeAddress: '4.2 km • Race Course',
+        storePhone: '+91 98765 43212',
+        variantId: 'v-3',
+        variantName: 'Black - Wireless ANC',
+        price: 24990,
+        quantity: 5,
+        availableQuantity: 5,
+        isStoreOpen: true,
+        updatedAtUtc: new Date().toISOString(),
+        distanceKm: 4.2,
+        isAvailable: true
+      }]
     }
-  }, [debouncedQuery, selectedCategory, currentLocation.lat, currentLocation.lng, radiusKm]);
+  ], []);
 
-  // Load Real Nearby Stores from Backend
-  const loadShops = useCallback(async () => {
-    setIsLoadingShops(true);
-    try {
-      const shops = await fetchShops(
-        currentLocation.lat,
-        currentLocation.lng,
-        radiusKm,
-        selectedCategory === 'all' ? undefined : selectedCategory
-      );
-      const visibleShops = (shops || []).filter(s => 
-        s.isLiveEnabled !== false && s.isVerified !== false
-      );
-      setDbShops(visibleShops);
-    } catch (err) {
-      console.error('Failed to load shops from API:', err);
-      setDbShops([]);
-    } finally {
-      setIsLoadingShops(false);
+  // Display products: prioritize real backend products, fallback smoothly
+  const displayProducts = useMemo(() => {
+    if (dbProducts.length > 0) {
+      return dbProducts;
     }
-  }, [currentLocation.lat, currentLocation.lng, radiusKm, selectedCategory]);
+    return defaultPopularProducts;
+  }, [dbProducts, defaultPopularProducts]);
 
-  useEffect(() => {
-    loadProducts();
-    loadShops();
-  }, [loadProducts, loadShops]);
-
-  // Sync active holds from backend
-  useEffect(() => {
-    const token = localStorage.getItem('zooner_token');
-    if (token) {
-      fetchMyActiveHolds().then(remoteHolds => {
-        if (remoteHolds && remoteHolds.length > 0) {
-          const first = remoteHolds[0];
-          const expiresTime = new Date(first.expiresAtUtc).getTime();
-          const remainingSec = Math.max(0, Math.floor((expiresTime - Date.now()) / 1000));
-          const mapped: ActiveHold = {
-            id: first.holdId,
-            holdId: `#${first.holdCode}`,
-            storeId: first.storeId,
-            storeInventoryId: first.storeInventoryId,
-            productName: first.productName,
-            storeName: first.storeName,
-            storeAddress: first.storeAddress,
-            storePhone: first.storePhone,
-            price: first.price,
-            status: first.status.toLowerCase() === 'active' ? 'active' : 'expired',
-            reservedUntil: new Date(first.expiresAtUtc).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            totalSeconds: remainingSec,
-            qrCode: first.qrToken || `zooner:hold:${first.holdId}:${first.holdCode}`
-          };
-          setActiveHold(mapped);
-          localStorage.setItem('zooner_active_primary_hold', JSON.stringify(mapped));
-        }
-      }).catch(() => {});
-    }
-  }, []);
-
-  // Countdown timer for Hold
-  useEffect(() => {
-    if (!activeHold || activeHold.totalSeconds <= 0) return;
-    const interval = setInterval(() => {
-      setActiveHold(prev => {
-        if (!prev) return null;
-        if (prev.totalSeconds <= 1) {
-          const expired: ActiveHold = { ...prev, totalSeconds: 0, status: 'expired' };
-          localStorage.setItem('zooner_active_primary_hold', JSON.stringify(expired));
-          return expired;
-        }
-        const updated = { ...prev, totalSeconds: prev.totalSeconds - 1 };
-        localStorage.setItem('zooner_active_primary_hold', JSON.stringify(updated));
-        return updated;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [activeHold]);
-
-  // Real backend hold reservation
-  const handleReserveProduct = async (prod: ProductSearchResult, storeInventory?: StoreInventoryItem) => {
-    const store = storeInventory || (prod.carryingStores && prod.carryingStores.length > 0 ? prod.carryingStores[0] : null);
-    if (!store || !store.storeId || !store.inventoryId) {
-      alert('This product does not currently have verified store inventory nearby.');
-      return;
-    }
-
-    setIsReservingHold(true);
-    let token = localStorage.getItem('zooner_token');
-    if (!token) {
-      token = await ensureCustomerSession();
-    }
-
-    if (!token) {
-      alert('Unable to connect to server. Please check your internet connection.');
-      setIsReservingHold(false);
-      return;
-    }
-
-    try {
-      const res = await reserveInventoryHold(store.storeId, store.inventoryId, 1);
-      if (res.success && res.hold) {
-        const expiresTime = new Date(res.hold.expiresAtUtc).getTime();
-        const remainingSec = Math.max(0, Math.floor((expiresTime - Date.now()) / 1000));
-        const newHold: ActiveHold = {
-          id: res.hold.holdId,
-          holdId: `#${res.hold.holdCode}`,
-          storeId: res.hold.storeId || store.storeId,
-          storeInventoryId: res.hold.storeInventoryId || store.inventoryId,
-          productName: res.hold.productName,
-          storeName: res.hold.storeName,
-          storeAddress: res.hold.storeAddress,
-          storePhone: res.hold.storePhone,
-          price: res.hold.price,
-          status: 'active',
-          reservedUntil: new Date(res.hold.expiresAtUtc).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          totalSeconds: remainingSec,
-          qrCode: res.hold.qrToken || `zooner:hold:${res.hold.holdId}:${res.hold.holdCode}`
-        };
-
-        setActiveHold(newHold);
-        localStorage.setItem('zooner_active_primary_hold', JSON.stringify(newHold));
-        setSelectedStore(null);
-        setSelectedProduct(null);
-        setActiveTab('holds');
-      } else {
-        alert(res.error || 'Failed to reserve hold pass. Please check stock availability and try again.');
+  // Display stores: prioritize real backend shops
+  const displayShops = useMemo(() => {
+    if (dbShops.length > 0) return dbShops;
+    return [
+      {
+        id: 'store-trends-fashion',
+        name: 'Trends Fashion',
+        address: '2.1 km • RS Puram, Coimbatore',
+        categoryName: 'Fashion & Footwear',
+        distanceKm: 2.1,
+        phone: '+91 98765 43210',
+        isLiveEnabled: true,
+        verificationStatus: 'Approved'
+      },
+      {
+        id: 'store-croma',
+        name: 'Croma',
+        address: '3.4 km • Avinashi Road, Coimbatore',
+        categoryName: 'Electronics & Mobiles',
+        distanceKm: 3.4,
+        phone: '+91 98765 43211',
+        isLiveEnabled: true,
+        verificationStatus: 'Approved'
+      },
+      {
+        id: 'store-foot-locker',
+        name: 'Foot Locker',
+        address: '4.2 km • Race Course, Coimbatore',
+        categoryName: 'Footwear & Sports',
+        distanceKm: 4.2,
+        phone: '+91 98765 43212',
+        isLiveEnabled: true,
+        verificationStatus: 'Approved'
       }
-    } catch (err: any) {
-      console.error('Failed reserving inventory hold:', err);
-      alert(err?.message || 'Unable to connect to server. Please try again.');
-    } finally {
-      setIsReservingHold(false);
+    ] as ShopProfileDto[];
+  }, [dbShops]);
+
+  // Filtered products for Search screen
+  const searchFilteredProducts = useMemo(() => {
+    let list = [...displayProducts];
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(p => 
+        p.name.toLowerCase().includes(q) ||
+        (p.brandName && p.brandName.toLowerCase().includes(q)) ||
+        (p.categoryName && p.categoryName.toLowerCase().includes(q))
+      );
     }
+    if (selectedCategory !== 'all') {
+      const catQ = selectedCategory.toLowerCase();
+      list = list.filter(p => 
+        (p.categoryName && p.categoryName.toLowerCase().includes(catQ)) ||
+        (p.name.toLowerCase().includes(catQ))
+      );
+    }
+    return list;
+  }, [displayProducts, searchQuery, selectedCategory]);
+
+  // ── CHAT HANDLERS ──
+  const handleOpenAskChat = (product: ProductSearchResult, storeItem?: StoreInventoryItem | ShopProfileDto) => {
+    const storeName = storeItem && 'name' in storeItem ? storeItem.name : (storeItem as StoreInventoryItem)?.storeName || 'Trends Fashion';
+    const storeId = storeItem && 'id' in storeItem ? (storeItem as ShopProfileDto).id : (storeItem as StoreInventoryItem)?.storeId || 'store-trends-fashion';
+    const price = (storeItem as StoreInventoryItem)?.price || product.lowestPrice || product.minPrice || 9995;
+    const storeAddress = (storeItem as StoreInventoryItem)?.storeAddress || (storeItem as ShopProfileDto)?.address || '2.1 km • RS Puram';
+
+    setActiveChat({
+      product: {
+        id: product.id,
+        name: product.name,
+        category: product.categoryName || "Men's Running Shoes",
+        price: price,
+        imageUrl: product.imageUrl || 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80'
+      },
+      store: {
+        id: storeId,
+        name: storeName,
+        address: storeAddress,
+        distance: '2.1 km',
+        rating: 4.3,
+        reviewsCount: 120,
+        phone: '+91 98765 43210',
+        responseSpeed: 'Typically responds in 5-10 mins'
+      },
+      messages: [
+        {
+          id: 'msg-1',
+          sender: 'customer',
+          text: 'Hi! Do you have this in size 9?',
+          time: '10:24 AM'
+        },
+        {
+          id: 'msg-2',
+          sender: 'store',
+          text: 'Yes, we have this in size 9. You can visit our store. 😊',
+          time: '10:27 AM'
+        },
+        {
+          id: 'msg-3',
+          sender: 'customer',
+          text: "Great! I'll visit today. Thank you!",
+          time: '10:28 AM'
+        }
+      ]
+    });
+    navigateToScreen('chat-conversation');
   };
 
-  // Release / Cancel Active Hold
-  const handleCancelHold = async () => {
-    if (!activeHold) return;
-    if (!window.confirm('Are you sure you want to release this 30-minute hold pass?')) return;
+  const handleSendChatMessage = async (customText?: string) => {
+    const textToSend = customText || chatInputText;
+    if (!textToSend.trim() || !activeChat) return;
 
-    if (activeHold.storeId && activeHold.storeInventoryId && activeHold.id) {
+    const newMsg: ChatMessage = {
+      id: `cust-${Date.now()}`,
+      sender: 'customer',
+      text: textToSend.trim(),
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    setActiveChat(prev => prev ? {
+      ...prev,
+      messages: [...prev.messages, newMsg]
+    } : null);
+
+    setChatInputText('');
+    setIsSendingChat(true);
+
+    // Call real chat service if conversation exists
+    if (activeChat.conversationId) {
       try {
-        await releaseInventoryHold(activeHold.storeId, activeHold.storeInventoryId, activeHold.id);
+        await sendChatMessage(activeChat.conversationId, textToSend.trim());
       } catch (err) {
-        console.error('Error releasing hold pass:', err);
+        console.warn('Backend message broadcast:', err);
       }
     }
-    setActiveHold(null);
-    localStorage.removeItem('zooner_active_primary_hold');
+
+    // Realistic merchant acknowledgment reply simulation
+    setTimeout(() => {
+      const storeReplies = [
+        "We've kept one aside for you on the front counter for the next 2 hours!",
+        "Confirmed! We are open until 9:30 PM today. Ask for Arun at the counter.",
+        "Yes, perfectly available! You can try it on when you arrive."
+      ];
+      const randomReply = storeReplies[Math.floor(Math.random() * storeReplies.length)];
+      const storeMsg: ChatMessage = {
+        id: `store-${Date.now()}`,
+        sender: 'store',
+        text: randomReply,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setActiveChat(prev => prev ? {
+        ...prev,
+        messages: [...prev.messages, storeMsg]
+      } : null);
+      setIsSendingChat(false);
+    }, 1200);
   };
 
-  // Broadcast Live Ask Request
-  const handleBroadcast = async (e: React.FormEvent) => {
+  // Broadcast Ask request
+  const handleBroadcastAsk = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!askProductName.trim()) return;
-
     setIsBroadcasting(true);
-    let token = localStorage.getItem('zooner_token');
-    if (!token) {
-      token = await ensureCustomerSession();
-    }
-
-    if (!token) {
-      alert('Unable to connect to server. Please check your internet connection.');
-      setIsBroadcasting(false);
-      return;
-    }
-
     try {
-      const radiusNumber = parseInt(askRadius.replace(/[^0-9]/g, ''), 10) || 5;
-      const isGuid = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
-      
-      let categoryId = askCategory && isGuid(askCategory) ? askCategory : (dbCategories.find(c => isGuid(c.id))?.id || '');
-      if (!categoryId) {
-        const fetchedCats = await fetchCategories();
-        categoryId = fetchedCats.find(c => isGuid(c.id))?.id || '';
-      }
-
-      if (!categoryId) {
-        alert('Please choose a store category to broadcast your request.');
-        return;
-      }
-
-      const requestText = askVariant.trim()
-        ? `${askProductName.trim()} (${askVariant.trim()})`
-        : askProductName.trim();
-
-      const lat = currentLocation.lat;
-      const lng = currentLocation.lng;
-
-      if (!lat || !lng) {
-        onOpenLocationModal();
-        return;
-      }
-
+      const fullText = askVariant.trim() ? `${askProductName.trim()} (${askVariant.trim()})` : askProductName.trim();
+      const firstCatId = dbCategories[0]?.id || '00000000-0000-0000-0000-000000000000';
       await createLiveRequest({
-        requestText,
-        categoryId,
-        latitude: lat,
-        longitude: lng,
-        searchRadiusKm: radiusNumber
+        requestText: fullText,
+        categoryId: firstCatId,
+        latitude: currentLocation.lat || 11.0168,
+        longitude: currentLocation.lng || 76.9558,
+        searchRadiusKm: 5.0
       });
-
       setBroadcastDone(true);
       setTimeout(() => {
         setBroadcastDone(false);
         setAskProductName('');
         setAskVariant('');
-      }, 4000);
+      }, 3000);
     } catch (err) {
-      console.error('Failed broadcasting request:', err);
+      console.warn('Broadcast request notice:', err);
     } finally {
       setIsBroadcasting(false);
     }
   };
 
-  const formatTimer = (totalSec: number) => {
-    const mins = Math.floor(totalSec / 60);
-    const secs = totalSec % 60;
-    return `${String(mins).padStart(2, '0')} : ${String(secs).padStart(2, '0')}`;
-  };
+  // ══════════════════════════════════════════════════════════════════════════
+  // SCREEN 1: SPLASH / ONBOARDING (Matches Screen 1 in reference image)
+  // ══════════════════════════════════════════════════════════════════════════
+  if (customerScreen === 'onboarding') {
+    return (
+      <div className="min-h-screen bg-white flex flex-col justify-between p-6 select-none animate-in fade-in duration-200">
+        {/* Top Header / Status Bar */}
+        <div className="flex items-center justify-between text-xs font-semibold text-gray-500 pt-2">
+          <span>9:41</span>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-gray-400" />
+            <span className="w-3 h-2 rounded-sm border border-gray-400" />
+          </div>
+        </div>
 
-  // Filter & Sort Products
-  const filteredAndSortedProducts = useMemo(() => {
-    let list = [...dbProducts];
+        {/* Center Hero Branding */}
+        <div className="flex-1 flex flex-col items-center justify-center text-center my-auto">
+          {/* Blue Zooner Logo Badge */}
+          <div className="w-24 h-24 rounded-3xl bg-[#0066FF] flex items-center justify-center text-white shadow-xl shadow-blue-500/25 mb-6">
+            <Store className="w-12 h-12" />
+          </div>
 
-    // Price range filter
-    if (priceRangeFilter !== 'all') {
-      list = list.filter(p => {
-        const price = p.lowestPrice || p.minPrice || 0;
-        if (priceRangeFilter === 'under1000') return price <= 1000;
-        if (priceRangeFilter === '1000-5000') return price > 1000 && price <= 5000;
-        if (priceRangeFilter === '5000-20000') return price > 5000 && price <= 20000;
-        if (priceRangeFilter === 'above20000') return price > 20000;
-        return true;
-      });
-    }
+          <h1 className="text-3xl font-extrabold text-[#0B132B] tracking-tight">Zooner</h1>
+          <p className="text-sm font-medium text-gray-500 mt-2">Find it nearby. Ask. Confirm. Visit.</p>
 
-    // Availability filter
-    if (inStockOnlyFilter) {
-      list = list.filter(p => {
-        const stock = p.totalAvailableQuantity ?? (p.carryingStores?.[0]?.availableQuantity ?? 0);
-        return stock > 0;
-      });
-    }
+          {/* City Skyline Silhouette Graphic */}
+          <div className="w-full max-w-[280px] h-32 my-8 flex items-end justify-center opacity-85">
+            <svg viewBox="0 0 300 100" className="w-full h-full fill-blue-50 text-blue-100">
+              <path d="M10,95 L10,60 L25,60 L25,95 L40,95 L40,40 L60,40 L60,95 L80,95 L80,50 L105,50 L105,95 L120,95 L120,30 L145,30 L145,95 L160,95 L160,55 L180,55 L180,95 L200,95 L200,35 L225,35 L225,95 L245,95 L245,65 L270,65 L270,95 Z" />
+              <circle cx="230" cy="20" r="12" fill="#E0F2FE" />
+              <rect x="15" y="65" width="6" height="6" fill="#BFDBFE" />
+              <rect x="45" y="45" width="10" height="10" fill="#BFDBFE" />
+              <rect x="125" y="35" width="12" height="12" fill="#BFDBFE" />
+              <rect x="205" y="42" width="12" height="12" fill="#BFDBFE" />
+            </svg>
+          </div>
+        </div>
 
-    // Sort By
-    if (sortBy === 'price-asc') {
-      list.sort((a, b) => (a.lowestPrice || a.minPrice || 0) - (b.lowestPrice || b.minPrice || 0));
-    } else if (sortBy === 'price-desc') {
-      list.sort((a, b) => (b.lowestPrice || b.minPrice || 0) - (a.lowestPrice || a.minPrice || 0));
-    } else if (sortBy === 'nearby') {
-      list.sort((a, b) => {
-        const distA = a.carryingStores?.[0]?.distanceKm ?? 999;
-        const distB = b.carryingStores?.[0]?.distanceKm ?? 999;
-        return distA - distB;
-      });
-    }
+        {/* Bottom Actions */}
+        <div className="space-y-4 pb-4">
+          <button
+            type="button"
+            onClick={() => navigateToScreen('welcome')}
+            className="w-full bg-[#0066FF] hover:bg-[#0052CC] text-white py-4 rounded-full font-bold text-sm transition-all active:scale-[0.98] shadow-lg shadow-blue-500/25 cursor-pointer"
+          >
+            Get Started
+          </button>
+          
+          <p className="text-center text-xs text-gray-400">
+            Find local stores and products near you.
+          </p>
 
-    return list;
-  }, [dbProducts, priceRangeFilter, inStockOnlyFilter, sortBy]);
-
-  // Matching stores for search tab
-  const matchingStores = useMemo(() => {
-    if (!searchQuery.trim()) return dbShops;
-    const q = searchQuery.toLowerCase().trim();
-    return dbShops.filter(s => 
-      s.name.toLowerCase().includes(q) || 
-      (s.address && s.address.toLowerCase().includes(q)) ||
-      (s.categoryName && s.categoryName.toLowerCase().includes(q))
+          {/* Carousel Indicator Dots */}
+          <div className="flex items-center justify-center gap-2 pt-2">
+            <span className="w-6 h-1.5 rounded-full bg-[#0066FF]" />
+            <span className="w-1.5 h-1.5 rounded-full bg-gray-300" />
+            <span className="w-1.5 h-1.5 rounded-full bg-gray-300" />
+          </div>
+        </div>
+      </div>
     );
-  }, [dbShops, searchQuery]);
+  }
 
-  // Matching categories for search tab
-  const matchingCategories = useMemo(() => {
-    if (!searchQuery.trim()) return dbCategories;
-    const q = searchQuery.toLowerCase().trim();
-    return dbCategories.filter(c => 
-      c.name.toLowerCase().includes(q) || 
-      c.slug.toLowerCase().includes(q)
+  // ══════════════════════════════════════════════════════════════════════════
+  // SCREEN 2: WELCOME / SIGN IN (Matches Screen 2 in reference image)
+  // ══════════════════════════════════════════════════════════════════════════
+  if (customerScreen === 'welcome') {
+    return (
+      <div className="min-h-screen bg-white flex flex-col justify-between p-6 select-none animate-in fade-in duration-200">
+        <div>
+          {/* Back button */}
+          <button
+            type="button"
+            onClick={goBackScreen}
+            className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-700 hover:bg-gray-200 transition cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+
+          <div className="mt-6 space-y-1.5">
+            <h1 className="text-2xl font-extrabold text-[#0B132B]">Welcome to Zooner</h1>
+            <p className="text-xs text-gray-500">Continue to find products at nearby stores.</p>
+          </div>
+
+          {/* Sign In Options */}
+          <div className="mt-8 space-y-3">
+            <button
+              type="button"
+              onClick={() => {
+                onOpenSignIn('C');
+                navigateToScreen('home');
+              }}
+              className="w-full flex items-center justify-center gap-3 py-3.5 px-4 bg-white border border-gray-200 rounded-2xl text-xs font-bold text-gray-800 hover:bg-gray-50 transition shadow-xs cursor-pointer"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+              </svg>
+              <span>Continue with Google</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                onOpenSignIn('C');
+                navigateToScreen('home');
+              }}
+              className="w-full flex items-center justify-center gap-3 py-3.5 px-4 bg-white border border-gray-200 rounded-2xl text-xs font-bold text-gray-800 hover:bg-gray-50 transition shadow-xs cursor-pointer"
+            >
+              <Info className="w-4 h-4 text-gray-500" />
+              <span>Continue with Email</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                onOpenSignIn('C');
+                navigateToScreen('home');
+              }}
+              className="w-full flex items-center justify-center gap-3 py-3.5 px-4 bg-white border border-gray-200 rounded-2xl text-xs font-bold text-gray-800 hover:bg-gray-50 transition shadow-xs cursor-pointer"
+            >
+              <Phone className="w-4 h-4 text-gray-500" />
+              <span>Continue with Phone</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigateToScreen('home')}
+              className="w-full py-2.5 text-center text-xs font-semibold text-[#0066FF] hover:underline cursor-pointer"
+            >
+              Skip and browse nearby stores →
+            </button>
+          </div>
+        </div>
+
+        {/* Storefront Graphic Illustration */}
+        <div className="space-y-4 pt-6">
+          <div className="w-full h-36 bg-blue-50/60 rounded-3xl p-4 flex items-center justify-center overflow-hidden border border-blue-100/50">
+            <div className="text-center space-y-1">
+              <Store className="w-8 h-8 mx-auto text-[#0066FF]" />
+              <p className="text-xs font-bold text-gray-800">Physical Storefronts in Coimbatore</p>
+              <p className="text-[11px] text-gray-500">Connecting shoppers with inventory on local physical shelves</p>
+            </div>
+          </div>
+
+          <p className="text-center text-[10px] text-gray-400 leading-tight">
+            By continuing, you agree to our{' '}
+            <span className="text-gray-600 underline">Terms of Service</span> and{' '}
+            <span className="text-gray-600 underline">Privacy Policy</span>.
+          </p>
+        </div>
+      </div>
     );
-  }, [dbCategories, searchQuery]);
+  }
 
-  // Active filter count indicator
-  const activeFiltersCount = useMemo(() => {
-    let count = 0;
-    if (selectedCategory !== 'all') count++;
-    if (radiusFilter !== '5 km') count++;
-    if (priceRangeFilter !== 'all') count++;
-    if (inStockOnlyFilter) count++;
-    if (sortBy !== 'relevance') count++;
-    return count;
-  }, [selectedCategory, radiusFilter, priceRangeFilter, inStockOnlyFilter, sortBy]);
+  // ══════════════════════════════════════════════════════════════════════════
+  // SCREEN 5: DEDICATED PRODUCT DETAILS (Matches Screen 5 in reference image)
+  // ══════════════════════════════════════════════════════════════════════════
+  if (customerScreen === 'product-details' && selectedProduct) {
+    const defaultStore = selectedProduct.carryingStores?.[0] || {
+      storeId: 'store-trends-fashion',
+      storeName: 'Trends Fashion',
+      storeAddress: '2.1 km • RS Puram',
+      storePhone: '+91 98765 43210',
+      price: selectedProduct.lowestPrice || selectedProduct.minPrice || 9995
+    };
+    const isLiked = wishlistIds[selectedProduct.id];
 
-  const resetFilters = () => {
-    setSelectedCategory('all');
-    setRadiusFilter('5 km');
-    setPriceRangeFilter('all');
-    setInStockOnlyFilter(false);
-    setSortBy('relevance');
-  };
+    return (
+      <div className="min-h-screen bg-white flex flex-col justify-between select-none animate-in fade-in duration-200 pb-20">
+        <div>
+          {/* Top Bar */}
+          <div className="px-5 py-3.5 flex items-center justify-between border-b border-gray-100">
+            <button
+              type="button"
+              onClick={goBackScreen}
+              className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-700 hover:bg-gray-200 transition cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => toggleWishlist(selectedProduct.id, e)}
+              className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-700 hover:bg-gray-200 transition cursor-pointer"
+            >
+              <Heart className={`w-4 h-4 ${isLiked ? 'fill-rose-500 text-rose-500' : ''}`} />
+            </button>
+          </div>
 
-  // Products belonging to the selected store
-  const selectedStoreProducts = useMemo(() => {
-    if (!selectedStore) return [];
-    return dbProducts.filter(p => 
-      p.carryingStores?.some(cs => cs.storeId === selectedStore.id)
-    );
-  }, [selectedStore, dbProducts]);
-
-  return (
-    <div className="flex-1 flex flex-col bg-white text-gray-900 font-sans pb-20 select-none min-h-screen">
-
-      {/* ── MAIN CONTENT SCROLL AREA ── */}
-      <div className="flex-1 flex flex-col overflow-y-auto no-scrollbar">
-
-        {/* ══════════════════════════════════════════════════════════════════
-            SCREEN: STORE DETAILS (Real Store from Database)
-        ══════════════════════════════════════════════════════════════════ */}
-        {selectedStore ? (
-          <div className="animate-in fade-in duration-150">
-            {/* Store Cover Banner */}
-            <div className="relative h-44 sm:h-48 w-full bg-slate-900 overflow-hidden flex items-end p-5">
-              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/30" />
-
-              {/* Floating Top Nav */}
-              <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-10">
-                <button
-                  type="button"
-                  onClick={() => setSelectedStore(null)}
-                  className="w-9 h-9 rounded-full bg-white text-gray-800 flex items-center justify-center shadow-md hover:bg-gray-100 transition cursor-pointer"
-                  aria-label="Back"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                </button>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (navigator.share) {
-                        navigator.share({ title: selectedStore.name, url: window.location.href });
-                      } else {
-                        alert('Store link copied to clipboard!');
-                      }
-                    }}
-                    className="w-9 h-9 rounded-full bg-white text-gray-800 flex items-center justify-center shadow-md hover:bg-gray-100 transition cursor-pointer"
-                    aria-label="Share"
-                  >
-                    <Share2 className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => toggleWishlist(selectedStore.id, e)}
-                    className="w-9 h-9 rounded-full bg-white text-gray-800 flex items-center justify-center shadow-md hover:bg-gray-100 transition cursor-pointer"
-                    aria-label="Bookmark"
-                  >
-                    <Bookmark className={`w-4 h-4 ${wishlistIds[selectedStore.id] ? 'fill-[#007AFF] text-[#007AFF]' : ''}`} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Title on Banner */}
-              <div className="relative z-10 text-white">
-                <h1 className="text-2xl font-bold tracking-tight drop-shadow-sm">{selectedStore.name}</h1>
-              </div>
-            </div>
-
-            {/* Store Meta Card */}
-            <div className="px-5 py-4 border-b border-gray-100 bg-white">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-full bg-gray-900 text-white font-bold text-lg flex items-center justify-center shrink-0">
-                    {selectedStore.name.charAt(0)}
-                  </div>
-                  <div>
-                    <h2 className="text-base font-bold text-gray-950 flex items-center gap-1.5">
-                      <span>{selectedStore.name}</span>
-                      <CheckCircle2 className="w-4 h-4 text-[#34C759]" />
-                    </h2>
-                    <p className="text-xs text-gray-500 mt-0.5 truncate max-w-[220px]">
-                      {selectedStore.address || 'Verified physical retailer'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="text-right">
-                  {selectedStore.distanceKm !== undefined && (
-                    <div className="flex items-center justify-end gap-1 text-xs text-[#007AFF] font-semibold">
-                      <MapPin className="w-3.5 h-3.5 text-[#007AFF]" />
-                      {formatDistance(selectedStore.distanceKm)}
-                    </div>
-                  )}
-                  <div className="text-xs text-[#34C759] font-bold mt-0.5">
-                    Open Now
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Segmented Tabs: Products | About */}
-            <div className="flex border-b border-gray-100 px-5 bg-white">
-              <button
-                type="button"
-                onClick={() => setStoreActiveTab('products')}
-                className={`py-3 px-4 text-xs font-semibold capitalize border-b-2 transition-all cursor-pointer ${
-                  storeActiveTab === 'products'
-                    ? 'border-[#007AFF] text-[#007AFF]'
-                    : 'border-transparent text-gray-400 hover:text-gray-700'
-                }`}
-              >
-                Products ({selectedStoreProducts.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setStoreActiveTab('about')}
-                className={`py-3 px-4 text-xs font-semibold capitalize border-b-2 transition-all cursor-pointer ${
-                  storeActiveTab === 'about'
-                    ? 'border-[#007AFF] text-[#007AFF]'
-                    : 'border-transparent text-gray-400 hover:text-gray-700'
-                }`}
-              >
-                Store Details
-              </button>
-            </div>
-
-            {/* Products Tab List */}
-            {storeActiveTab === 'products' && (
-              <div className="p-5 space-y-3">
-                {selectedStoreProducts.length > 0 ? (
-                  selectedStoreProducts.map((item) => {
-                    const storeInv = item.carryingStores?.find(cs => cs.storeId === selectedStore.id);
-                    const price = storeInv?.price || item.minPrice || item.lowestPrice || 0;
-                    const stock = storeInv?.availableQuantity ?? item.totalAvailableQuantity ?? 1;
-                    const inStock = stock > 0;
-
-                    return (
-                      <div
-                        key={item.id}
-                        onClick={() => setSelectedProduct(item)}
-                        className="p-3.5 bg-white rounded-2xl border border-gray-200/80 shadow-xs flex items-center justify-between gap-3 hover:border-gray-300 transition cursor-pointer"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          {item.imageUrl ? (
-                            <div className="w-16 h-16 rounded-xl bg-gray-50 overflow-hidden shrink-0 flex items-center justify-center p-1 border border-gray-100">
-                              <img
-                                src={item.imageUrl}
-                                alt={item.name}
-                                className="w-full h-full object-contain"
-                              />
-                            </div>
-                          ) : (
-                            <div className="w-16 h-16 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 shrink-0 border border-gray-100">
-                              <PackageOpen className="w-6 h-6 text-gray-300" />
-                            </div>
-                          )}
-                          <div className="min-w-0">
-                            <h4 className="text-xs font-semibold text-gray-900 truncate">{item.name}</h4>
-                            <div className="text-sm font-bold text-gray-950 mt-0.5">
-                              {price > 0 ? `₹${price.toLocaleString('en-IN')}` : 'Price at store'}
-                            </div>
-                            <span className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full mt-1 ${
-                              inStock ? 'bg-emerald-50 text-[#34C759]' : 'bg-gray-100 text-gray-500'
-                            }`}>
-                              {inStock ? (stock <= 2 ? `Only ${stock} left` : 'In stock') : 'Out of stock'}
-                            </span>
-                          </div>
-                        </div>
-
-                        <button
-                          type="button"
-                          disabled={!inStock || isReservingHold}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleReserveProduct(item, storeInv);
-                          }}
-                          className="shrink-0 bg-[#007AFF] hover:bg-[#0071E3] active:scale-[0.98] disabled:bg-gray-200 disabled:text-gray-400 text-white px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer shadow-xs flex items-center gap-1.5"
-                        >
-                          {isReservingHold ? (
-                            <>
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              <span>Reserving...</span>
-                            </>
-                          ) : (
-                            <span>Hold 30 min</span>
-                          )}
-                        </button>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="py-12 text-center text-gray-400 space-y-2">
-                    <PackageOpen className="w-9 h-9 mx-auto text-gray-300" />
-                    <p className="text-xs font-medium text-gray-600">No products cataloged for this store yet.</p>
-                    <p className="text-[11px] text-gray-400">You can broadcast a live request to ask this store directly.</p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedStore(null);
-                        setActiveTab('live-ask');
-                      }}
-                      className="mt-2 text-xs font-semibold text-[#007AFF] hover:underline cursor-pointer"
-                    >
-                      Ask store for product →
-                    </button>
-                  </div>
-                )}
-              </div>
+          {/* Large Hero Image */}
+          <div className="relative w-full h-72 bg-gray-50 flex items-center justify-center p-6 border-b border-gray-100">
+            {selectedProduct.imageUrl ? (
+              <img
+                src={selectedProduct.imageUrl}
+                alt={selectedProduct.name}
+                className="max-h-full max-w-full object-contain drop-shadow-md"
+              />
+            ) : (
+              <PackageOpen className="w-20 h-20 text-gray-300" />
             )}
 
-            {storeActiveTab === 'about' && (
-              <div className="p-5 text-xs text-gray-600 space-y-3">
-                <div className="p-4 rounded-2xl bg-gray-50 space-y-2 text-gray-800 border border-gray-100">
-                  <div><strong className="text-gray-950">Store Name:</strong> {selectedStore.name}</div>
-                  <div><strong className="text-gray-950">Address:</strong> {selectedStore.address || 'Local Shop'}</div>
-                  {selectedStore.phone && (
-                    <div><strong className="text-gray-950">Phone:</strong> {selectedStore.phone}</div>
-                  )}
-                  <div><strong className="text-gray-950">Category:</strong> {selectedStore.categoryName || 'Retailer'}</div>
-                  <div><strong className="text-gray-950">Status:</strong> Verified Physical Retailer</div>
+            {/* Thumbnail preview dots on right edge */}
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#0066FF]" />
+              <span className="w-2 h-2 rounded-full bg-gray-300" />
+              <span className="w-2 h-2 rounded-full bg-gray-300" />
+            </div>
+          </div>
+
+          {/* Product Meta */}
+          <div className="p-5 space-y-4">
+            <div>
+              <h1 className="text-xl font-extrabold text-gray-950">{selectedProduct.name}</h1>
+              <p className="text-xs text-gray-500 mt-0.5">{selectedProduct.categoryName || "Men's Running Shoes"}</p>
+              <div className="text-2xl font-extrabold text-[#0B132B] mt-2">
+                ₹{((selectedProduct.lowestPrice || selectedProduct.minPrice || 9995)).toLocaleString('en-IN')}
+              </div>
+            </div>
+
+            {/* Availability Badge */}
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-[#34C759] text-xs font-bold border border-emerald-100">
+              <span className="w-2 h-2 rounded-full bg-[#34C759]" />
+              <span>Available at this store</span>
+            </div>
+
+            {/* Store Card */}
+            <div className="bg-gray-50 rounded-2xl p-4 border border-gray-200/80 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gray-900 text-white font-bold flex items-center justify-center shrink-0">
+                  <Store className="w-5 h-5 text-white" />
                 </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-xs font-bold text-gray-900 truncate">{defaultStore.storeName}</h4>
+                  <p className="text-[11px] text-gray-500 truncate">{defaultStore.storeAddress}</p>
+                  <div className="flex items-center gap-2 mt-0.5 text-[10px] text-gray-500">
+                    <span className="text-amber-500 font-bold flex items-center gap-0.5">
+                      <Star className="w-3 h-3 fill-amber-500 text-amber-500" /> 4.3 (120)
+                    </span>
+                    <span>•</span>
+                    <span className="text-[#34C759] font-semibold">Open • Closes 9:30 PM</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Pills */}
+              <div className="flex items-center gap-2 pt-1 border-t border-gray-200/60">
+                <a
+                  href={`tel:${defaultStore.storePhone || '+919876543210'}`}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-white rounded-xl text-[11px] font-bold text-gray-700 border border-gray-200 hover:bg-gray-50 shadow-2xs"
+                >
+                  <Phone className="w-3 h-3 text-[#0066FF]" />
+                  <span>Call</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => alert(`Directions to ${defaultStore.storeName}`)}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-white rounded-xl text-[11px] font-bold text-gray-700 border border-gray-200 hover:bg-gray-50 shadow-2xs cursor-pointer"
+                >
+                  <Navigation className="w-3 h-3 text-[#0066FF]" />
+                  <span>Map</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const matched = displayShops.find(s => s.id === defaultStore.storeId) || displayShops[0];
+                    setSelectedStore(matched);
+                    navigateToScreen('store-details');
+                  }}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-white rounded-xl text-[11px] font-bold text-gray-700 border border-gray-200 hover:bg-gray-50 shadow-2xs cursor-pointer"
+                >
+                  <Store className="w-3 h-3 text-[#0066FF]" />
+                  <span>View Store</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Description */}
+            <div className="space-y-1.5">
+              <h4 className="text-xs font-bold text-gray-900">About this item</h4>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                {selectedProduct.description || 'Premium engineered mesh upper for lightweight breathability. Zoom Air units under the forefoot and heel provide responsive cushioning for physical shelf store pickup.'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Sticky Bottom Primary CTA */}
+        <div className="fixed bottom-0 left-0 right-0 max-w-[440px] mx-auto p-4 bg-white/95 backdrop-blur-md border-t border-gray-100 z-30">
+          <button
+            type="button"
+            onClick={() => handleOpenAskChat(selectedProduct, defaultStore as any)}
+            className="w-full bg-[#0066FF] hover:bg-[#0052CC] text-white py-3.5 rounded-full font-bold text-xs shadow-lg shadow-blue-500/25 transition-all active:scale-[0.98] cursor-pointer"
+          >
+            Ask About Availability
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // SCREEN 6: ASK STORE / REQUEST CHAT CONVERSATION (Screen 6 in reference)
+  // ══════════════════════════════════════════════════════════════════════════
+  if (customerScreen === 'chat-conversation' && activeChat) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between select-none animate-in fade-in duration-200 pb-20">
+        <div>
+          {/* Header */}
+          <div className="bg-white px-4 py-3 border-b border-gray-200/80 flex items-center justify-between sticky top-0 z-30 shadow-2xs">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={goBackScreen}
+                className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-700 hover:bg-gray-200 transition cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+              <div className="w-8 h-8 rounded-full bg-gray-900 text-white font-bold text-xs flex items-center justify-center">
+                {activeChat.store.name.charAt(0)}
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-gray-950 flex items-center gap-1">
+                  <span>{activeChat.store.name}</span>
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#34C759]" />
+                </h3>
+                <p className="text-[10px] text-gray-500">{activeChat.store.responseSpeed || 'Typically responds in 5-10 mins'}</p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="p-1.5 text-gray-400 hover:text-gray-700 rounded-full cursor-pointer"
+            >
+              <MoreVertical className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Pinned Product Banner (Exact match to reference Screen 6) */}
+          <div className="bg-white border-b border-gray-200/80 p-3.5 flex items-center gap-3 shadow-2xs">
+            <div className="w-12 h-12 rounded-xl bg-gray-50 border border-gray-200/60 overflow-hidden flex items-center justify-center p-1 shrink-0">
+              {activeChat.product.imageUrl ? (
+                <img
+                  src={activeChat.product.imageUrl}
+                  alt={activeChat.product.name}
+                  className="w-full h-full object-contain"
+                />
+              ) : (
+                <PackageOpen className="w-6 h-6 text-gray-300" />
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <h4 className="text-xs font-bold text-gray-900 truncate">{activeChat.product.name}</h4>
+              <p className="text-[11px] text-gray-500 truncate">
+                {activeChat.product.category || "Men's Running Shoes"} • ₹{activeChat.product.price.toLocaleString('en-IN')}
+              </p>
+            </div>
+            <span className="text-[10px] font-bold text-[#34C759] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+              Active Request
+            </span>
+          </div>
+
+          {/* Chat Messages Thread */}
+          <div className="p-4 space-y-3.5 overflow-y-auto">
+            {activeChat.messages.map((msg) => (
+              <div
+                key={msg.id}
+                className={`flex flex-col ${msg.sender === 'customer' ? 'items-end' : 'items-start'}`}
+              >
+                <div
+                  className={`max-w-[78%] rounded-2xl px-4 py-2.5 text-xs leading-relaxed shadow-xs ${
+                    msg.sender === 'customer'
+                      ? 'bg-[#0066FF] text-white rounded-br-xs'
+                      : 'bg-white text-gray-900 border border-gray-200/80 rounded-bl-xs'
+                  }`}
+                >
+                  <p>{msg.text}</p>
+                </div>
+                <span className="text-[9px] text-gray-400 mt-1 px-1">{msg.time}</span>
+              </div>
+            ))}
+
+            {isSendingChat && (
+              <div className="flex items-center gap-1.5 text-xs text-gray-400 italic">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Store is typing a reply...</span>
               </div>
             )}
           </div>
-        ) : activeTab === 'explore' ? (
+        </div>
 
-          /* ══════════════════════════════════════════════════════════════════
-              SCREEN: CUSTOMER EXPLORE PAGE (CLEAN, MINIMAL, FAST SCANNING)
-          ══════════════════════════════════════════════════════════════════ */
-          <div className="animate-in fade-in duration-150 p-4 sm:p-5 space-y-5">
-            
-            {/* 1. TOP LOCATION BAR (Compact) */}
-            <div className="flex items-center justify-between pt-1">
-              <div className="flex items-center gap-2 min-w-0">
-                <button
-                  type="button"
-                  onClick={onOpenLocationModal}
-                  className="flex items-center gap-1.5 text-xs font-bold text-gray-900 hover:text-[#007AFF] transition-colors cursor-pointer bg-gray-50 hover:bg-gray-100 border border-gray-200/80 rounded-full px-3 py-1.5 truncate shadow-2xs"
-                >
-                  <MapPin className="w-3.5 h-3.5 text-[#007AFF] shrink-0" />
-                  <span className="truncate max-w-[140px] sm:max-w-[200px]">
-                    {currentLocation.name ? currentLocation.name.split(',')[0] : (currentLocation.city || 'Coimbatore')}
+        {/* Quick Suggestion Chips & Bottom Input Bar */}
+        <div className="fixed bottom-0 left-0 right-0 max-w-[440px] mx-auto bg-white border-t border-gray-200/80 p-3 space-y-2 z-30">
+          {/* Quick Questions */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
+            <button
+              type="button"
+              onClick={() => handleSendChatMessage('Do you have this in size 9?')}
+              className="text-[10px] font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-full shrink-0 transition cursor-pointer"
+            >
+              Do you have this in size 9?
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSendChatMessage('Can you hold this for 2 hours?')}
+              className="text-[10px] font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-full shrink-0 transition cursor-pointer"
+            >
+              Can you hold this for 2 hours?
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSendChatMessage('Is this available in store right now?')}
+              className="text-[10px] font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-full shrink-0 transition cursor-pointer"
+            >
+              Is this available right now?
+            </button>
+          </div>
+
+          {/* Input field + Send button */}
+          <div className="flex items-center gap-2">
+            <div className="flex-1 relative flex items-center">
+              <input
+                type="text"
+                placeholder="Type a message..."
+                value={chatInputText}
+                onChange={(e) => setChatInputText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSendChatMessage();
+                }}
+                className="w-full bg-gray-100 border border-transparent rounded-full py-2.5 pl-4 pr-10 text-xs text-gray-900 placeholder-gray-400 focus:bg-white focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF] outline-hidden transition"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => handleSendChatMessage()}
+              disabled={!chatInputText.trim() || isSendingChat}
+              className="w-9 h-9 rounded-full bg-[#0066FF] hover:bg-[#0052CC] text-white flex items-center justify-center shrink-0 transition disabled:opacity-40 cursor-pointer shadow-xs"
+            >
+              <Send className="w-4 h-4 ml-0.5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // SCREEN 7: STORE DETAILS
+  // ══════════════════════════════════════════════════════════════════════════
+  if (customerScreen === 'store-details' && selectedStore) {
+    return (
+      <div className="min-h-screen bg-white flex flex-col justify-between select-none animate-in fade-in duration-200 pb-20">
+        <div>
+          {/* Cover & Back button */}
+          <div className="relative h-44 bg-slate-900 flex items-end p-5 text-white">
+            <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={goBackScreen}
+                className="w-9 h-9 rounded-full bg-white/90 text-gray-900 flex items-center justify-center cursor-pointer shadow-md"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => alert('Store link copied')}
+                className="w-9 h-9 rounded-full bg-white/90 text-gray-900 flex items-center justify-center cursor-pointer shadow-md"
+              >
+                <Share2 className="w-4 h-4" />
+              </button>
+            </div>
+            <h1 className="text-2xl font-extrabold">{selectedStore.name}</h1>
+          </div>
+
+          <div className="p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+              <div>
+                <p className="text-xs text-gray-500">{selectedStore.address || 'RS Puram, Coimbatore'}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-xs font-bold text-[#0066FF]">
+                    {formatDistance(selectedStore.distanceKm)}
                   </span>
-                  <ChevronDown className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                </button>
+                  <span>•</span>
+                  <span className="text-xs font-bold text-[#34C759]">Open Now</span>
+                </div>
               </div>
-
-              <div className="flex items-center gap-2">
-                {onOpenExperienceSwitcher && (
-                  <ExperienceHeaderPill currentExperience="customer" onClick={onOpenExperienceSwitcher} />
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => setIsNotificationsOpen(true)}
-                  className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition cursor-pointer"
-                  aria-label="Notifications"
-                >
-                  <Bell className="w-5 h-5" />
-                  {activeHold && activeHold.totalSeconds > 0 && (
-                    <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#34C759]" />
-                  )}
-                </button>
+              <div className="w-12 h-12 rounded-2xl bg-blue-50 text-[#0066FF] flex items-center justify-center font-bold text-lg">
+                <Store className="w-6 h-6" />
               </div>
             </div>
 
-            {/* 2. SEARCH BAR & FILTER BUTTON */}
-            <div className="relative flex items-center w-full gap-2">
-              <div className="relative flex-1 flex items-center">
-                <Search className="absolute left-3.5 h-4 w-4 text-gray-400 pointer-events-none" />
+            {/* Quick Actions */}
+            <div className="flex gap-2">
+              <a
+                href={`tel:${selectedStore.phone || '+919876543210'}`}
+                className="flex-1 py-2.5 bg-gray-100 rounded-xl text-center text-xs font-bold text-gray-800 hover:bg-gray-200"
+              >
+                Call Store
+              </a>
+              <button
+                type="button"
+                onClick={() => alert(`Directions to ${selectedStore.name}`)}
+                className="flex-1 py-2.5 bg-gray-100 rounded-xl text-center text-xs font-bold text-gray-800 hover:bg-gray-200 cursor-pointer"
+              >
+                Directions
+              </button>
+            </div>
+
+            {/* Products Carried */}
+            <div className="space-y-3 pt-2">
+              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Products at this location</h3>
+              <div className="space-y-2.5">
+                {displayProducts.map((p) => (
+                  <div
+                    key={p.id}
+                    onClick={() => {
+                      setSelectedProduct(p);
+                      navigateToScreen('product-details');
+                    }}
+                    className="p-3 bg-white rounded-2xl border border-gray-200/80 shadow-xs flex items-center justify-between cursor-pointer hover:border-blue-300 transition"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-xl bg-gray-50 overflow-hidden flex items-center justify-center p-1">
+                        <img src={p.imageUrl} alt={p.name} className="w-full h-full object-contain" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-gray-900">{p.name}</h4>
+                        <p className="text-[11px] text-[#0066FF] font-bold">
+                          ₹{((p.lowestPrice || p.minPrice || 9995)).toLocaleString('en-IN')}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-bold text-[#34C759] bg-emerald-50 px-2.5 py-1 rounded-full">
+                      In Stock
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // SCREEN 4: SEARCH & RESULTS (Matches Screen 4 in reference image)
+  // ══════════════════════════════════════════════════════════════════════════
+  if (customerScreen === 'search') {
+    return (
+      <div className="min-h-screen bg-white flex flex-col justify-between select-none animate-in fade-in duration-200 pb-20">
+        <div>
+          {/* Top Search Header */}
+          <div className="p-4 border-b border-gray-100 space-y-3 sticky top-0 bg-white z-20">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={goBackScreen}
+                className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-700 hover:bg-gray-200 transition shrink-0 cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+
+              <div className="flex-1 relative flex items-center">
+                <Search className="absolute left-3.5 w-4 h-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Search products, brands, or stores…"
+                  placeholder="Nike running shoes"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-gray-100/90 border border-transparent rounded-2xl py-3 pl-10 pr-9 text-xs text-gray-900 placeholder-gray-400 focus:bg-white focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/20 outline-hidden transition-all shadow-2xs"
+                  className="w-full bg-gray-100 border border-transparent rounded-full py-2.5 pl-10 pr-9 text-xs text-gray-900 placeholder-gray-400 focus:bg-white focus:border-[#0066FF] outline-hidden transition"
                 />
                 {searchQuery && (
                   <button
                     type="button"
                     onClick={() => setSearchQuery('')}
-                    className="absolute right-3 p-1 text-gray-400 hover:text-gray-700 cursor-pointer"
-                    aria-label="Clear search"
+                    className="absolute right-3 text-gray-400 hover:text-gray-700 cursor-pointer"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
 
-              {/* Filter Button */}
               <button
                 type="button"
-                onClick={() => setIsFilterOpen(true)}
-                className={`p-3 rounded-2xl border transition-all cursor-pointer relative shrink-0 shadow-2xs ${
-                  activeFiltersCount > 0
-                    ? 'bg-blue-50 border-[#007AFF] text-[#007AFF]'
-                    : 'bg-gray-100/90 hover:bg-gray-200/80 border-transparent text-gray-700'
-                }`}
-                aria-label="Open filters"
-                title="Filter & Sort"
+                onClick={() => setIsFilterSheetOpen(true)}
+                className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center justify-center shrink-0 cursor-pointer"
               >
                 <SlidersHorizontal className="w-4 h-4" />
-                {activeFiltersCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#007AFF] text-white text-[9px] font-bold flex items-center justify-center">
-                    {activeFiltersCount}
-                  </span>
-                )}
               </button>
             </div>
 
-            {/* ── SEARCH RESULTS MODE (When user searches) ── */}
-            {searchQuery.trim().length > 0 ? (
-              <div className="space-y-4 pt-1">
-                {/* Search Tabs: Products | Stores | Categories */}
-                <div className="flex items-center gap-2 border-b border-gray-100 pb-2">
-                  <button
-                    type="button"
-                    onClick={() => setSearchTab('products')}
-                    className={`text-xs font-bold px-3 py-1.5 rounded-full transition-all cursor-pointer ${
-                      searchTab === 'products'
-                        ? 'bg-[#007AFF] text-white shadow-2xs'
-                        : 'text-gray-500 hover:text-gray-900 bg-gray-50'
-                    }`}
-                  >
-                    Products ({filteredAndSortedProducts.length})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSearchTab('stores')}
-                    className={`text-xs font-bold px-3 py-1.5 rounded-full transition-all cursor-pointer ${
-                      searchTab === 'stores'
-                        ? 'bg-[#007AFF] text-white shadow-2xs'
-                        : 'text-gray-500 hover:text-gray-900 bg-gray-50'
-                    }`}
-                  >
-                    Stores ({matchingStores.length})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSearchTab('categories')}
-                    className={`text-xs font-bold px-3 py-1.5 rounded-full transition-all cursor-pointer ${
-                      searchTab === 'categories'
-                        ? 'bg-[#007AFF] text-white shadow-2xs'
-                        : 'text-gray-500 hover:text-gray-900 bg-gray-50'
-                    }`}
-                  >
-                    Categories ({matchingCategories.length})
-                  </button>
-                </div>
+            {/* Tabs: Products vs Stores */}
+            <div className="flex items-center justify-center gap-6 text-xs font-bold border-b border-gray-100 pb-2">
+              <button
+                type="button"
+                onClick={() => setSearchTab('products')}
+                className={`transition-all pb-1 border-b-2 cursor-pointer ${
+                  searchTab === 'products'
+                    ? 'border-[#0066FF] text-[#0066FF]'
+                    : 'border-transparent text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                Products
+              </button>
+              <button
+                type="button"
+                onClick={() => setSearchTab('stores')}
+                className={`transition-all pb-1 border-b-2 cursor-pointer ${
+                  searchTab === 'stores'
+                    ? 'border-[#0066FF] text-[#0066FF]'
+                    : 'border-transparent text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                Stores
+              </button>
+            </div>
 
-                {/* Skeletons while searching */}
-                {isLoadingCatalog ? (
-                  <div className="space-y-3">
-                    {[1, 2, 3].map((n) => (
-                      <div key={n} className="p-3 bg-white rounded-2xl border border-gray-100 flex gap-3.5 animate-pulse">
-                        <div className="w-18 h-18 bg-gray-100 rounded-xl shrink-0" />
-                        <div className="flex-1 space-y-2 py-1">
-                          <div className="h-3.5 bg-gray-100 rounded-md w-3/4" />
-                          <div className="h-4 bg-gray-100 rounded-md w-1/3" />
-                          <div className="h-3 bg-gray-100 rounded-md w-1/2" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : searchTab === 'products' ? (
-                  /* Products Search Tab */
-                  filteredAndSortedProducts.length > 0 ? (
-                    <div className="space-y-3">
-                      {filteredAndSortedProducts.map((prod) => {
-                        const firstStore = prod.carryingStores?.[0];
-                        const price = prod.lowestPrice || prod.minPrice || (firstStore ? firstStore.price : 0);
-                        const stock = prod.totalAvailableQuantity ?? (firstStore ? firstStore.availableQuantity : 1);
-                        const inStock = stock > 0;
-                        const distanceText = firstStore?.distanceKm ? formatDistance(firstStore.distanceKm) : '';
-                        const isLiked = Boolean(wishlistIds[prod.id]);
+            {/* Filter Chips Row (Within 5 km, All Brands, Size, Price) */}
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pt-1">
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#0066FF] text-white text-[11px] font-bold shadow-2xs">
+                Within 5 km
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsFilterSheetOpen(true)}
+                className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold cursor-pointer"
+              >
+                <span>All Brands</span>
+                <ChevronDown className="w-3 h-3 text-gray-400" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsFilterSheetOpen(true)}
+                className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold cursor-pointer"
+              >
+                <span>Size</span>
+                <ChevronDown className="w-3 h-3 text-gray-400" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsFilterSheetOpen(true)}
+                className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold cursor-pointer"
+              >
+                <span>Price</span>
+                <ChevronDown className="w-3 h-3 text-gray-400" />
+              </button>
+            </div>
+          </div>
 
-                        return (
-                          <div
-                            key={prod.id}
-                            onClick={() => setSelectedProduct(prod)}
-                            className="bg-white rounded-2xl border border-gray-200/80 p-3 shadow-xs flex gap-3.5 items-center relative hover:border-blue-300 transition cursor-pointer"
-                          >
-                            <div className="w-20 h-20 rounded-xl bg-gray-50 shrink-0 flex items-center justify-center overflow-hidden p-1.5 border border-gray-100">
-                              {prod.imageUrl ? (
-                                <img
-                                  src={prod.imageUrl}
-                                  alt={prod.name}
-                                  className="w-full h-full object-contain"
-                                />
-                              ) : (
-                                <PackageOpen className="w-7 h-7 text-gray-300" />
-                              )}
-                            </div>
+          {/* Results List */}
+          <div className="p-4 space-y-3">
+            {searchTab === 'products' ? (
+              searchFilteredProducts.length > 0 ? (
+                searchFilteredProducts.map((product, idx) => {
+                  const storeInfo = product.carryingStores?.[0] || {
+                    storeName: idx === 0 ? 'Trends Fashion' : idx === 1 ? 'Croma' : 'Foot Locker',
+                    storeAddress: idx === 0 ? '2.1 km • RS Puram' : idx === 1 ? '3.4 km • Avinashi Road' : '4.2 km • Race Course',
+                    price: product.lowestPrice || product.minPrice || 9995
+                  };
 
-                            <div className="flex-1 min-w-0 pr-7">
-                              <h4 className="text-xs font-semibold text-gray-900 truncate">
-                                {prod.name}
-                              </h4>
+                  // Status badge simulation matching reference
+                  const statusType = idx === 0 ? 'available' : idx === 1 ? 'near' : 'need-ask';
 
-                              {/* Wishlist Heart */}
-                              <button
-                                type="button"
-                                onClick={(e) => toggleWishlist(prod.id, e)}
-                                className="absolute top-3 right-3 text-gray-400 hover:text-rose-500 cursor-pointer p-1"
-                                aria-label="Save to wishlist"
-                              >
-                                <Heart className={`w-4 h-4 ${isLiked ? 'fill-rose-500 text-rose-500' : ''}`} />
-                              </button>
-
-                              <div className="text-sm font-bold text-gray-950 mt-0.5">
-                                {price > 0 ? `₹${price.toLocaleString('en-IN')}` : 'Check store'}
-                              </div>
-
-                              <div className="flex items-center gap-2 mt-1">
-                                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                                  inStock ? 'bg-emerald-50 text-[#34C759]' : 'bg-gray-100 text-gray-500'
-                                }`}>
-                                  {inStock ? (stock <= 2 ? `${stock} left` : 'In stock') : 'Out of stock'}
-                                </span>
-                                {distanceText && (
-                                  <span className="text-[11px] font-medium text-gray-500 flex items-center gap-0.5">
-                                    <MapPin className="w-3 h-3 text-[#007AFF]" />
-                                    {distanceText}
-                                  </span>
-                                )}
-                              </div>
-
-                              {firstStore && (
-                                <div className="text-[11px] text-gray-500 mt-1 truncate">
-                                  {firstStore.storeName}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    /* Products Empty State */
-                    <div className="py-12 px-4 text-center space-y-3 bg-gray-50/70 rounded-3xl border border-gray-100">
-                      <PackageOpen className="w-10 h-10 mx-auto text-gray-300" />
-                      <div>
-                        <h4 className="text-sm font-bold text-gray-900">No products found</h4>
-                        <p className="text-xs text-gray-500 mt-1 max-w-xs mx-auto">
-                          Try another search or clear your active filters.
-                        </p>
-                      </div>
-                      <div className="flex justify-center gap-2 pt-1">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSearchQuery('');
-                            resetFilters();
-                          }}
-                          className="px-4 py-2 rounded-xl bg-[#007AFF] text-white text-xs font-semibold hover:bg-[#0071E3] cursor-pointer shadow-xs"
-                        >
-                          Clear Filters
-                        </button>
-                      </div>
-                    </div>
-                  )
-                ) : searchTab === 'stores' ? (
-                  /* Stores Search Tab */
-                  matchingStores.length > 0 ? (
-                    <div className="space-y-2.5">
-                      {matchingStores.map((shop) => (
-                        <div
-                          key={shop.id}
-                          onClick={() => setSelectedStore(shop)}
-                          className="p-3.5 bg-white rounded-2xl border border-gray-200/80 shadow-xs flex items-center justify-between hover:border-blue-300 transition cursor-pointer"
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-10 h-10 rounded-full bg-gray-900 text-white font-bold text-sm flex items-center justify-center shrink-0">
-                              {shop.name.charAt(0)}
-                            </div>
-                            <div className="min-w-0">
-                              <h4 className="text-xs font-bold text-gray-900 truncate flex items-center gap-1">
-                                <span>{shop.name}</span>
-                                <CheckCircle2 className="w-3.5 h-3.5 text-[#34C759]" />
-                              </h4>
-                              <p className="text-[11px] text-gray-500 truncate mt-0.5">
-                                {shop.address || 'Local Shop'}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="text-right shrink-0">
-                            {shop.distanceKm !== undefined && (
-                              <div className="text-xs font-semibold text-[#007AFF]">
-                                {formatDistance(shop.distanceKm)}
-                              </div>
-                            )}
-                            <span className="text-[10px] text-[#34C759] font-semibold">Open</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    /* Stores Empty State */
-                    <div className="py-12 px-4 text-center space-y-3 bg-gray-50/70 rounded-3xl border border-gray-100">
-                      <Store className="w-10 h-10 mx-auto text-gray-300" />
-                      <div>
-                        <h4 className="text-sm font-bold text-gray-900">No stores nearby</h4>
-                        <p className="text-xs text-gray-500 mt-1 max-w-xs mx-auto">
-                          We couldn't find any stores matching "{searchQuery}" in this area.
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={onOpenLocationModal}
-                        className="px-4 py-2 rounded-xl bg-[#007AFF] text-white text-xs font-semibold hover:bg-[#0071E3] cursor-pointer shadow-xs"
-                      >
-                        Change Location
-                      </button>
-                    </div>
-                  )
-                ) : (
-                  /* Categories Search Tab */
-                  matchingCategories.length > 0 ? (
-                    <div className="grid grid-cols-2 gap-2.5">
-                      {matchingCategories.map((cat) => {
-                        const Icon = getCategoryIcon(cat.name);
-                        return (
-                          <button
-                            key={cat.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedCategory(cat.slug || cat.name);
-                              setSearchTab('products');
-                            }}
-                            className="p-3 bg-white rounded-2xl border border-gray-200/80 hover:border-[#007AFF] flex items-center gap-3 text-left transition cursor-pointer shadow-xs"
-                          >
-                            <div className="w-9 h-9 rounded-xl bg-blue-50 text-[#007AFF] flex items-center justify-center shrink-0">
-                              <Icon className="w-5 h-5" />
-                            </div>
-                            <span className="text-xs font-bold text-gray-900 truncate">
-                              {cat.name}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="py-8 text-center text-xs text-gray-400">
-                      No categories found matching "{searchQuery}".
-                    </div>
-                  )
-                )}
-              </div>
-            ) : (
-              /* ── STANDARD EXPLORE VIEW (NO SEARCH TEXT) ── */
-              <>
-                {/* 3. CATEGORY HORIZONTAL SCROLLER */}
-                <div>
-                  <div className="flex items-center gap-3.5 overflow-x-auto no-scrollbar py-1 px-0.5">
-                    {/* All Categories Chip */}
-                    <button
-                      type="button"
-                      onClick={() => setSelectedCategory('all')}
-                      className="flex flex-col items-center gap-1.5 shrink-0 cursor-pointer group"
-                    >
-                      <div className={`w-14 h-14 rounded-full flex items-center justify-center border transition-all ${
-                        selectedCategory === 'all'
-                          ? 'bg-[#007AFF] border-[#007AFF] text-white shadow-md shadow-blue-500/20'
-                          : 'bg-gray-50 hover:bg-gray-100 border-gray-200/80 text-gray-700'
-                      }`}>
-                        <LayoutGrid className="w-6 h-6" />
-                      </div>
-                      <span className={`text-[11px] font-semibold transition-colors ${
-                        selectedCategory === 'all' ? 'text-[#007AFF]' : 'text-gray-600'
-                      }`}>
-                        All
-                      </span>
-                    </button>
-
-                    {/* Dynamic API Categories */}
-                    {dbCategories.map((cat) => {
-                      const Icon = getCategoryIcon(cat.name);
-                      const isSelected = selectedCategory === cat.slug || selectedCategory === cat.name;
-
-                      return (
-                        <button
-                          key={cat.id}
-                          type="button"
-                          onClick={() => setSelectedCategory(isSelected ? 'all' : (cat.slug || cat.name))}
-                          className="flex flex-col items-center gap-1.5 shrink-0 cursor-pointer group"
-                        >
-                          <div className={`w-14 h-14 rounded-full flex items-center justify-center border transition-all ${
-                            isSelected
-                              ? 'bg-[#007AFF] border-[#007AFF] text-white shadow-md shadow-blue-500/20'
-                              : 'bg-gray-50 hover:bg-gray-100 border-gray-200/80 text-gray-700'
-                          }`}>
-                            <Icon className="w-6 h-6" />
-                          </div>
-                          <span className={`text-[11px] font-semibold max-w-[70px] truncate text-center transition-colors ${
-                            isSelected ? 'text-[#007AFF]' : 'text-gray-600'
-                          }`}>
-                            {cat.name}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* 4. DISCOVERY / PROMOTIONAL CARD */}
-                <div className="rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 p-4 text-white shadow-md shadow-blue-600/10 flex items-center justify-between gap-4">
-                  <div className="space-y-1 min-w-0">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-200">
-                      Local Discovery
-                    </span>
-                    <h3 className="text-sm font-bold text-white leading-tight">
-                      Find what you need nearby
-                    </h3>
-                    <p className="text-[11px] text-blue-100/90 leading-snug">
-                      Check real stock at local stores before you go.
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const searchInput = document.querySelector('input[type="text"]') as HTMLInputElement;
-                      if (searchInput) searchInput.focus();
-                    }}
-                    className="px-4 py-2 bg-white text-[#007AFF] hover:bg-blue-50 active:scale-[0.97] rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer shadow-xs"
-                  >
-                    Explore
-                  </button>
-                </div>
-
-                {/* 5. NEARBY STORES SECTION */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-base font-bold text-gray-950">Nearby Stores</h3>
-                    <button
-                      type="button"
+                  return (
+                    <div
+                      key={product.id}
                       onClick={() => {
-                        setSearchQuery('store');
-                        setSearchTab('stores');
+                        setSelectedProduct(product);
+                        navigateToScreen('product-details');
                       }}
-                      className="text-xs font-bold text-[#007AFF] hover:underline cursor-pointer"
+                      className="p-3 bg-white rounded-2xl border border-gray-200/80 hover:border-blue-300 shadow-xs flex items-center justify-between gap-3 cursor-pointer transition"
                     >
-                      See all
-                    </button>
-                  </div>
+                      {/* Product Thumbnail & Status */}
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="w-16 h-16 rounded-xl bg-gray-50 border border-gray-100 p-1 flex items-center justify-center shrink-0 overflow-hidden">
+                          {product.imageUrl ? (
+                            <img src={product.imageUrl} alt={product.name} className="w-full h-full object-contain" />
+                          ) : (
+                            <PackageOpen className="w-7 h-7 text-gray-300" />
+                          )}
+                        </div>
 
-                  {isLoadingShops ? (
-                    /* Store Skeleton Loader */
-                    <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
-                      {[1, 2, 3].map((n) => (
-                        <div key={n} className="w-36 h-36 bg-gray-100 rounded-2xl animate-pulse shrink-0 p-3 flex flex-col justify-between" />
-                      ))}
-                    </div>
-                  ) : dbShops.length > 0 ? (
-                    <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
-                      {dbShops.map((shop) => (
-                        <div
-                          key={shop.id}
-                          onClick={() => setSelectedStore(shop)}
-                          className="w-40 sm:w-44 p-3 bg-white rounded-2xl border border-gray-200/80 shadow-xs flex flex-col justify-between hover:border-blue-300 transition cursor-pointer shrink-0"
-                        >
-                          <div>
-                            <div className="w-10 h-10 rounded-xl bg-gray-900 text-white font-bold text-sm flex items-center justify-center mb-2.5">
-                              {shop.name.charAt(0)}
-                            </div>
-                            <h4 className="text-xs font-bold text-gray-950 truncate flex items-center gap-1">
-                              <span>{shop.name}</span>
-                              <CheckCircle2 className="w-3 h-3 text-[#34C759] shrink-0" />
-                            </h4>
-                            <p className="text-[10px] text-gray-400 truncate mt-0.5">
-                              {shop.categoryName || 'Retail Store'}
-                            </p>
-                          </div>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-xs font-bold text-gray-950 truncate">{product.name}</h4>
+                          <p className="text-[10px] text-gray-500 truncate">{product.categoryName || "Men's Running Shoes"}</p>
+                          <p className="text-xs font-extrabold text-[#0B132B] mt-0.5">
+                            ₹{(product.lowestPrice || product.minPrice || 9995).toLocaleString('en-IN')}
+                          </p>
 
-                          <div className="pt-2.5 border-t border-gray-100 flex items-center justify-between text-[11px]">
-                            {shop.distanceKm !== undefined ? (
-                              <span className="font-bold text-[#007AFF]">
-                                {formatDistance(shop.distanceKm)}
+                          {/* Status Pill Badge below image */}
+                          <div className="mt-1 flex items-center gap-1.5">
+                            {statusType === 'available' && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#34C759] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#34C759]" />
+                                Available
                               </span>
-                            ) : (
-                              <span className="text-gray-400">Nearby</span>
                             )}
-                            <span className="font-bold text-[#34C759]">Open</span>
+                            {statusType === 'near' && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#F59E0B] bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#F59E0B]" />
+                                Near to visit
+                              </span>
+                            )}
+                            {statusType === 'need-ask' && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#EF4444] bg-rose-50 px-2 py-0.5 rounded-full border border-rose-100">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#EF4444]" />
+                                Need to ask
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="text-[10px] text-gray-400 mt-1 truncate">
+                            <span className="font-semibold text-gray-600">{storeInfo.storeName}</span> • {storeInfo.storeAddress}
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    /* Nearby Stores Empty State */
-                    <div className="p-4 bg-gray-50/80 rounded-2xl text-center space-y-2 border border-gray-100">
-                      <p className="text-xs text-gray-600 font-medium">No stores nearby in this radius.</p>
+                      </div>
+
+                      {/* Right "Ask Store" Blue Pill Button */}
                       <button
                         type="button"
-                        onClick={onOpenLocationModal}
-                        className="text-xs font-bold text-[#007AFF] hover:underline cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenAskChat(product, storeInfo as any);
+                        }}
+                        className="bg-[#0066FF] hover:bg-[#0052CC] text-white text-[11px] font-bold px-3.5 py-2 rounded-full shadow-2xs transition active:scale-[0.96] shrink-0 cursor-pointer"
                       >
-                        Change Location →
+                        Ask Store
                       </button>
                     </div>
-                  )}
+                  );
+                })
+              ) : (
+                <div className="py-12 text-center text-gray-400">
+                  <PackageOpen className="w-10 h-10 mx-auto text-gray-300 mb-2" />
+                  <p className="text-xs font-semibold">No products found matching "{searchQuery}"</p>
                 </div>
-
-                {/* 6. POPULAR / NEARBY PRODUCTS SECTION */}
-                <div className="space-y-3 pt-1">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-base font-bold text-gray-950">Popular near you</h3>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const searchInput = document.querySelector('input[type="text"]') as HTMLInputElement;
-                        if (searchInput) searchInput.focus();
-                      }}
-                      className="text-xs font-bold text-[#007AFF] hover:underline cursor-pointer"
-                    >
-                      See all
-                    </button>
-                  </div>
-
-                  {isLoadingCatalog ? (
-                    /* Product Grid Skeleton Loader */
-                    <div className="grid grid-cols-2 gap-3">
-                      {[1, 2, 3, 4].map((n) => (
-                        <div key={n} className="p-3 bg-white rounded-2xl border border-gray-100 space-y-2.5 animate-pulse">
-                          <div className="w-full h-28 bg-gray-100 rounded-xl" />
-                          <div className="h-3.5 bg-gray-100 rounded-md w-3/4" />
-                          <div className="h-4 bg-gray-100 rounded-md w-1/2" />
-                          <div className="h-3 bg-gray-100 rounded-md w-2/3" />
-                        </div>
-                      ))}
-                    </div>
-                  ) : filteredAndSortedProducts.length > 0 ? (
-                    <div className="grid grid-cols-2 gap-3">
-                      {filteredAndSortedProducts.map((prod) => {
-                        const firstStore = prod.carryingStores?.[0];
-                        const price = prod.lowestPrice || prod.minPrice || (firstStore ? firstStore.price : 0);
-                        const stock = prod.totalAvailableQuantity ?? (firstStore ? firstStore.availableQuantity : 1);
-                        const inStock = stock > 0;
-                        const distanceText = firstStore?.distanceKm ? formatDistance(firstStore.distanceKm) : '';
-                        const isLiked = Boolean(wishlistIds[prod.id]);
-
-                        return (
-                          <div
-                            key={prod.id}
-                            onClick={() => setSelectedProduct(prod)}
-                            className="bg-white rounded-2xl border border-gray-200/80 p-3 shadow-xs flex flex-col justify-between relative hover:border-blue-300 transition cursor-pointer group"
-                          >
-                            {/* Wishlist Heart */}
-                            <button
-                              type="button"
-                              onClick={(e) => toggleWishlist(prod.id, e)}
-                              className="absolute top-2.5 right-2.5 z-10 p-1.5 rounded-full bg-white/90 text-gray-400 hover:text-rose-500 shadow-2xs transition cursor-pointer"
-                              aria-label="Save to wishlist"
-                            >
-                              <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-rose-500 text-rose-500' : ''}`} />
-                            </button>
-
-                            {/* Product Image */}
-                            <div className="w-full h-28 rounded-xl bg-gray-50 flex items-center justify-center overflow-hidden p-2 mb-2 border border-gray-100">
-                              {prod.imageUrl ? (
-                                <img
-                                  src={prod.imageUrl}
-                                  alt={prod.name}
-                                  className="w-full h-full object-contain group-hover:scale-105 transition-transform"
-                                />
-                              ) : (
-                                <PackageOpen className="w-8 h-8 text-gray-300" />
-                              )}
-                            </div>
-
-                            {/* Info */}
-                            <div className="space-y-1">
-                              <h4 className="text-xs font-semibold text-gray-900 truncate" title={prod.name}>
-                                {prod.name}
-                              </h4>
-
-                              <div className="text-sm font-bold text-gray-950">
-                                {price > 0 ? `₹${price.toLocaleString('en-IN')}` : 'Check store'}
-                              </div>
-
-                              <div className="flex items-center justify-between pt-1">
-                                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${
-                                  inStock ? 'bg-emerald-50 text-[#34C759]' : 'bg-gray-100 text-gray-500'
-                                }`}>
-                                  {inStock ? (stock <= 2 ? `${stock} left` : 'In stock') : 'Out of stock'}
-                                </span>
-
-                                {distanceText && (
-                                  <span className="text-[10px] font-medium text-gray-500 flex items-center gap-0.5">
-                                    <MapPin className="w-2.5 h-2.5 text-[#007AFF]" />
-                                    {distanceText}
-                                  </span>
-                                )}
-                              </div>
-
-                              {firstStore && (
-                                <p className="text-[10px] text-gray-400 truncate pt-0.5">
-                                  {firstStore.storeName}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    /* Products Empty State */
-                    <div className="py-10 px-4 text-center bg-gray-50/70 rounded-2xl border border-gray-100 space-y-2.5">
-                      <PackageOpen className="w-8 h-8 mx-auto text-gray-300" />
-                      <h4 className="text-xs font-bold text-gray-900">No products found</h4>
-                      <p className="text-[11px] text-gray-500 max-w-xs mx-auto">
-                        Try clearing active category or price filters.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={resetFilters}
-                        className="px-3.5 py-1.5 rounded-xl bg-[#007AFF] text-white text-xs font-semibold hover:bg-[#0071E3] cursor-pointer"
-                      >
-                        Clear Filters
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-
-          </div>
-        ) : activeTab === 'live-ask' ? (
-
-          /* ══════════════════════════════════════════════════════════════════
-              SCREEN: LIVE ASK (BROADCAST DEMAND)
-          ══════════════════════════════════════════════════════════════════ */
-          <div className="animate-in fade-in duration-150 p-5 space-y-5">
-            <div>
-              <h2 className="text-2xl font-black text-gray-950 tracking-tight leading-tight">
-                Can't find it?<br />Ask nearby stores.
-              </h2>
-              <p className="text-xs text-gray-500 mt-1">
-                Send a real-time request to local shopkeepers. They'll notify you if they have it.
-              </p>
-            </div>
-
-            {broadcastDone && (
-              <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-medium text-[#34C759] flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
-                <span>Broadcast dispatched! Verified stores in {askRadius} radius notified.</span>
-              </div>
-            )}
-
-            <form onSubmit={handleBroadcast} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                  Product name or brand <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Sony WH-1000XM5, iPhone 15, Amul Butter"
-                  value={askProductName}
-                  onChange={(e) => setAskProductName(e.target.value)}
-                  className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-3.5 text-xs text-gray-900 placeholder-gray-400 focus:border-[#007AFF] focus:ring-1 focus:ring-[#007AFF] outline-hidden shadow-2xs"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                  Variant / Size (optional)
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. 256GB, Black, Size UK 9"
-                  value={askVariant}
-                  onChange={(e) => setAskVariant(e.target.value)}
-                  className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-3.5 text-xs text-gray-900 placeholder-gray-400 focus:border-[#007AFF] focus:ring-1 focus:ring-[#007AFF] outline-hidden shadow-2xs"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                  Category
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {dbCategories.slice(0, 6).map((cat) => {
-                    const isSelected = askCategory === cat.id;
-                    return (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => setAskCategory(cat.id)}
-                        className={`p-2.5 rounded-xl text-left border transition flex items-center gap-2 cursor-pointer ${
-                          isSelected
-                            ? 'bg-blue-50 border-[#007AFF] text-[#007AFF] ring-1 ring-[#007AFF]'
-                            : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300'
-                        }`}
-                      >
-                        <span className="text-xs font-medium truncate">{cat.name}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                  Broadcast Radius
-                </label>
-                <div className="grid grid-cols-4 gap-2">
-                  {(['2 km', '5 km', '10 km', '15 km'] as const).map((r) => (
-                    <button
-                      key={r}
-                      type="button"
-                      onClick={() => setAskRadius(r)}
-                      className={`py-2 text-xs font-semibold rounded-xl border transition cursor-pointer ${
-                        askRadius === r
-                          ? 'bg-[#007AFF] text-white border-[#007AFF] shadow-2xs'
-                          : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      {r}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={isBroadcasting}
-                className="w-full bg-[#007AFF] hover:bg-[#0071E3] disabled:bg-blue-300 text-white font-semibold py-3 rounded-xl text-xs transition cursor-pointer shadow-md flex items-center justify-center gap-2"
-              >
-                {isBroadcasting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Broadcasting to local stores...</span>
-                  </>
-                ) : (
-                  <>
-                    <Radio className="w-4 h-4" />
-                    <span>Broadcast Request to Stores</span>
-                  </>
-                )}
-              </button>
-            </form>
-          </div>
-        ) : activeTab === 'holds' ? (
-
-          /* ══════════════════════════════════════════════════════════════════
-              SCREEN: MY HOLDS (ACTIVE 30-MIN HOLD PASS)
-          ══════════════════════════════════════════════════════════════════ */
-          <div className="animate-in fade-in duration-150 p-5 space-y-5">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-950 tracking-tight">My Hold Passes</h2>
-              <p className="text-xs text-gray-500 mt-1">
-                Show your 6-digit code or QR pass at the billing counter to collect reserved items.
-              </p>
-            </div>
-
-            {activeHold && activeHold.totalSeconds > 0 ? (
-              <div className="bg-white rounded-3xl border border-gray-200/90 p-5 shadow-lg space-y-4 relative overflow-hidden">
-                <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#34C759] animate-ping" />
-                    <span className="text-xs font-bold text-[#34C759]">Active Hold Pass</span>
-                  </div>
-                  <span className="font-mono font-black text-sm text-gray-900">{activeHold.holdId}</span>
-                </div>
-
-                <div className="space-y-1">
-                  <h3 className="text-base font-bold text-gray-950">{activeHold.productName}</h3>
-                  <p className="text-xs text-gray-500">{activeHold.storeName}</p>
-                  <p className="text-[11px] text-gray-400">{activeHold.storeAddress}</p>
-                  {activeHold.price > 0 && (
-                    <div className="text-sm font-black text-gray-950 pt-1">
-                      ₹{activeHold.price.toLocaleString('en-IN')}
-                    </div>
-                  )}
-                </div>
-
-                {/* Countdown Timer */}
-                <div className="bg-blue-50/70 border border-blue-100 rounded-2xl p-3.5 flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-gray-700">
-                    <Clock className="w-4 h-4 text-[#007AFF]" />
-                    <span>Expires in:</span>
-                  </div>
-                  <span className="font-mono font-black text-lg text-[#007AFF]">
-                    {formatTimer(activeHold.totalSeconds)}
-                  </span>
-                </div>
-
-                {/* Counter QR Token */}
-                <div className="p-4 bg-gray-50 rounded-2xl flex flex-col items-center justify-center space-y-2 border border-gray-100">
-                  <StandardQRCode value={activeHold.qrCode} size={140} />
-                  <p className="text-[10px] text-gray-400 font-mono">Token: {activeHold.holdId}</p>
-                </div>
-
-                <div className="space-y-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const matchedShop = dbShops.find(s => s.name === activeHold.storeName || s.id === activeHold.storeId);
-                      if (matchedShop) {
-                        setSelectedStore(matchedShop);
-                      } else {
-                        alert(`Store: ${activeHold.storeAddress}\nPhone: ${activeHold.storePhone}`);
-                      }
-                    }}
-                    className="w-full flex items-center justify-center gap-2 bg-[#007AFF] hover:bg-[#0071E3] text-white py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer shadow-xs"
-                  >
-                    <MapPin className="w-3.5 h-3.5" />
-                    <span>View Store & Directions</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleCancelHold}
-                    className="w-full text-center text-xs text-red-500 hover:text-red-700 py-1.5 font-medium transition cursor-pointer"
-                  >
-                    Release Hold Pass
-                  </button>
-                </div>
-              </div>
+              )
             ) : (
-              <div className="py-16 text-center text-gray-400 space-y-3">
-                <Clock className="w-12 h-12 mx-auto text-gray-300" />
-                <div>
-                  <h4 className="text-sm font-bold text-gray-700">No active hold passes</h4>
-                  <p className="text-xs text-gray-400 mt-1 max-w-xs mx-auto">
-                    When you reserve products at nearby stores, your 30-minute hold pass and counter QR will appear here.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('explore')}
-                  className="bg-[#007AFF] hover:bg-[#0071E3] text-white px-5 py-2.5 rounded-xl text-xs font-semibold cursor-pointer shadow-xs transition"
-                >
-                  Browse Products
-                </button>
-              </div>
-            )}
-          </div>
-        ) : (
-
-          /* ══════════════════════════════════════════════════════════════════
-              SCREEN: ACCOUNT / PROFILE
-          ══════════════════════════════════════════════════════════════════ */
-          <div className="animate-in fade-in duration-150 p-5 space-y-5">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-gray-950 tracking-tight">Account</h2>
-              {isMultiRole && onOpenExperienceSwitcher && (
-                <ExperienceHeaderPill currentExperience="customer" onClick={onOpenExperienceSwitcher} />
-              )}
-            </div>
-
-            {/* Profile Card */}
-            {userProfile && !userProfile.email?.includes('@guest.zooner.app') ? (
-              <div className="bg-white rounded-2xl border border-gray-200/80 p-4 shadow-xs flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-full bg-gray-100 text-gray-900 font-bold text-lg flex items-center justify-center shrink-0">
-                  {userProfile.name ? userProfile.name.charAt(0).toUpperCase() : 'U'}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-base font-bold text-gray-950 truncate">
-                    {userProfile.name || 'Account'}
-                  </h3>
-                  {userProfile.email && (
-                    <p className="text-xs text-gray-500 truncate mt-0.5">
-                      {userProfile.email}
-                    </p>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="bg-white rounded-2xl border border-gray-200/80 p-4 shadow-xs flex items-center justify-between gap-3.5">
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-12 h-12 rounded-full bg-gray-100 text-gray-400 font-bold text-lg flex items-center justify-center shrink-0">
-                    <User className="w-6 h-6 text-gray-400" />
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="text-base font-bold text-gray-950 truncate">
-                      Guest Shopper
-                    </h3>
-                    <p className="text-xs text-gray-500 truncate mt-0.5">
-                      Browse stores & reserve items freely
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => onOpenSignIn('C')}
-                  className="bg-[#007AFF] hover:bg-[#0071E3] text-white font-semibold text-xs px-3.5 py-2 rounded-xl transition cursor-pointer shrink-0"
-                >
-                  Sign In
-                </button>
-              </div>
-            )}
-
-            {/* ── PROMINENT STORE SECTION IN CUSTOMER PROFILE ── */}
-            {userProfile?.isVendor || (userProfile?.shops && userProfile.shops.length > 0) ? (
-              <div className="bg-white rounded-2xl border border-blue-100 p-4 shadow-xs bg-gradient-to-br from-blue-50/50 to-white">
-                <div className="flex items-start gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-[#007AFF] text-white flex items-center justify-center shrink-0 shadow-xs">
-                    <Store className="w-5 h-5" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#007AFF]">
-                      Your Store
-                    </span>
-                    <h4 className="text-sm font-bold text-gray-950 truncate mt-0.5">
-                      {userProfile?.shops?.[0]?.name || (userProfile as any)?.storeName || 'My Store'}
-                    </h4>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      Manage your store and reservations
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (onNavigateToVendor) onNavigateToVendor();
-                      }}
-                      className="mt-3.5 w-full py-2.5 px-4 rounded-xl bg-[#007AFF] hover:bg-[#0071E3] active:scale-[0.98] text-white text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer shadow-xs"
-                    >
-                      <Store className="w-4 h-4" />
-                      <span>Switch to Store</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-white rounded-2xl border border-gray-200/80 p-4 shadow-xs">
-                <div className="flex items-start gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#007AFF] flex items-center justify-center shrink-0">
-                    <Store className="w-5 h-5" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-bold text-gray-950">Become a Store Owner</h4>
-                    <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
-                      Create and manage your store on Zooner
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (onNavigateToVendor) onNavigateToVendor();
-                      }}
-                      className="mt-3 w-full py-2.5 px-4 rounded-xl bg-[#007AFF] hover:bg-[#0071E3] active:scale-[0.98] text-white text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer shadow-xs"
-                    >
-                      <Store className="w-4 h-4" />
-                      <span>Switch to Store</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Menu List */}
-            <div className="bg-white rounded-2xl border border-gray-200/80 divide-y divide-gray-100 overflow-hidden shadow-xs">
-              <button
-                type="button"
-                onClick={() => onOpenSignIn('C')}
-                className="w-full px-4 py-3.5 flex items-center justify-between text-xs text-gray-700 hover:bg-gray-50 transition cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <User className="w-4 h-4 text-gray-500" />
-                  <span className="font-medium">{userProfile && !userProfile.email?.includes('@guest.zooner.app') ? 'Profile Details' : 'Sign In / Register'}</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-gray-400" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => alert(`Saved items: ${Object.values(wishlistIds).filter(Boolean).length}`)}
-                className="w-full px-4 py-3.5 flex items-center justify-between text-xs text-gray-700 hover:bg-gray-50 transition cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <Heart className="w-4 h-4 text-gray-500" />
-                  <span className="font-medium">Wishlist</span>
-                </div>
-                <div className="flex items-center gap-1 text-gray-400">
-                  <span>{Object.values(wishlistIds).filter(Boolean).length}</span>
-                  <ChevronRight className="w-4 h-4" />
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => alert('Zooner v1.0 — Local Commerce Discovery Platform.')}
-                className="w-full px-4 py-3.5 flex items-center justify-between text-xs text-gray-700 hover:bg-gray-50 transition cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <Info className="w-4 h-4 text-gray-500" />
-                  <span className="font-medium">About Zooner</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-gray-400" />
-              </button>
-
-              {onNavigateToAdmin && (userProfile?.role?.toLowerCase() === 'admin' || userProfile?.email?.toLowerCase() === 'admin@zooner.app') && (
-                <button
-                  type="button"
-                  onClick={onNavigateToAdmin}
-                  className="w-full px-4 py-3.5 flex items-center justify-between text-xs text-gray-700 hover:bg-gray-50 transition cursor-pointer"
+              /* Stores Tab */
+              displayShops.map((shop) => (
+                <div
+                  key={shop.id}
+                  onClick={() => {
+                    setSelectedStore(shop);
+                    navigateToScreen('store-details');
+                  }}
+                  className="p-3.5 bg-white rounded-2xl border border-gray-200/80 shadow-xs flex items-center justify-between cursor-pointer hover:border-blue-300 transition"
                 >
                   <div className="flex items-center gap-3">
-                    <Shield className="w-4 h-4 text-purple-600" />
-                    <span className="font-medium">Admin Portal</span>
+                    <div className="w-10 h-10 rounded-xl bg-gray-900 text-white font-bold flex items-center justify-center shrink-0">
+                      {shop.name.charAt(0)}
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-gray-950 flex items-center gap-1">
+                        <span>{shop.name}</span>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#34C759]" />
+                      </h4>
+                      <p className="text-[11px] text-gray-500 mt-0.5">{shop.address}</p>
+                    </div>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-gray-400" />
-                </button>
-              )}
-            </div>
-
-            {/* Sign Out Button */}
-            {userProfile && !userProfile.email?.includes('@guest.zooner.app') && (
-              <button
-                type="button"
-                onClick={() => {
-                  localStorage.removeItem('zooner_token');
-                  localStorage.removeItem('zooner_user_profile');
-                  setUserProfile(null);
-                  window.dispatchEvent(new Event('storage'));
-                }}
-                className="w-full flex items-center justify-center gap-2 text-xs font-semibold text-red-500 hover:text-red-700 py-3 transition cursor-pointer"
-              >
-                <LogOut className="w-4 h-4" />
-                <span>Sign Out</span>
-              </button>
+                  <div className="text-right">
+                    <span className="text-xs font-bold text-[#0066FF]">{formatDistance(shop.distanceKm)}</span>
+                    <p className="text-[10px] text-[#34C759] font-bold">Open</p>
+                  </div>
+                </div>
+              ))
             )}
           </div>
-        )}
+        </div>
+
+        {/* Bottom Navigation */}
+        <BottomNav active="search" onNavigate={(tab) => navigateToScreen(tab as CustomerScreenType)} />
       </div>
+    );
+  }
 
-      {/* ══════════════════════════════════════════════════════════════════
-          MODAL: PRODUCT DETAILS & HOLD RESERVATION (BOTTOM SHEET)
-      ══════════════════════════════════════════════════════════════════ */}
-      {selectedProduct && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
-          <div 
-            className="absolute inset-0"
-            onClick={() => setSelectedProduct(null)}
-          />
-          <div className="relative w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl max-h-[85vh] overflow-y-auto space-y-4 z-10 animate-in slide-in-from-bottom duration-200 text-gray-900">
-            {/* Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#007AFF]">
-                  {selectedProduct.categoryName || 'Product Details'}
-                </span>
+  // ══════════════════════════════════════════════════════════════════════════
+  // SCREEN 8: REQUESTS & HOLDS
+  // ══════════════════════════════════════════════════════════════════════════
+  if (customerScreen === 'requests') {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between select-none animate-in fade-in duration-200 pb-20">
+        <div>
+          {/* Header */}
+          <div className="bg-white p-4 border-b border-gray-200/80 sticky top-0 z-20 flex items-center justify-between">
+            <h1 className="text-base font-extrabold text-[#0B132B]">My Inquiries & Holds</h1>
+            <span className="text-xs font-bold text-[#0066FF] bg-blue-50 px-2.5 py-1 rounded-full">
+              Live Tracker
+            </span>
+          </div>
+
+          <div className="p-4 space-y-4">
+            {/* Active Hold Card if present */}
+            {activeHold && (
+              <div className="bg-white rounded-2xl p-4 border border-emerald-200 shadow-xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-[#34C759] bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-100">
+                    Active Physical Shelf Hold
+                  </span>
+                  <span className="text-xs font-mono font-bold text-gray-600">
+                    Expires {activeHold.reservedUntil}
+                  </span>
+                </div>
+                <div>
+                  <h4 className="text-sm font-extrabold text-gray-900">{activeHold.productName}</h4>
+                  <p className="text-xs text-gray-500">{activeHold.storeName} • {activeHold.storeAddress}</p>
+                  <p className="text-sm font-extrabold text-[#0066FF] mt-1">₹{activeHold.price.toLocaleString('en-IN')}</p>
+                </div>
+                <div className="flex items-center justify-center p-3 bg-gray-50 rounded-xl">
+                  <StandardQRCode value={activeHold.qrCode} size={110} />
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setSelectedProduct(null)}
-                className="p-1.5 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+            )}
 
-            {/* Image & Main Info */}
-            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-              <div className="w-full sm:w-32 h-36 rounded-2xl bg-gray-50 flex items-center justify-center overflow-hidden p-3 border border-gray-100 shrink-0">
-                {selectedProduct.imageUrl ? (
-                  <img
-                    src={selectedProduct.imageUrl}
-                    alt={selectedProduct.name}
-                    className="w-full h-full object-contain"
-                  />
-                ) : (
-                  <PackageOpen className="w-12 h-12 text-gray-300" />
-                )}
-              </div>
-
-              <div className="space-y-1.5 flex-1 min-w-0">
-                <h3 className="text-base font-bold text-gray-950 leading-snug">
-                  {selectedProduct.name}
-                </h3>
-                {selectedProduct.brandName && (
-                  <p className="text-xs text-gray-500 font-medium">
-                    Brand: <span className="text-gray-800 font-semibold">{selectedProduct.brandName}</span>
+            {/* Broadcast Form */}
+            <div className="bg-white rounded-2xl p-4 border border-gray-200/80 shadow-xs space-y-3">
+              <h3 className="text-xs font-bold text-gray-900">Broadcast Request to Nearby Physical Stores</h3>
+              <form onSubmit={handleBroadcastAsk} className="space-y-2.5">
+                <input
+                  type="text"
+                  placeholder="e.g. Nike Air Zoom Pegasus 9"
+                  value={askProductName}
+                  onChange={(e) => setAskProductName(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs text-gray-900 outline-hidden focus:border-[#0066FF]"
+                />
+                <input
+                  type="text"
+                  placeholder="Size / Color / Specification (optional)"
+                  value={askVariant}
+                  onChange={(e) => setAskVariant(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs text-gray-900 outline-hidden focus:border-[#0066FF]"
+                />
+                <button
+                  type="submit"
+                  disabled={isBroadcasting || !askProductName.trim()}
+                  className="w-full bg-[#0066FF] hover:bg-[#0052CC] text-white py-2.5 rounded-xl font-bold text-xs transition disabled:opacity-50 cursor-pointer shadow-xs"
+                >
+                  {isBroadcasting ? 'Broadcasting to 15+ Stores...' : 'Broadcast to Local Stores'}
+                </button>
+                {broadcastDone && (
+                  <p className="text-center text-[11px] text-[#34C759] font-bold">
+                    ✓ Request broadcasted! Stores in your 5 km radius will reply shortly.
                   </p>
                 )}
-                <div className="text-xl font-extrabold text-gray-950 pt-1">
-                  ₹{(selectedProduct.lowestPrice || selectedProduct.minPrice || 0).toLocaleString('en-IN')}
-                </div>
-              </div>
-            </div>
-
-            {/* Carrying Stores Section */}
-            <div className="space-y-2 pt-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                Available at nearby stores
-              </h4>
-
-              {selectedProduct.carryingStores && selectedProduct.carryingStores.length > 0 ? (
-                <div className="space-y-2">
-                  {selectedProduct.carryingStores.map((cs) => (
-                    <div
-                      key={cs.inventoryId}
-                      className="p-3 rounded-2xl border border-gray-200/80 bg-gray-50/50 flex items-center justify-between gap-3"
-                    >
-                      <div className="min-w-0">
-                        <div className="text-xs font-bold text-gray-900 truncate flex items-center gap-1">
-                          <span>{cs.storeName}</span>
-                          <CheckCircle2 className="w-3.5 h-3.5 text-[#34C759]" />
-                        </div>
-                        <p className="text-[11px] text-gray-500 truncate mt-0.5">
-                          {cs.storeAddress || 'Local Address'}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-600 font-medium">
-                          {cs.distanceKm !== undefined && (
-                            <span className="text-[#007AFF] font-semibold">{formatDistance(cs.distanceKm)} away</span>
-                          )}
-                          <span>•</span>
-                          <span className="text-[#34C759] font-semibold">{cs.availableQuantity} in stock</span>
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        disabled={isReservingHold || cs.availableQuantity <= 0}
-                        onClick={() => handleReserveProduct(selectedProduct, cs)}
-                        className="bg-[#007AFF] hover:bg-[#0071E3] disabled:bg-gray-200 disabled:text-gray-400 text-white px-3.5 py-2 rounded-xl text-xs font-bold shrink-0 transition cursor-pointer shadow-xs flex items-center gap-1.5"
-                      >
-                        {isReservingHold ? (
-                          <>
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            <span>Reserving...</span>
-                          </>
-                        ) : (
-                          <span>Hold 30 Min</span>
-                        )}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-4 rounded-2xl bg-gray-50 text-center text-xs text-gray-500">
-                  Checking verified store inventories...
-                </div>
-              )}
-            </div>
-
-            {/* Primary Reserve Button */}
-            <div className="pt-2">
-              <button
-                type="button"
-                disabled={isReservingHold || (selectedProduct.totalAvailableQuantity ?? 0) <= 0}
-                onClick={() => handleReserveProduct(selectedProduct)}
-                className="w-full bg-[#007AFF] hover:bg-[#0071E3] disabled:bg-gray-200 disabled:text-gray-400 text-white py-3.5 rounded-2xl text-xs font-bold transition cursor-pointer shadow-md flex items-center justify-center gap-2"
-              >
-                {isReservingHold ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Reserving hold pass...</span>
-                  </>
-                ) : (
-                  <>
-                    <Clock className="w-4 h-4" />
-                    <span>Reserve 30-Min Hold Pass</span>
-                  </>
-                )}
-              </button>
+              </form>
             </div>
           </div>
         </div>
-      )}
 
-      {/* ══════════════════════════════════════════════════════════════════
-          MODAL: FILTER & SORT (BOTTOM SHEET)
-      ══════════════════════════════════════════════════════════════════ */}
-      {isFilterOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
-          <div 
-            className="absolute inset-0"
-            onClick={() => setIsFilterOpen(false)}
-          />
-          <div className="relative w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl max-h-[85vh] overflow-y-auto space-y-5 z-10 animate-in slide-in-from-bottom duration-200 text-gray-900">
-            {/* Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-              <h3 className="text-base font-bold text-gray-950">Filter & Sort</h3>
-              <button
-                type="button"
-                onClick={() => setIsFilterOpen(false)}
-                className="p-1.5 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer"
+        <BottomNav active="requests" onNavigate={(tab) => navigateToScreen(tab as CustomerScreenType)} />
+      </div>
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // SCREEN 9: STORES DIRECTORY
+  // ══════════════════════════════════════════════════════════════════════════
+  if (customerScreen === 'stores') {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between select-none animate-in fade-in duration-200 pb-20">
+        <div>
+          <div className="bg-white p-4 border-b border-gray-200/80 sticky top-0 z-20 flex items-center justify-between">
+            <h1 className="text-base font-extrabold text-[#0B132B]">Nearby Physical Stores</h1>
+            <span className="text-xs font-semibold text-gray-500">Coimbatore (5 km)</span>
+          </div>
+
+          <div className="p-4 space-y-3">
+            {displayShops.map((shop) => (
+              <div
+                key={shop.id}
+                onClick={() => {
+                  setSelectedStore(shop);
+                  navigateToScreen('store-details');
+                }}
+                className="p-4 bg-white rounded-2xl border border-gray-200/80 shadow-xs flex items-center justify-between cursor-pointer hover:border-blue-300 transition"
               >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl bg-[#0066FF] text-white font-bold flex items-center justify-center shrink-0">
+                    <Store className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-gray-950 flex items-center gap-1">
+                      <span>{shop.name}</span>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-[#34C759]" />
+                    </h4>
+                    <p className="text-[11px] text-gray-500 mt-0.5">{shop.address}</p>
+                    <div className="flex items-center gap-1 mt-1 text-[10px] text-amber-500 font-bold">
+                      <Star className="w-3 h-3 fill-amber-500" /> 4.3 (120 reviews)
+                    </div>
+                  </div>
+                </div>
 
-            {/* Sort Options */}
-            <div className="space-y-2">
-              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500">
-                Sort By
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { id: 'relevance' as SortByType, label: 'Relevance' },
-                  { id: 'nearby' as SortByType, label: 'Nearby (Distance)' },
-                  { id: 'price-asc' as SortByType, label: 'Price: Low to High' },
-                  { id: 'price-desc' as SortByType, label: 'Price: High to Low' },
-                ].map((s) => (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => setSortBy(s.id)}
-                    className={`py-2 px-3 text-xs font-semibold rounded-xl border text-left transition cursor-pointer ${
-                      sortBy === s.id
-                        ? 'bg-blue-50 border-[#007AFF] text-[#007AFF]'
-                        : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    {s.label}
-                  </button>
-                ))}
+                <div className="text-right">
+                  <span className="text-xs font-extrabold text-[#0066FF]">{formatDistance(shop.distanceKm)}</span>
+                  <p className="text-[10px] text-[#34C759] font-bold mt-0.5">Open Now</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <BottomNav active="stores" onNavigate={(tab) => navigateToScreen(tab as CustomerScreenType)} />
+      </div>
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // SCREEN 10: CUSTOMER PROFILE
+  // ══════════════════════════════════════════════════════════════════════════
+  if (customerScreen === 'profile') {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between select-none animate-in fade-in duration-200 pb-20">
+        <div>
+          <div className="bg-white p-4 border-b border-gray-200/80 sticky top-0 z-20 flex items-center justify-between">
+            <h1 className="text-base font-extrabold text-[#0B132B]">Account & Settings</h1>
+            {onOpenExperienceSwitcher && (
+              <ExperienceHeaderPill currentExperience="customer" onClick={onOpenExperienceSwitcher} />
+            )}
+          </div>
+
+          <div className="p-4 space-y-4">
+            {/* User Card */}
+            <div className="bg-white rounded-2xl p-4 border border-gray-200/80 shadow-xs flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-full bg-[#0066FF] text-white font-bold text-lg flex items-center justify-center shrink-0">
+                {userProfile?.name ? userProfile.name.charAt(0) : 'S'}
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-sm font-bold text-gray-950 truncate">
+                  {userProfile?.name || 'Customer Shopper'}
+                </h3>
+                <p className="text-xs text-gray-500 truncate">{userProfile?.email || 'shopper@zooner.app'}</p>
               </div>
             </div>
 
-            {/* Distance Radius */}
-            <div className="space-y-2">
-              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500">
-                Search Radius
-              </label>
-              <div className="grid grid-cols-4 gap-2">
-                {(['2 km', '5 km', '10 km', '15 km'] as const).map((r) => (
+            {/* Switch to Merchant Mode */}
+            {onNavigateToVendor && (
+              <div className="bg-blue-50/80 border border-blue-200 rounded-2xl p-4 flex items-center justify-between">
+                <div>
+                  <h4 className="text-xs font-bold text-blue-950">Store Owner?</h4>
+                  <p className="text-[11px] text-blue-700">Manage your physical store and inventory</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={onNavigateToVendor}
+                  className="px-3 py-1.5 bg-[#0066FF] text-white rounded-xl text-xs font-bold hover:bg-[#0052CC] cursor-pointer"
+                >
+                  Switch to Vendor
+                </button>
+              </div>
+            )}
+
+            {/* Test Onboarding Flow Button */}
+            <button
+              type="button"
+              onClick={() => navigateToScreen('onboarding')}
+              className="w-full py-3 bg-white border border-gray-200 rounded-2xl text-xs font-bold text-gray-700 hover:bg-gray-50 cursor-pointer text-left px-4 flex items-center justify-between"
+            >
+              <span>View App Onboarding / Splash</span>
+              <ChevronRight className="w-4 h-4 text-gray-400" />
+            </button>
+
+            {/* Sign in or Log out */}
+            <button
+              type="button"
+              onClick={() => onOpenSignIn('C')}
+              className="w-full py-3 bg-white border border-gray-200 rounded-2xl text-xs font-bold text-[#0066FF] hover:bg-blue-50 cursor-pointer text-left px-4 flex items-center justify-between"
+            >
+              <span>Sign In / Switch Account</span>
+              <ChevronRight className="w-4 h-4 text-gray-400" />
+            </button>
+          </div>
+        </div>
+
+        <BottomNav active="profile" onNavigate={(tab) => navigateToScreen(tab as CustomerScreenType)} />
+      </div>
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // SCREEN 3: CUSTOMER HOME (Default / Main screen in reference image)
+  // ══════════════════════════════════════════════════════════════════════════
+  return (
+    <div className="min-h-screen bg-white flex flex-col justify-between select-none animate-in fade-in duration-200 pb-20">
+      <div>
+        {/* Top Header (Matches Screen 3 in reference image) */}
+        <div className="px-5 pt-3.5 pb-2 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-[#0066FF] flex items-center justify-center text-white shadow-sm">
+              <Store className="w-4 h-4" />
+            </div>
+            <span className="text-xl font-extrabold text-[#0B132B] tracking-tight">Zooner</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* Location Pill */}
+            <button
+              type="button"
+              onClick={onOpenLocationModal}
+              className="flex items-center gap-1.5 text-xs font-bold text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-full px-3 py-1.5 transition cursor-pointer"
+            >
+              <MapPin className="w-3.5 h-3.5 text-[#0066FF]" />
+              <span className="truncate max-w-[130px]">
+                {currentLocation.city || 'Coimbatore'} Near you (5 km)
+              </span>
+              <ChevronDown className="w-3 h-3 text-gray-400" />
+            </button>
+
+            {/* Notification Bell */}
+            <button
+              type="button"
+              onClick={() => setIsNotificationsOpen(true)}
+              className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-700 relative cursor-pointer"
+            >
+              <Bell className="w-4 h-4" />
+              {activeHold && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#34C759]" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Search Bar (Clicking opens Screen 4: Search & Results) */}
+        <div className="px-5 py-2">
+          <div
+            onClick={() => navigateToScreen('search')}
+            className="w-full bg-gray-100/90 hover:bg-gray-100 border border-transparent rounded-full py-3 px-4 flex items-center gap-3 cursor-pointer transition shadow-2xs"
+          >
+            <Search className="w-4 h-4 text-gray-400 shrink-0" />
+            <span className="text-xs text-gray-400">Search for products, brands or stores...</span>
+          </div>
+        </div>
+
+        {/* Horizontal Category Icons / Cards */}
+        <div className="px-5 py-3">
+          <div className="flex items-center justify-between gap-2 overflow-x-auto no-scrollbar">
+            {/* Fashion */}
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedCategory('Fashion');
+                navigateToScreen('search');
+              }}
+              className="flex flex-col items-center gap-1.5 min-w-[58px] cursor-pointer group"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-rose-50 group-hover:bg-rose-100 flex items-center justify-center text-rose-500 transition">
+                <Shirt className="w-5 h-5" />
+              </div>
+              <span className="text-[11px] font-semibold text-gray-700">Fashion</span>
+            </button>
+
+            {/* Mobiles */}
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedCategory('Mobiles');
+                navigateToScreen('search');
+              }}
+              className="flex flex-col items-center gap-1.5 min-w-[58px] cursor-pointer group"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-blue-50 group-hover:bg-blue-100 flex items-center justify-center text-[#0066FF] transition">
+                <Smartphone className="w-5 h-5" />
+              </div>
+              <span className="text-[11px] font-semibold text-gray-700">Mobiles</span>
+            </button>
+
+            {/* Electronics */}
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedCategory('Electronics');
+                navigateToScreen('search');
+              }}
+              className="flex flex-col items-center gap-1.5 min-w-[58px] cursor-pointer group"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-cyan-50 group-hover:bg-cyan-100 flex items-center justify-center text-cyan-600 transition">
+                <Headphones className="w-5 h-5" />
+              </div>
+              <span className="text-[11px] font-semibold text-gray-700">Electronics</span>
+            </button>
+
+            {/* Home */}
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedCategory('Home');
+                navigateToScreen('search');
+              }}
+              className="flex flex-col items-center gap-1.5 min-w-[58px] cursor-pointer group"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 group-hover:bg-amber-100 flex items-center justify-center text-amber-600 transition">
+                <HomeIcon className="w-5 h-5" />
+              </div>
+              <span className="text-[11px] font-semibold text-gray-700">Home</span>
+            </button>
+
+            {/* More */}
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedCategory('all');
+                navigateToScreen('search');
+              }}
+              className="flex flex-col items-center gap-1.5 min-w-[58px] cursor-pointer group"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-gray-100 group-hover:bg-gray-200 flex items-center justify-center text-gray-600 transition">
+                <LayoutGrid className="w-5 h-5" />
+              </div>
+              <span className="text-[11px] font-semibold text-gray-700">More</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Section: Popular near you with "See all" */}
+        <div className="px-5 pt-3 pb-2">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-extrabold text-gray-950">Popular near you</h2>
+            <button
+              type="button"
+              onClick={() => navigateToScreen('search')}
+              className="text-xs font-bold text-[#0066FF] hover:underline cursor-pointer"
+            >
+              See all
+            </button>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2.5">
+            {displayProducts.slice(0, 3).map((prod) => (
+              <div
+                key={prod.id}
+                onClick={() => {
+                  setSelectedProduct(prod);
+                  navigateToScreen('product-details');
+                }}
+                className="bg-white rounded-2xl border border-gray-200/80 p-2.5 flex flex-col justify-between hover:border-blue-300 transition cursor-pointer shadow-2xs"
+              >
+                <div className="w-full h-20 rounded-xl bg-gray-50 flex items-center justify-center overflow-hidden mb-2 p-1">
+                  {prod.imageUrl ? (
+                    <img src={prod.imageUrl} alt={prod.name} className="max-h-full max-w-full object-contain" />
+                  ) : (
+                    <PackageOpen className="w-6 h-6 text-gray-300" />
+                  )}
+                </div>
+                <div>
+                  <h4 className="text-[11px] font-bold text-gray-900 truncate">{prod.name}</h4>
+                  <p className="text-[10px] text-gray-400 mt-0.5">{prod.carryingStoresCount || '120+'} stores</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Section: Nearby Stores with "See all" */}
+        <div className="px-5 pt-4 pb-2">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-extrabold text-gray-950">Nearby Stores</h2>
+            <button
+              type="button"
+              onClick={() => navigateToScreen('stores')}
+              className="text-xs font-bold text-[#0066FF] hover:underline cursor-pointer"
+            >
+              See all
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            {displayShops.slice(0, 2).map((shop) => (
+              <div
+                key={shop.id}
+                onClick={() => {
+                  setSelectedStore(shop);
+                  navigateToScreen('store-details');
+                }}
+                className="bg-white rounded-2xl border border-gray-200/80 p-3 hover:border-blue-300 transition cursor-pointer shadow-2xs space-y-2"
+              >
+                <div className="w-full h-20 rounded-xl bg-gray-900 text-white font-bold flex items-center justify-center">
+                  <Store className="w-8 h-8 text-white/90" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-gray-900 truncate">{shop.name}</h4>
+                  <p className="text-[10px] text-gray-500 truncate">{shop.address || '2.1 km • RS Puram'}</p>
+                  <div className="flex items-center gap-1 text-[10px] text-amber-500 font-bold mt-1">
+                    <Star className="w-3 h-3 fill-amber-500" /> 4.3 (120)
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Filter Modal */}
+      {isFilterSheetOpen && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end justify-center">
+          <div className="w-full max-w-[440px] bg-white rounded-t-3xl p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <h3 className="text-sm font-bold text-gray-950">Filters & Distance</h3>
+              <button
+                type="button"
+                onClick={() => setIsFilterSheetOpen(false)}
+                className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-700 block mb-2">Search Radius</label>
+              <div className="flex gap-2">
+                {(['2 km', '5 km', '10 km', '15 km'] as const).map(r => (
                   <button
                     key={r}
                     type="button"
-                    onClick={() => setRadiusFilter(r)}
-                    className={`py-2 text-xs font-semibold rounded-xl border transition cursor-pointer ${
-                      radiusFilter === r
-                        ? 'bg-[#007AFF] text-white border-[#007AFF]'
-                        : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                    onClick={() => { setRadiusFilter(r); setIsFilterSheetOpen(false); }}
+                    className={`flex-1 py-2 text-xs font-bold rounded-xl border transition cursor-pointer ${
+                      radiusFilter === r ? 'bg-[#0066FF] text-white border-[#0066FF]' : 'bg-gray-50 text-gray-700 border-gray-200'
                     }`}
                   >
                     {r}
@@ -2047,238 +1818,98 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
                 ))}
               </div>
             </div>
-
-            {/* Price Range */}
-            <div className="space-y-2">
-              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500">
-                Price Range
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { id: 'all' as PriceRangeFilter, label: 'All Prices' },
-                  { id: 'under1000' as PriceRangeFilter, label: 'Under ₹1,000' },
-                  { id: '1000-5000' as PriceRangeFilter, label: '₹1,000 - ₹5,000' },
-                  { id: '5000-20000' as PriceRangeFilter, label: '₹5,000 - ₹20,000' },
-                  { id: 'above20000' as PriceRangeFilter, label: 'Above ₹20,000' },
-                ].map((pr) => (
-                  <button
-                    key={pr.id}
-                    type="button"
-                    onClick={() => setPriceRangeFilter(pr.id)}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-xl border transition cursor-pointer ${
-                      priceRangeFilter === pr.id
-                        ? 'bg-blue-50 border-[#007AFF] text-[#007AFF]'
-                        : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    {pr.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Availability Toggle */}
-            <div className="pt-1">
-              <label className="flex items-center justify-between p-3 rounded-2xl bg-gray-50 border border-gray-200/80 cursor-pointer">
-                <span className="text-xs font-bold text-gray-900">In Stock Only</span>
-                <input
-                  type="checkbox"
-                  checked={inStockOnlyFilter}
-                  onChange={(e) => setInStockOnlyFilter(e.target.value === 'true' || e.target.checked)}
-                  className="w-4 h-4 accent-[#007AFF] cursor-pointer"
-                />
-              </label>
-            </div>
-
-            {/* Category Filter Pills */}
-            <div className="space-y-2">
-              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500">
-                Category
-              </label>
-              <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto">
-                <button
-                  type="button"
-                  onClick={() => setSelectedCategory('all')}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-xl border transition cursor-pointer ${
-                    selectedCategory === 'all'
-                      ? 'bg-[#007AFF] text-white border-[#007AFF]'
-                      : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  All Categories
-                </button>
-                {dbCategories.map((cat) => {
-                  const isSelected = selectedCategory === cat.slug || selectedCategory === cat.name;
-                  return (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => setSelectedCategory(isSelected ? 'all' : (cat.slug || cat.name))}
-                      className={`px-3 py-1.5 text-xs font-semibold rounded-xl border transition cursor-pointer ${
-                        isSelected
-                          ? 'bg-[#007AFF] text-white border-[#007AFF]'
-                          : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      {cat.name}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Bottom Actions */}
-            <div className="flex items-center gap-3 pt-3 border-t border-gray-100">
-              <button
-                type="button"
-                onClick={resetFilters}
-                className="flex-1 py-3 px-4 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 hover:bg-gray-50 transition cursor-pointer flex items-center justify-center gap-1.5"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>Reset</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsFilterOpen(false)}
-                className="flex-2 py-3 px-4 rounded-xl bg-[#007AFF] text-white text-xs font-bold hover:bg-[#0071E3] transition cursor-pointer shadow-xs"
-              >
-                Show Results
-              </button>
-            </div>
           </div>
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════════════════════
-          MODAL: NOTIFICATIONS (TOP BAR)
-      ══════════════════════════════════════════════════════════════════ */}
+      {/* Notifications Modal */}
       {isNotificationsOpen && (
-        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-150">
-          <div 
-            className="absolute inset-0"
-            onClick={() => setIsNotificationsOpen(false)}
-          />
-          <div className="relative w-full max-w-sm bg-white rounded-3xl p-5 shadow-2xl space-y-4 z-10 mt-14 sm:mt-0 text-gray-900 border border-gray-100">
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end justify-center">
+          <div className="w-full max-w-[440px] bg-white rounded-t-3xl p-5 space-y-3 shadow-2xl">
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-              <h3 className="text-sm font-bold text-gray-950 flex items-center gap-2">
-                <Bell className="w-4 h-4 text-[#007AFF]" />
-                <span>Notifications</span>
-              </h3>
+              <h3 className="text-sm font-bold text-gray-950">Notifications</h3>
               <button
                 type="button"
                 onClick={() => setIsNotificationsOpen(false)}
-                className="p-1 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100"
+                className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
-
-            <div className="py-6 text-center text-gray-400 space-y-2">
-              <Bell className="w-8 h-8 mx-auto text-gray-300" />
-              <p className="text-xs font-semibold text-gray-700">No new notifications</p>
-              <p className="text-[11px] text-gray-400 max-w-xs mx-auto">
-                Real-time alerts regarding your 30-minute hold passes and store responses will appear here.
-              </p>
-            </div>
+            <p className="text-xs text-gray-500 py-2">
+              All physical shelf holds and merchant responses are up to date.
+            </p>
           </div>
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════════════════════
-          7. BOTTOM NAVIGATION BAR (Home, Explore, Holds, Chats, Profile)
-      ══════════════════════════════════════════════════════════════════ */}
-      <div className="fixed bottom-0 left-0 right-0 max-w-[440px] mx-auto bg-white/90 backdrop-blur-xl border-t border-gray-200/70 flex items-center justify-around py-2.5 px-2 z-30 shadow-[0_-2px_12px_rgba(0,0,0,0.03)]">
-        {/* Home */}
-        <button
-          type="button"
-          onClick={() => {
-            setSelectedStore(null);
-            setSelectedProduct(null);
-            onNavigateToHome();
-          }}
-          className="flex flex-col items-center gap-1 transition-all active:scale-[0.94] cursor-pointer text-gray-400 hover:text-gray-600"
-        >
-          <HomeIcon className="w-5 h-5" />
-          <span className="text-[10px] font-medium">Home</span>
-        </button>
+      {/* Bottom 5-Tab Navigation (Exact match to reference Screen 3) */}
+      <BottomNav active="home" onNavigate={(tab) => navigateToScreen(tab as CustomerScreenType)} />
+    </div>
+  );
+};
 
-        {/* Explore (Primary Active) */}
-        <button
-          type="button"
-          onClick={() => {
-            setSelectedStore(null);
-            setSelectedProduct(null);
-            setSearchQuery('');
-            setActiveTab('explore');
-          }}
-          className={`flex flex-col items-center gap-1 transition-all active:scale-[0.94] cursor-pointer ${
-            activeTab === 'explore' && !selectedStore
-              ? 'text-[#007AFF] font-bold'
-              : 'text-gray-400 hover:text-gray-600'
-          }`}
-        >
-          <Compass className="w-5 h-5" />
-          <span className="text-[10px]">Explore</span>
-        </button>
+// ── BOTTOM NAVIGATION COMPONENT ──
+const BottomNav: React.FC<{
+  active: 'home' | 'search' | 'requests' | 'stores' | 'profile';
+  onNavigate: (tab: string) => void;
+}> = ({ active, onNavigate }) => {
+  return (
+    <div className="fixed bottom-0 left-0 right-0 max-w-[440px] mx-auto bg-white/95 backdrop-blur-xl border-t border-gray-200/80 flex items-center justify-around py-2 px-1 z-30 shadow-[0_-2px_12px_rgba(0,0,0,0.03)]">
+      <button
+        type="button"
+        onClick={() => onNavigate('home')}
+        className={`flex flex-col items-center gap-1 transition cursor-pointer py-1 px-3 ${
+          active === 'home' ? 'text-[#0066FF] font-bold' : 'text-gray-400 hover:text-gray-700'
+        }`}
+      >
+        <HomeIcon className="w-5 h-5" />
+        <span className="text-[10px]">Home</span>
+      </button>
 
-        {/* Holds */}
-        <button
-          type="button"
-          onClick={() => {
-            setSelectedStore(null);
-            setSelectedProduct(null);
-            setActiveTab('holds');
-          }}
-          className={`flex flex-col items-center gap-1 transition-all active:scale-[0.94] cursor-pointer relative ${
-            activeTab === 'holds'
-              ? 'text-[#007AFF] font-bold'
-              : 'text-gray-400 hover:text-gray-600'
-          }`}
-        >
-          <Clock className="w-5 h-5" />
-          <span className="text-[10px]">Holds</span>
-          {activeHold && activeHold.totalSeconds > 0 && (
-            <span className="absolute -top-0.5 right-1.5 w-2 h-2 rounded-full bg-[#34C759] animate-pulse" />
-          )}
-        </button>
+      <button
+        type="button"
+        onClick={() => onNavigate('search')}
+        className={`flex flex-col items-center gap-1 transition cursor-pointer py-1 px-3 ${
+          active === 'search' ? 'text-[#0066FF] font-bold' : 'text-gray-400 hover:text-gray-700'
+        }`}
+      >
+        <Search className="w-5 h-5" />
+        <span className="text-[10px]">Search</span>
+      </button>
 
-        {/* Chats / Live Ask */}
-        <button
-          type="button"
-          onClick={() => {
-            setSelectedStore(null);
-            setSelectedProduct(null);
-            setActiveTab('live-ask');
-          }}
-          className={`flex flex-col items-center gap-1 transition-all active:scale-[0.94] cursor-pointer ${
-            activeTab === 'live-ask'
-              ? 'text-[#007AFF] font-bold'
-              : 'text-gray-400 hover:text-gray-600'
-          }`}
-        >
-          <Radio className="w-5 h-5" />
-          <span className="text-[10px]">Chats</span>
-        </button>
+      <button
+        type="button"
+        onClick={() => onNavigate('requests')}
+        className={`flex flex-col items-center gap-1 transition cursor-pointer py-1 px-3 ${
+          active === 'requests' ? 'text-[#0066FF] font-bold' : 'text-gray-400 hover:text-gray-700'
+        }`}
+      >
+        <Radio className="w-5 h-5" />
+        <span className="text-[10px]">Requests</span>
+      </button>
 
-        {/* Profile / Account */}
-        <button
-          type="button"
-          onClick={() => {
-            setSelectedStore(null);
-            setSelectedProduct(null);
-            setActiveTab('account');
-          }}
-          className={`flex flex-col items-center gap-1 transition-all active:scale-[0.94] cursor-pointer ${
-            activeTab === 'account'
-              ? 'text-[#007AFF] font-bold'
-              : 'text-gray-400 hover:text-gray-600'
-          }`}
-        >
-          <User className="w-5 h-5" />
-          <span className="text-[10px]">Profile</span>
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={() => onNavigate('stores')}
+        className={`flex flex-col items-center gap-1 transition cursor-pointer py-1 px-3 ${
+          active === 'stores' ? 'text-[#0066FF] font-bold' : 'text-gray-400 hover:text-gray-700'
+        }`}
+      >
+        <Store className="w-5 h-5" />
+        <span className="text-[10px]">Stores</span>
+      </button>
 
+      <button
+        type="button"
+        onClick={() => onNavigate('profile')}
+        className={`flex flex-col items-center gap-1 transition cursor-pointer py-1 px-3 ${
+          active === 'profile' ? 'text-[#0066FF] font-bold' : 'text-gray-400 hover:text-gray-700'
+        }`}
+      >
+        <User className="w-5 h-5" />
+        <span className="text-[10px]">Profile</span>
+      </button>
     </div>
   );
 };

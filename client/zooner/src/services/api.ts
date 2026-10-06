@@ -6,7 +6,9 @@ import type {
   LiveRequestSummary,
   AuthResponse,
   UserDto,
-  InventoryHoldDto
+  InventoryHoldDto,
+  ChatMessageDto,
+  ConversationDto
 } from '../types';
 
 const isNative = Capacitor.isNativePlatform();
@@ -672,6 +674,87 @@ export async function respondToLiveRequest(requestId: string, shopId: string): P
     };
   }
 }
+
+export async function getMyRequests(): Promise<LiveRequestSummary[]> {
+  try {
+    const res = await authenticatedFetch(`${API_BASE_URL}/Requests/my-requests`);
+    if (!res.ok) return [];
+    const json: ApiResponse<LiveRequestSummary[]> = await res.json();
+    return json.data || [];
+  } catch (err) {
+    console.error('getMyRequests error:', err);
+    return [];
+  }
+}
+
+export async function getRequestById(id: string): Promise<LiveRequestSummary | null> {
+  try {
+    const res = await authenticatedFetch(`${API_BASE_URL}/Requests/${id}`);
+    if (!res.ok) return null;
+    const json: ApiResponse<LiveRequestSummary> = await res.json();
+    return json.data || null;
+  } catch (err) {
+    console.error('getRequestById error:', err);
+    return null;
+  }
+}
+
+export async function getConversations(): Promise<ConversationDto[]> {
+  try {
+    const res = await authenticatedFetch(`${API_BASE_URL}/Chat/conversations`);
+    if (!res.ok) return [];
+    const json: ApiResponse<ConversationDto[]> = await res.json();
+    return json.data || [];
+  } catch (err) {
+    console.error('getConversations error:', err);
+    return [];
+  }
+}
+
+export async function getConversationMessages(id: string, page = 1, pageSize = 50): Promise<ChatMessageDto[]> {
+  try {
+    const res = await authenticatedFetch(`${API_BASE_URL}/Chat/conversations/${id}/messages?page=${page}&pageSize=${pageSize}`);
+    if (!res.ok) return [];
+    const json: ApiResponse<ChatMessageDto[]> = await res.json();
+    return json.data || [];
+  } catch (err) {
+    console.error('getConversationMessages error:', err);
+    return [];
+  }
+}
+
+export async function sendChatMessage(id: string, messageText: string): Promise<ChatMessageDto | null> {
+  try {
+    const res = await authenticatedFetch(`${API_BASE_URL}/Chat/conversations/${id}/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messageText })
+    });
+    if (!res.ok) return null;
+    const json: ApiResponse<ChatMessageDto> = await res.json();
+    return json.data || null;
+  } catch (err) {
+    console.error('sendChatMessage error:', err);
+    return null;
+  }
+}
+
+export async function startConversation(liveRequestId: string, shopId: string): Promise<ConversationDto | null> {
+  try {
+    const res = await authenticatedFetch(`${API_BASE_URL}/Chat/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ liveRequestId, shopId })
+    });
+    if (!res.ok) return null;
+    const json: ApiResponse<ConversationDto> = await res.json();
+    return json.data || null;
+  } catch (err) {
+    console.error('startConversation error:', err);
+    return null;
+  }
+}
+
 
 export async function fetchCategories(): Promise<CategoryDto[]> {
   try {
