@@ -7,9 +7,9 @@ import {
   ArrowLeft, 
   X, 
   User, 
+  User as UserIcon,
   ChevronRight, 
   ChevronDown, 
-  Info, 
   CheckCircle2, 
   Loader2, 
   PackageOpen, 
@@ -19,7 +19,11 @@ import {
   LayoutGrid, 
   Phone,
   Send,
-  Package
+  Package,
+  Sparkles,
+  MessageSquare,
+  Clock,
+  ShieldCheck
 } from 'lucide-react';
 import { 
   fetchCategories, 
@@ -596,61 +600,99 @@ export const CustomerAppPage: React.FC<CustomerAppPageProps> = ({
   // ══════════════════════════════════════════════════════════════════════════
   if (customerScreen === 'welcome') {
     return (
-      <div className="min-h-screen bg-white flex flex-col justify-between p-6 select-none animate-in fade-in duration-200 max-w-lg mx-auto w-full">
+      <div className="min-h-screen bg-slate-50 flex flex-col justify-between p-6 select-none animate-in fade-in duration-200 max-w-lg mx-auto w-full">
         <div>
-          <button
-            type="button"
-            onClick={goBackScreen}
-            className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-700 hover:bg-gray-200 transition cursor-pointer"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
-
-          <div className="mt-6 space-y-1.5">
-            <h1 className="text-2xl font-extrabold text-[#0B132B]">Welcome to Zooner</h1>
-            <p className="text-xs text-gray-500">Discover inventory on physical shelves near you.</p>
+          {/* Top Bar */}
+          <div className="flex items-center justify-between pt-2">
+            <button
+              type="button"
+              onClick={goBackScreen}
+              className="w-9 h-9 rounded-full bg-white shadow-2xs border border-slate-200/80 flex items-center justify-center text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-[11px] font-bold text-slate-600">Live Network</span>
+            </div>
           </div>
 
-          {/* Sign In Options */}
-          <div className="mt-8 space-y-3">
-            <button
-              type="button"
-              onClick={() => {
-                onOpenSignIn('C');
-                navigateToScreen('home');
-              }}
-              className="w-full flex items-center justify-center gap-3 py-3.5 px-4 bg-white border border-gray-200 rounded-2xl text-xs font-bold text-gray-800 hover:bg-gray-50 transition shadow-xs cursor-pointer"
-            >
-              <Info className="w-4 h-4 text-gray-500" />
-              <span>Sign In with Email</span>
-            </button>
+          {/* Hero Branding */}
+          <div className="mt-6 space-y-2 text-center sm:text-left">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-50 border border-blue-100 rounded-full text-[#0066FF] text-xs font-bold">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Hyperlocal Shopping</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight">
+              Welcome to Zooner
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
+              Find products in stock on physical retail shelves near you before you travel.
+            </p>
+          </div>
 
+          {/* 3 Core Value Props */}
+          <div className="mt-6 space-y-2.5">
+            <div className="p-3.5 bg-white rounded-2xl border border-slate-200/80 shadow-2xs flex items-center gap-3.5">
+              <div className="w-9 h-9 rounded-xl bg-blue-50 text-[#0066FF] flex items-center justify-center shrink-0">
+                <MapPin className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="text-xs font-extrabold text-slate-900">Nearby Shelf Discovery</h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">Search products across verified local shops in your neighborhood.</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-white rounded-2xl border border-slate-200/80 shadow-2xs flex items-center gap-3.5">
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <MessageSquare className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="text-xs font-extrabold text-slate-900">Real-Time Availability Chat</h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">Ask shopkeepers directly about stock, sizes, and colors in seconds.</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-white rounded-2xl border border-slate-200/80 shadow-2xs flex items-center gap-3.5">
+              <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                <Clock className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="text-xs font-extrabold text-slate-900">1-Hour Shelf Hold</h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">Reserve items for 60 minutes with zero advance payment required.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Sign In / Register Actions */}
+          <div className="mt-7 space-y-3">
             <button
               type="button"
               onClick={() => {
                 onOpenSignIn('C');
-                navigateToScreen('home');
               }}
-              className="w-full flex items-center justify-center gap-3 py-3.5 px-4 bg-white border border-gray-200 rounded-2xl text-xs font-bold text-gray-800 hover:bg-gray-50 transition shadow-xs cursor-pointer"
+              className="w-full flex items-center justify-center gap-2.5 py-3.5 px-4 bg-[#0066FF] hover:bg-[#0052CC] text-white rounded-2xl text-xs font-extrabold shadow-md shadow-blue-500/20 active:scale-[0.98] transition cursor-pointer"
             >
-              <Phone className="w-4 h-4 text-gray-500" />
-              <span>Continue with Phone</span>
+              <UserIcon className="w-4 h-4" />
+              <span>Sign In or Create Account</span>
             </button>
 
             <button
               type="button"
               onClick={() => navigateToScreen('home')}
-              className="w-full py-2.5 text-center text-xs font-semibold text-[#0066FF] hover:underline cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-white hover:bg-slate-100 border border-slate-200/90 rounded-2xl text-xs font-bold text-slate-700 active:scale-[0.98] transition cursor-pointer"
             >
-              Skip and browse nearby stores →
+              <span>Browse Stores as Guest →</span>
             </button>
           </div>
         </div>
 
-        <div className="space-y-4 pt-6">
-          <p className="text-center text-[10px] text-gray-400 leading-tight">
-            Find products nearby • Ask stores directly • Hold & Visit
-          </p>
+        {/* Footer Trust Indicator */}
+        <div className="pt-6 pb-2">
+          <div className="flex items-center justify-center gap-2 text-[10px] text-slate-400 font-medium">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+            <span>256-bit SSL • Verified Local Merchants • No Spam</span>
+          </div>
         </div>
       </div>
     );

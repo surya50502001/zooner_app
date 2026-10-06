@@ -15,7 +15,16 @@ import {
   User,
   CheckCircle2,
   PackageOpen,
-  Store as StoreIcon
+  Store as StoreIcon,
+  Lock,
+  Mail,
+  Eye,
+  EyeOff,
+  AlertCircle,
+  Sparkles,
+  ShieldCheck,
+  TrendingUp,
+  Loader2
 } from 'lucide-react';
 import { 
   getStoreInventory, 
@@ -105,6 +114,7 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
   const [authStoreName, setAuthStoreName] = useState('');
   const [authError, setAuthError] = useState('');
   const [isAuthSubmitting, setIsAuthSubmitting] = useState(false);
+  const [showAuthPassword, setShowAuthPassword] = useState(false);
 
   // Store profile & shops
   const [activeShop, setActiveShop] = useState<ShopProfileDto | null>(null);
@@ -443,154 +453,284 @@ export const VendorDashboardPage: React.FC<VendorDashboardPageProps> = ({
   // ══════════════════════════════════════════════════════════════════════════
   if (vendorScreen === 'splash' || !isAuthenticated) {
     return (
-      <div className="min-h-screen bg-white flex flex-col justify-between p-6 select-none animate-in fade-in duration-200 max-w-lg mx-auto w-full">
+      <div className="min-h-screen bg-slate-50 flex flex-col justify-between p-6 select-none animate-in fade-in duration-200 max-w-lg mx-auto w-full">
         {/* Toast */}
         {toastMessage && (
-          <div className="fixed top-5 right-5 z-50 bg-gray-900 text-white px-4 py-2 rounded-2xl text-xs font-semibold shadow-xl">
-            {toastMessage}
+          <div className="fixed top-5 right-5 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-2xl text-xs font-semibold shadow-xl flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <span>{toastMessage}</span>
           </div>
         )}
 
-        {/* Status Bar */}
-        <div className="flex items-center justify-between text-xs font-semibold text-gray-500 pt-2">
-          <span>Merchant Portal</span>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span className="text-[11px] text-emerald-600 font-bold">Online</span>
-          </div>
-        </div>
-
-        {/* Center Hero */}
-        <div className="flex-1 flex flex-col items-center justify-center text-center my-auto py-12">
-          <div className="w-24 h-24 rounded-3xl bg-[#0066FF] flex items-center justify-center text-white shadow-xl shadow-blue-500/25 mb-6">
-            <Store className="w-12 h-12" />
-          </div>
-
-          <h1 className="text-3xl font-extrabold text-[#0B132B] tracking-tight">Zooner</h1>
-          <h2 className="text-xl font-bold text-[#0066FF] mt-1">Vendor</h2>
-
-          <p className="text-xs text-gray-500 mt-4 max-w-xs leading-relaxed">
-            Manage your store.<br />Connect with nearby customers searching for products.
-          </p>
-
-          {authError && (
-            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600 max-w-xs">
-              {authError}
+        <div>
+          {/* Top Bar */}
+          <div className="flex items-center justify-between text-xs font-semibold text-slate-500 pt-2">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-[#0066FF] flex items-center justify-center text-white">
+                <Store className="w-3.5 h-3.5" />
+              </div>
+              <span className="font-extrabold text-slate-900 text-sm tracking-tight">Zooner Partner</span>
             </div>
-          )}
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200/80 rounded-full">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-[10px] text-emerald-700 font-extrabold">Merchant Portal</span>
+            </div>
+          </div>
+
+          {/* Hero Branding */}
+          <div className="mt-8 space-y-2 text-center sm:text-left">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 border border-blue-100 rounded-full text-[#0066FF] text-xs font-bold">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Drive In-Store Footfall</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight">
+              Turn Nearby Searches into Store Visits
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
+              Showcase your offline inventory to customers searching within 5 km of your physical storefront.
+            </p>
+          </div>
+
+          {/* Value Props for Merchants */}
+          <div className="mt-6 space-y-2.5">
+            <div className="p-3.5 bg-white rounded-2xl border border-slate-200/80 shadow-2xs flex items-center gap-3.5">
+              <div className="w-9 h-9 rounded-xl bg-blue-50 text-[#0066FF] flex items-center justify-center shrink-0">
+                <Radio className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="text-xs font-extrabold text-slate-900">Live Customer Availability Inquiries</h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">Receive instant alerts when nearby shoppers search for your products.</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-white rounded-2xl border border-slate-200/80 shadow-2xs flex items-center gap-3.5">
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <TrendingUp className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="text-xs font-extrabold text-slate-900">Zero Commission Discovery</h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">Keep 100% of your retail margins when shoppers walk in and pay at your counter.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom Action Buttons */}
+          <div className="mt-8 space-y-3">
+            <button
+              type="button"
+              onClick={() => {
+                setAuthMode('register');
+                setAuthError('');
+                setIsAuthModalOpen(true);
+              }}
+              className="w-full bg-[#0066FF] hover:bg-[#0052CC] text-white py-3.5 rounded-2xl font-extrabold text-xs shadow-md shadow-blue-500/20 active:scale-[0.98] transition cursor-pointer"
+            >
+              Register Your Physical Store
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setAuthMode('login');
+                setAuthError('');
+                setIsAuthModalOpen(true);
+              }}
+              className="w-full bg-white hover:bg-slate-100 border border-slate-200/90 text-slate-800 py-3 rounded-2xl font-bold text-xs active:scale-[0.98] transition cursor-pointer"
+            >
+              Sign In to Existing Store
+            </button>
+
+            <button
+              type="button"
+              onClick={onSwitchToCustomer}
+              className="w-full py-2 text-center text-xs font-semibold text-[#0066FF] hover:underline cursor-pointer"
+            >
+              ← Switch to Shopper Mode
+            </button>
+          </div>
         </div>
 
-        {/* Bottom Action Buttons */}
-        <div className="space-y-3 pb-6 max-w-md mx-auto w-full">
-          <button
-            type="button"
-            onClick={() => {
-              setAuthMode('register');
-              setIsAuthModalOpen(true);
-            }}
-            className="w-full bg-[#0066FF] hover:bg-[#0052CC] text-white py-4 rounded-full font-bold text-sm shadow-lg shadow-blue-500/25 transition-all active:scale-[0.98] cursor-pointer"
-          >
-            Get Started
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setAuthMode('login');
-              setIsAuthModalOpen(true);
-            }}
-            className="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 py-3.5 rounded-full font-bold text-sm transition-all active:scale-[0.98] cursor-pointer"
-          >
-            Login to Existing Store
-          </button>
+        {/* Footer Trust Indicator */}
+        <div className="pt-6 pb-2">
+          <div className="flex items-center justify-center gap-2 text-[10px] text-slate-400 font-medium">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+            <span>256-bit Secure • Verified Retail Partners Only</span>
+          </div>
         </div>
 
-        {/* Auth Modal */}
+        {/* ── HIGH-CONVERTING VENDOR AUTH MODAL ── */}
         {isAuthModalOpen && (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="w-full max-w-sm bg-white rounded-3xl p-6 space-y-4 shadow-2xl">
+          <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+            <div 
+              className="absolute inset-0"
+              onClick={() => setIsAuthModalOpen(false)}
+            />
+
+            <div className="relative w-full sm:max-w-[420px] max-h-[90vh] overflow-y-auto bg-white rounded-t-[32px] sm:rounded-3xl p-6 sm:p-7 space-y-4 shadow-2xl border border-slate-100 z-10 animate-in slide-in-from-bottom-6 sm:slide-in-from-bottom-2 duration-300">
+              
+              {/* Mobile grab handle */}
+              <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-2 sm:hidden" />
+
+              {/* Modal Header */}
               <div className="flex items-center justify-between">
-                <h3 className="text-base font-extrabold text-[#0B132B]">
-                  {authMode === 'login' ? 'Vendor Sign In' : 'Register Store'}
-                </h3>
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-600 flex items-center justify-center text-white">
+                    <Store className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-slate-950 tracking-tight">
+                      {authMode === 'login' ? 'Merchant Sign In' : 'Register Retail Store'}
+                    </h3>
+                    <p className="text-[11px] text-slate-500">
+                      {authMode === 'login' ? 'Access your live store dashboard' : 'Join Zooner local merchant network'}
+                    </p>
+                  </div>
+                </div>
+
                 <button
                   type="button"
                   onClick={() => setIsAuthModalOpen(false)}
-                  className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 cursor-pointer"
+                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 cursor-pointer transition"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <form onSubmit={handleAuthSubmit} className="space-y-3">
+              {/* Segmented Auth Mode Switcher */}
+              <div className="bg-slate-100 p-1 rounded-2xl flex items-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('login');
+                    setAuthError('');
+                  }}
+                  className={`flex-1 py-2 text-xs font-bold rounded-xl transition cursor-pointer ${
+                    authMode === 'login'
+                      ? 'bg-white text-slate-950 shadow-xs'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('register');
+                    setAuthError('');
+                  }}
+                  className={`flex-1 py-2 text-xs font-bold rounded-xl transition cursor-pointer ${
+                    authMode === 'register'
+                      ? 'bg-white text-slate-950 shadow-xs'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  Register Store
+                </button>
+              </div>
+
+              {/* Error Banner */}
+              {authError && (
+                <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-medium text-rose-600 flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{authError}</span>
+                </div>
+              )}
+
+              {/* Form Fields */}
+              <form onSubmit={handleAuthSubmit} className="space-y-3 pt-1">
                 {authMode === 'register' && (
                   <>
                     <div>
-                      <label className="block text-[11px] font-semibold text-gray-700 mb-1">Your Full Name</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="Arun Kumar"
-                        value={authName}
-                        onChange={(e) => setAuthName(e.target.value)}
-                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 outline-hidden focus:border-[#0066FF]"
-                      />
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Owner Full Name *</label>
+                      <div className="relative">
+                        <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <input
+                          type="text"
+                          required
+                          autoComplete="name"
+                          placeholder="Arun Kumar"
+                          value={authName}
+                          onChange={(e) => setAuthName(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-2.5 pl-10 pr-4 text-xs text-slate-900 outline-hidden focus:bg-white focus:border-[#0066FF] focus:ring-4 focus:ring-blue-500/10 transition-all font-medium"
+                        />
+                      </div>
                     </div>
+
                     <div>
-                      <label className="block text-[11px] font-semibold text-gray-700 mb-1">Store Name</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="Trends Fashion"
-                        value={authStoreName}
-                        onChange={(e) => setAuthStoreName(e.target.value)}
-                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 outline-hidden focus:border-[#0066FF]"
-                      />
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Store / Business Name *</label>
+                      <div className="relative">
+                        <Store className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g. Trends Fashion, Apex Mobiles"
+                          value={authStoreName}
+                          onChange={(e) => setAuthStoreName(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-2.5 pl-10 pr-4 text-xs text-slate-900 outline-hidden focus:bg-white focus:border-[#0066FF] focus:ring-4 focus:ring-blue-500/10 transition-all font-medium"
+                        />
+                      </div>
                     </div>
                   </>
                 )}
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-gray-700 mb-1">Email</label>
-                  <input
-                    type="email"
-                    required
-                    placeholder="merchant@store.com"
-                    value={authEmail}
-                    onChange={(e) => setAuthEmail(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 outline-hidden focus:border-[#0066FF]"
-                  />
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Business Email *</label>
+                  <div className="relative">
+                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <input
+                      type="email"
+                      required
+                      autoComplete="email"
+                      placeholder="merchant@store.com"
+                      value={authEmail}
+                      onChange={(e) => setAuthEmail(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-2.5 pl-10 pr-4 text-xs text-slate-900 outline-hidden focus:bg-white focus:border-[#0066FF] focus:ring-4 focus:ring-blue-500/10 transition-all font-medium"
+                    />
+                  </div>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-gray-700 mb-1">Password</label>
-                  <input
-                    type="password"
-                    required
-                    placeholder="••••••••"
-                    value={authPassword}
-                    onChange={(e) => setAuthPassword(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 outline-hidden focus:border-[#0066FF]"
-                  />
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Password *</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <input
+                      type={showAuthPassword ? 'text' : 'password'}
+                      required
+                      autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}
+                      placeholder="••••••••"
+                      value={authPassword}
+                      onChange={(e) => setAuthPassword(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-2.5 pl-10 pr-10 text-xs text-slate-900 outline-hidden focus:bg-white focus:border-[#0066FF] focus:ring-4 focus:ring-blue-500/10 transition-all font-medium"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowAuthPassword(!showAuthPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                    >
+                      {showAuthPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
 
                 <button
                   type="submit"
                   disabled={isAuthSubmitting}
-                  className="w-full bg-[#0066FF] text-white py-3 rounded-full font-bold text-xs hover:bg-[#0052CC] cursor-pointer transition shadow-xs"
+                  className="w-full bg-[#0066FF] hover:bg-[#0052CC] text-white py-3.5 rounded-2xl font-bold text-xs shadow-md shadow-blue-500/20 active:scale-[0.98] transition cursor-pointer flex items-center justify-center gap-2 mt-2"
                 >
-                  {isAuthSubmitting ? 'Authenticating...' : (authMode === 'login' ? 'Sign In' : 'Create Merchant Account')}
+                  {isAuthSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-white" />
+                      <span>Authenticating...</span>
+                    </>
+                  ) : (
+                    <span>{authMode === 'login' ? 'Sign In to Portal' : 'Register Store Account'}</span>
+                  )}
                 </button>
               </form>
 
-              <div className="text-center pt-1">
-                <button
-                  type="button"
-                  onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
-                  className="text-xs text-[#0066FF] hover:underline cursor-pointer"
-                >
-                  {authMode === 'login' ? "Don't have a store? Register here" : 'Already registered? Sign In'}
-                </button>
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-center gap-1.5 text-[10px] text-slate-400 font-medium">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Verified Retail Accounts Only • 256-Bit SSL</span>
               </div>
             </div>
           </div>
