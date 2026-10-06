@@ -622,354 +622,316 @@ export const AdminDashboardPage: React.FC<AdminDashboardProps> = ({
         {/* ══════════════════════════════════════════════════════════════
             TAB: DASHBOARD (Exact Match to bottom-right in reference)
         ══════════════════════════════════════════════════════════════ */}
-        {activeTab === 'dashboard' && (
-          <div className="space-y-6">
-            {/* 4 KPI Metric Cards in a Row */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Card 1: 1,248 Customers (+12%) */}
-              <div className="bg-white rounded-2xl p-5 border border-gray-200/80 shadow-2xs space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-2xl font-black text-[#0B132B]">
-                    {users.length > 0 ? (users.length * 12 + 1200).toLocaleString('en-IN') : '1,248'}
-                  </span>
-                  <span className="text-[11px] font-bold text-[#34C759] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
-                    +12%
-                  </span>
+        {activeTab === 'dashboard' && (() => {
+          const totalStores = allShops.length;
+          const approvedStores = allShops.filter(s => s.verificationStatus?.toLowerCase() === 'approved').length;
+          const pendingStores = allShops.filter(s => s.verificationStatus?.toLowerCase() === 'pending').length;
+          const rejectedStores = allShops.filter(s => s.verificationStatus?.toLowerCase() === 'rejected' || s.verificationStatus?.toLowerCase() === 'suspended').length;
+          const totalCustomers = users.filter(u => u.role?.toLowerCase() === 'customer').length || users.length;
+          const totalCategories = categories.length;
+
+          const approvedDash = totalStores > 0 ? (approvedStores / totalStores) * 240 : 0;
+          const pendingDash = totalStores > 0 ? (pendingStores / totalStores) * 240 : 0;
+          const rejectedDash = totalStores > 0 ? (rejectedStores / totalStores) * 240 : 0;
+
+          return (
+            <div className="space-y-6">
+              {/* 4 KPI Metric Cards in a Row (Live Backend Stats) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Card 1: Customers */}
+                <div className="bg-white rounded-2xl p-5 border border-gray-200/80 shadow-2xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-2xl font-black text-[#0B132B]">
+                      {totalCustomers.toLocaleString('en-IN')}
+                    </span>
+                    <span className="text-[11px] font-bold text-[#0066FF] bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
+                      Live
+                    </span>
+                  </div>
+                  <div className="text-xs font-semibold text-gray-500">Platform Users</div>
                 </div>
-                <div className="text-xs font-semibold text-gray-500">Customers</div>
+
+                {/* Card 2: Registered Stores */}
+                <div className="bg-white rounded-2xl p-5 border border-gray-200/80 shadow-2xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-2xl font-black text-[#0B132B]">
+                      {totalStores.toLocaleString('en-IN')}
+                    </span>
+                    <span className="text-[11px] font-bold text-[#34C759] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                      {approvedStores} Approved
+                    </span>
+                  </div>
+                  <div className="text-xs font-semibold text-gray-500">Registered Stores</div>
+                </div>
+
+                {/* Card 3: Categories */}
+                <div className="bg-white rounded-2xl p-5 border border-gray-200/80 shadow-2xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-2xl font-black text-[#0B132B]">
+                      {totalCategories.toLocaleString('en-IN')}
+                    </span>
+                    <span className="text-[11px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-100">
+                      Categories
+                    </span>
+                  </div>
+                  <div className="text-xs font-semibold text-gray-500">Master Categories</div>
+                </div>
+
+                {/* Card 4: Pending Approvals */}
+                <div className="bg-white rounded-2xl p-5 border border-gray-200/80 shadow-2xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-2xl font-black text-[#0B132B]">
+                      {pendingStores.toLocaleString('en-IN')}
+                    </span>
+                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${
+                      pendingStores > 0 
+                        ? 'text-[#F59E0B] bg-amber-50 border-amber-100' 
+                        : 'text-gray-500 bg-gray-50 border-gray-100'
+                    }`}>
+                      {pendingStores > 0 ? 'Pending Action' : 'All Verified'}
+                    </span>
+                  </div>
+                  <div className="text-xs font-semibold text-gray-500">Pending Approvals</div>
+                </div>
               </div>
 
-              {/* Card 2: 356 Vendors (+8%) */}
-              <div className="bg-white rounded-2xl p-5 border border-gray-200/80 shadow-2xs space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-2xl font-black text-[#0B132B]">
-                    {allShops.length > 0 ? (allShops.length * 3 + 340).toLocaleString('en-IN') : '356'}
-                  </span>
-                  <span className="text-[11px] font-bold text-[#34C759] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
-                    +8%
-                  </span>
-                </div>
-                <div className="text-xs font-semibold text-gray-500">Vendors</div>
-              </div>
+              {/* 2 Analytics Cards Row (Live Platform Sync + Store Status donut chart) */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Left: Platform Sync / Summary (2 cols) */}
+                <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-gray-200/80 shadow-2xs space-y-4 flex flex-col justify-between">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-extrabold text-[#0B132B]">Platform Live Sync</h3>
+                      <p className="text-xs text-gray-400">Database connection & metrics</p>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs font-semibold">
+                      <span className="flex items-center gap-1.5 text-blue-600">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#0066FF]" />
+                        Users: {totalCustomers}
+                      </span>
+                      <span className="flex items-center gap-1.5 text-purple-600">
+                        <span className="w-2.5 h-2.5 rounded-full bg-purple-500" />
+                        Stores: {totalStores}
+                      </span>
+                    </div>
+                  </div>
 
-              {/* Card 3: 4,892 Products (+15%) */}
-              <div className="bg-white rounded-2xl p-5 border border-gray-200/80 shadow-2xs space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-2xl font-black text-[#0B132B]">4,892</span>
-                  <span className="text-[11px] font-bold text-[#34C759] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
-                    +15%
-                  </span>
-                </div>
-                <div className="text-xs font-semibold text-gray-500">Products</div>
-              </div>
+                  <div className="p-4 bg-gray-50/70 border border-gray-100 rounded-xl space-y-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-500 font-medium">Database Status:</span>
+                      <span className="font-bold text-emerald-600 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        Connected & Operational
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-500 font-medium">Verification Queue:</span>
+                      <span className="font-bold text-gray-800">{pendingStores} stores awaiting review</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-500 font-medium">Active Categories:</span>
+                      <span className="font-bold text-gray-800">{totalCategories} categories loaded</span>
+                    </div>
+                  </div>
 
-              {/* Card 4: 860 Requests (+22%) */}
-              <div className="bg-white rounded-2xl p-5 border border-gray-200/80 shadow-2xs space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-2xl font-black text-[#0B132B]">860</span>
-                  <span className="text-[11px] font-bold text-[#34C759] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
-                    +22%
-                  </span>
+                  <div className="text-[11px] text-gray-400 flex items-center justify-between pt-2 border-t border-gray-100">
+                    <span>Synchronized with live backend API</span>
+                    <button
+                      type="button"
+                      onClick={() => loadData(false)}
+                      className="text-xs font-bold text-[#0066FF] hover:underline cursor-pointer"
+                    >
+                      Refresh Database ↻
+                    </button>
+                  </div>
                 </div>
-                <div className="text-xs font-semibold text-gray-500">Requests</div>
-              </div>
-            </div>
 
-            {/* 2 Analytics Cards Row (User Growth line chart + Store Status donut chart) */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Left: User Growth Line Chart (2 cols) */}
-              <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-gray-200/80 shadow-2xs space-y-4">
-                <div className="flex items-center justify-between">
+                {/* Right: Store Status Donut Chart (1 col - real calculation) */}
+                <div className="bg-white rounded-2xl p-6 border border-gray-200/80 shadow-2xs flex flex-col justify-between space-y-4">
                   <div>
-                    <h3 className="text-sm font-extrabold text-[#0B132B]">User Growth</h3>
-                    <p className="text-xs text-gray-400">Last 30 days</p>
+                    <h3 className="text-sm font-extrabold text-[#0B132B]">Store Status</h3>
                   </div>
-                  <div className="flex items-center gap-4 text-xs font-semibold">
-                    <span className="flex items-center gap-1.5 text-blue-600">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#0066FF]" />
-                      Customers
-                    </span>
-                    <span className="flex items-center gap-1.5 text-purple-600">
-                      <span className="w-2.5 h-2.5 rounded-full bg-purple-500" />
-                      Vendors
-                    </span>
+
+                  {/* SVG Donut Chart */}
+                  <div className="relative w-40 h-40 mx-auto my-2 flex items-center justify-center">
+                    <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                      <circle
+                        cx="50"
+                        cy="50"
+                        r="38"
+                        fill="transparent"
+                        stroke="#F1F5F9"
+                        strokeWidth="12"
+                      />
+                      {totalStores > 0 && approvedDash > 0 && (
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="38"
+                          fill="transparent"
+                          stroke="#0066FF"
+                          strokeWidth="12"
+                          strokeDasharray={`${approvedDash} 240`}
+                        />
+                      )}
+                      {totalStores > 0 && pendingDash > 0 && (
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="38"
+                          fill="transparent"
+                          stroke="#F59E0B"
+                          strokeWidth="12"
+                          strokeDasharray={`${pendingDash} 240`}
+                          strokeDashoffset={`-${approvedDash}`}
+                        />
+                      )}
+                      {totalStores > 0 && rejectedDash > 0 && (
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="38"
+                          fill="transparent"
+                          stroke="#EF4444"
+                          strokeWidth="12"
+                          strokeDasharray={`${rejectedDash} 240`}
+                          strokeDashoffset={`-${approvedDash + pendingDash}`}
+                        />
+                      )}
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                      <span className="text-lg font-black text-[#0B132B]">{totalStores}</span>
+                      <span className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider">Stores</span>
+                    </div>
                   </div>
-                </div>
 
-                {/* SVG Line Chart */}
-                <div className="w-full h-52 relative pt-2">
-                  <svg viewBox="0 0 500 180" className="w-full h-full overflow-visible">
-                    <defs>
-                      <linearGradient id="blueGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#0066FF" stopOpacity="0.25" />
-                        <stop offset="100%" stopColor="#0066FF" stopOpacity="0.0" />
-                      </linearGradient>
-                    </defs>
-
-                    {/* Horizontal Grid lines */}
-                    <line x1="30" y1="20" x2="490" y2="20" stroke="#F1F5F9" strokeWidth="1" />
-                    <line x1="30" y1="60" x2="490" y2="60" stroke="#F1F5F9" strokeWidth="1" />
-                    <line x1="30" y1="100" x2="490" y2="100" stroke="#F1F5F9" strokeWidth="1" />
-                    <line x1="30" y1="140" x2="490" y2="140" stroke="#F1F5F9" strokeWidth="1" />
-
-                    {/* Y-axis labels */}
-                    <text x="5" y="25" fill="#94A3B8" fontSize="10">120</text>
-                    <text x="10" y="65" fill="#94A3B8" fontSize="10">80</text>
-                    <text x="10" y="105" fill="#94A3B8" fontSize="10">40</text>
-                    <text x="15" y="145" fill="#94A3B8" fontSize="10">0</text>
-
-                    {/* Customers Curve & Area */}
-                    <path
-                      d="M 40,135 Q 110,120 180,105 T 320,80 T 400,60 T 480,45 L 480,140 L 40,140 Z"
-                      fill="url(#blueGrad)"
-                    />
-                    <path
-                      d="M 40,135 Q 110,120 180,105 T 320,80 T 400,60 T 480,45"
-                      fill="none"
-                      stroke="#0066FF"
-                      strokeWidth="2.5"
-                    />
-
-                    {/* Vendors Curve */}
-                    <path
-                      d="M 40,138 Q 110,135 180,125 T 320,115 T 400,105 T 480,95"
-                      fill="none"
-                      stroke="#8B5CF6"
-                      strokeWidth="2.5"
-                    />
-
-                    {/* Data Points */}
-                    <circle cx="180" cy="105" r="3.5" fill="#0066FF" />
-                    <circle cx="320" cy="80" r="3.5" fill="#0066FF" />
-                    <circle cx="480" cy="45" r="4" fill="#0066FF" />
-                    <circle cx="480" cy="95" r="4" fill="#8B5CF6" />
-
-                    {/* X-axis dates */}
-                    <text x="40" y="165" fill="#94A3B8" fontSize="10">Aug 1</text>
-                    <text x="140" y="165" fill="#94A3B8" fontSize="10">Aug 7</text>
-                    <text x="240" y="165" fill="#94A3B8" fontSize="10">Aug 14</text>
-                    <text x="340" y="165" fill="#94A3B8" fontSize="10">Aug 21</text>
-                    <text x="440" y="165" fill="#94A3B8" fontSize="10">Aug 28</text>
-                  </svg>
-                </div>
-              </div>
-
-              {/* Right: Store Status Donut Chart (1 col) */}
-              <div className="bg-white rounded-2xl p-6 border border-gray-200/80 shadow-2xs flex flex-col justify-between space-y-4">
-                <div>
-                  <h3 className="text-sm font-extrabold text-[#0B132B]">Store Status</h3>
-                </div>
-
-                {/* SVG Donut Chart */}
-                <div className="relative w-40 h-40 mx-auto my-2 flex items-center justify-center">
-                  <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                    {/* Approved Ring: Blue/Cyan ~80% */}
-                    <circle
-                      cx="50"
-                      cy="50"
-                      r="38"
-                      fill="transparent"
-                      stroke="#0066FF"
-                      strokeWidth="12"
-                      strokeDasharray="210 240"
-                    />
-                    {/* Pending Ring: Amber ~15% */}
-                    <circle
-                      cx="50"
-                      cy="50"
-                      r="38"
-                      fill="transparent"
-                      stroke="#F59E0B"
-                      strokeWidth="12"
-                      strokeDasharray="30 240"
-                      strokeDashoffset="-210"
-                    />
-                    {/* Suspended Ring: Red ~5% */}
-                    <circle
-                      cx="50"
-                      cy="50"
-                      r="38"
-                      fill="transparent"
-                      stroke="#EF4444"
-                      strokeWidth="12"
-                      strokeDasharray="12 240"
-                      strokeDashoffset="-240"
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                    <span className="text-lg font-black text-[#0B132B]">356</span>
-                    <span className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider">Stores</span>
-                  </div>
-                </div>
-
-                {/* Legend list matching reference image */}
-                <div className="space-y-2 pt-2 border-t border-gray-100 text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-2 text-gray-600">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#0066FF]" />
-                      Approved
-                    </span>
-                    <span className="font-extrabold text-gray-900">320</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-2 text-gray-600">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#F59E0B]" />
-                      Pending
-                    </span>
-                    <span className="font-extrabold text-gray-900">28</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-2 text-gray-600">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#EF4444]" />
-                      Suspended
-                    </span>
-                    <span className="font-extrabold text-gray-900">8</span>
+                  {/* Legend list */}
+                  <div className="space-y-2 pt-2 border-t border-gray-100 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-2 text-gray-600">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#0066FF]" />
+                        Approved
+                      </span>
+                      <span className="font-extrabold text-gray-900">{approvedStores}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-2 text-gray-600">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#F59E0B]" />
+                        Pending
+                      </span>
+                      <span className="font-extrabold text-gray-900">{pendingStores}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-2 text-gray-600">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#EF4444]" />
+                        Suspended / Rejected
+                      </span>
+                      <span className="font-extrabold text-gray-900">{rejectedStores}</span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Bottom Card: Recent Stores Table */}
-            <div className="bg-white rounded-2xl border border-gray-200/80 shadow-2xs overflow-hidden">
-              <div className="p-5 flex items-center justify-between border-b border-gray-100">
-                <h3 className="text-sm font-extrabold text-[#0B132B]">Recent Stores</h3>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('stores');
-                    setStoreFilter('All');
-                  }}
-                  className="text-xs font-bold text-[#0066FF] hover:underline cursor-pointer"
-                >
-                  View All
-                </button>
-              </div>
+              {/* Bottom Card: Recent Stores Table (Real API Data only) */}
+              <div className="bg-white rounded-2xl border border-gray-200/80 shadow-2xs overflow-hidden">
+                <div className="p-5 flex items-center justify-between border-b border-gray-100">
+                  <h3 className="text-sm font-extrabold text-[#0B132B]">Recent Stores</h3>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('stores');
+                      setStoreFilter('All');
+                    }}
+                    className="text-xs font-bold text-[#0066FF] hover:underline cursor-pointer"
+                  >
+                    View All ({totalStores})
+                  </button>
+                </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-gray-100 text-[11px] font-semibold text-gray-400 bg-gray-50/50">
-                      <th className="py-3 px-5">Store Name</th>
-                      <th className="py-3 px-5">Location</th>
-                      <th className="py-3 px-5">Status</th>
-                      <th className="py-3 px-5">Date</th>
-                      <th className="py-3 px-5 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 text-xs">
-                    {/* Fallback default stores matching reference if table is small */}
-                    <tr className="hover:bg-gray-50/50 transition">
-                      <td className="py-3.5 px-5 flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-gray-900 text-white font-bold text-xs flex items-center justify-center">
-                          TF
-                        </div>
-                        <span className="font-bold text-gray-900">Trends Fashion</span>
-                      </td>
-                      <td className="py-3.5 px-5 text-gray-500">Coimbatore</td>
-                      <td className="py-3.5 px-5">
-                        <span className="text-[10px] font-bold text-[#34C759] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
-                          Approved
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-5 text-gray-400 text-[11px]">Aug 28, 2024</td>
-                      <td className="py-3.5 px-5 text-right">
-                        <span className="text-xs text-gray-400 font-medium">Active</span>
-                      </td>
-                    </tr>
-
-                    <tr className="hover:bg-gray-50/50 transition">
-                      <td className="py-3.5 px-5 flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-cyan-700 text-white font-bold text-xs flex items-center justify-center">
-                          CR
-                        </div>
-                        <span className="font-bold text-gray-900">Croma</span>
-                      </td>
-                      <td className="py-3.5 px-5 text-gray-500">Coimbatore</td>
-                      <td className="py-3.5 px-5">
-                        <span className="text-[10px] font-bold text-[#F59E0B] bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">
-                          Pending
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-5 text-gray-400 text-[11px]">Aug 27, 2024</td>
-                      <td className="py-3.5 px-5 text-right">
-                        <button
-                          type="button"
-                          onClick={() => showToast('Croma verified & approved!')}
-                          className="px-2.5 py-1 bg-[#0066FF] text-white text-[10px] font-bold rounded-lg hover:bg-[#0052CC] cursor-pointer"
-                        >
-                          Approve
-                        </button>
-                      </td>
-                    </tr>
-
-                    <tr className="hover:bg-gray-50/50 transition">
-                      <td className="py-3.5 px-5 flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-gray-800 text-white font-bold text-xs flex items-center justify-center">
-                          FL
-                        </div>
-                        <span className="font-bold text-gray-900">Foot Locker</span>
-                      </td>
-                      <td className="py-3.5 px-5 text-gray-500">Coimbatore</td>
-                      <td className="py-3.5 px-5">
-                        <span className="text-[10px] font-bold text-[#34C759] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
-                          Approved
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-5 text-gray-400 text-[11px]">Aug 26, 2024</td>
-                      <td className="py-3.5 px-5 text-right">
-                        <span className="text-xs text-gray-400 font-medium">Active</span>
-                      </td>
-                    </tr>
-
-                    {/* Real stores from API */}
-                    {recentShopsDisplay.map((shop) => (
-                      <tr key={shop.id} className="hover:bg-gray-50/50 transition">
-                        <td className="py-3.5 px-5 flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-[#0066FF] text-white font-bold text-xs flex items-center justify-center">
-                            {shop.name.charAt(0)}
-                          </div>
-                          <span className="font-bold text-gray-900">{shop.name}</span>
-                        </td>
-                        <td className="py-3.5 px-5 text-gray-500">{shop.address || 'Coimbatore'}</td>
-                        <td className="py-3.5 px-5">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                            shop.verificationStatus === 'Approved'
-                              ? 'bg-emerald-50 text-[#34C759] border-emerald-100'
-                              : 'bg-amber-50 text-[#F59E0B] border-amber-100'
-                          }`}>
-                            {shop.verificationStatus}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-5 text-gray-400 text-[11px]">
-                          {new Date(shop.createdAtUtc).toLocaleDateString()}
-                        </td>
-                        <td className="py-3.5 px-5 text-right space-x-1.5">
-                          {shop.verificationStatus?.toLowerCase() === 'pending' ? (
-                            <button
-                              type="button"
-                              onClick={() => handleVerifyShop(shop.id.toString(), 'Approved')}
-                              className="px-2.5 py-1 bg-[#34C759] text-white text-[10px] font-bold rounded-lg hover:bg-emerald-600 cursor-pointer"
-                            >
-                              Approve
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleToggleShopStatus(shop.id.toString(), shop.isActive)}
-                              className="text-[10px] font-semibold text-gray-500 hover:text-gray-800"
-                            >
-                              {shop.isActive ? 'Active' : 'Offline'}
-                            </button>
-                          )}
-                        </td>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-gray-100 text-[11px] font-semibold text-gray-400 bg-gray-50/50">
+                        <th className="py-3 px-5">Store Name</th>
+                        <th className="py-3 px-5">Location</th>
+                        <th className="py-3 px-5">Status</th>
+                        <th className="py-3 px-5">Registered Date</th>
+                        <th className="py-3 px-5 text-right">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 text-xs">
+                      {recentShopsDisplay.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="py-10 text-center text-gray-500">
+                            <div className="flex flex-col items-center justify-center space-y-2">
+                              <Store className="w-8 h-8 text-gray-300" />
+                              <p className="font-bold text-xs text-gray-700">No stores in database yet</p>
+                              <p className="text-[11px] text-gray-400">
+                                Stores registered by merchants will appear here for verification and status management.
+                              </p>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        recentShopsDisplay.map((shop) => (
+                          <tr key={shop.id} className="hover:bg-gray-50/50 transition">
+                            <td className="py-3.5 px-5 flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg bg-[#0066FF] text-white font-bold text-xs flex items-center justify-center">
+                                {shop.name ? shop.name.charAt(0).toUpperCase() : 'S'}
+                              </div>
+                              <div>
+                                <span className="font-bold text-gray-900 block">{shop.name}</span>
+                                <span className="text-[10px] text-gray-400">{shop.ownerEmail || shop.phone}</span>
+                              </div>
+                            </td>
+                            <td className="py-3.5 px-5 text-gray-500">{shop.address || 'Coimbatore'}</td>
+                            <td className="py-3.5 px-5">
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                shop.verificationStatus?.toLowerCase() === 'approved'
+                                  ? 'bg-emerald-50 text-[#34C759] border-emerald-100'
+                                  : shop.verificationStatus?.toLowerCase() === 'rejected'
+                                  ? 'bg-red-50 text-red-500 border-red-100'
+                                  : 'bg-amber-50 text-[#F59E0B] border-amber-100'
+                              }`}>
+                                {shop.verificationStatus}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-5 text-gray-400 text-[11px]">
+                              {shop.createdAtUtc ? new Date(shop.createdAtUtc).toLocaleDateString() : 'Recent'}
+                            </td>
+                            <td className="py-3.5 px-5 text-right space-x-1.5">
+                              {shop.verificationStatus?.toLowerCase() === 'pending' ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleVerifyShop(shop.id.toString(), 'Approved')}
+                                  className="px-2.5 py-1 bg-[#34C759] text-white text-[10px] font-bold rounded-lg hover:bg-emerald-600 cursor-pointer"
+                                >
+                                  Approve
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleShopStatus(shop.id.toString(), shop.isActive)}
+                                  className={`text-[10px] font-bold px-2 py-1 rounded-lg transition cursor-pointer ${
+                                    shop.isActive 
+                                      ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' 
+                                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                  }`}
+                                >
+                                  {shop.isActive ? 'Active' : 'Offline'}
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ══════════════════════════════════════════════════════════════
             TAB: STORES

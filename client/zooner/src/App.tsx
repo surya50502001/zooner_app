@@ -199,17 +199,15 @@ export function AppContent() {
         </div>
       )}
 
-      {/* ── EXPERIENCE 2: STORE MODE (Individual Screen) ── */}
+      {/* ── EXPERIENCE 2: STORE MODE (Vendor Dashboard) ── */}
       {currentRoute === 'vendor' && (
-        <div className="min-h-screen bg-[#F0F2F5] text-gray-950 flex flex-col items-center justify-start selection:bg-[#007AFF] selection:text-white sm:py-0">
-          <div className="w-full max-w-[440px] min-h-screen bg-white sm:shadow-2xl sm:border-x sm:border-gray-100 flex flex-col relative">
-            <VendorDashboardPage
-              onSwitchToCustomer={() => navigateTo('customer')}
-              onNavigateToAdmin={() => navigateTo('admin')}
-              onOpenExperienceSwitcher={() => setIsExperienceSwitcherOpen(true)}
-              isMultiRole={true}
-            />
-          </div>
+        <div className="min-h-screen bg-[#F8FAFC] text-gray-950 flex flex-col selection:bg-[#007AFF] selection:text-white">
+          <VendorDashboardPage
+            onSwitchToCustomer={() => navigateTo('customer')}
+            onNavigateToAdmin={() => navigateTo('admin')}
+            onOpenExperienceSwitcher={() => setIsExperienceSwitcherOpen(true)}
+            isMultiRole={true}
+          />
           <SignInModal
             isOpen={isSignInModalOpen}
             onClose={() => setIsSignInModalOpen(false)}
@@ -224,23 +222,21 @@ export function AppContent() {
 
       {/* ── EXPERIENCE 1B: SHOPPING MODE (Customer App / Discovery) ── */}
       {(Capacitor.isNativePlatform() || currentRoute === 'customer') && currentRoute !== 'admin' && currentRoute !== 'vendor' && currentRoute !== 'marketing' && (
-        <div className="min-h-screen bg-[#F0F2F5] text-gray-950 flex flex-col items-center justify-start selection:bg-[#007AFF] selection:text-white sm:py-0">
-          <div className="w-full max-w-[440px] min-h-screen bg-white sm:shadow-2xl sm:border-x sm:border-gray-100 flex flex-col relative">
-            <CustomerAppPage
-              currentLocation={currentLocation}
-              onOpenLocationModal={() => setIsLocationModalOpen(true)}
-              onNavigateToHome={() => navigateTo('marketing', true)}
-              onNavigateToVendor={handleSwitchToVendor}
-              onNavigateToAdmin={() => navigateTo('admin')}
-              onOpenSignIn={(hint) => {
-                setSignInRoleHint(hint || 'C');
-                setIsSignInModalOpen(true);
-              }}
-              onOpenRetailerModal={() => navigateTo('vendor')}
-              onOpenExperienceSwitcher={() => setIsExperienceSwitcherOpen(true)}
-              isMultiRole={true}
-            />
-          </div>
+        <div className="min-h-screen bg-[#F8FAFC] text-gray-950 flex flex-col selection:bg-[#007AFF] selection:text-white">
+          <CustomerAppPage
+            currentLocation={currentLocation}
+            onOpenLocationModal={() => setIsLocationModalOpen(true)}
+            onNavigateToHome={() => navigateTo('marketing', true)}
+            onNavigateToVendor={handleSwitchToVendor}
+            onNavigateToAdmin={() => navigateTo('admin')}
+            onOpenSignIn={(hint) => {
+              setSignInRoleHint(hint || 'C');
+              setIsSignInModalOpen(true);
+            }}
+            onOpenRetailerModal={() => navigateTo('vendor')}
+            onOpenExperienceSwitcher={() => setIsExperienceSwitcherOpen(true)}
+            isMultiRole={true}
+          />
           <LocationModal
             isOpen={isLocationModalOpen}
             onClose={() => setIsLocationModalOpen(false)}
